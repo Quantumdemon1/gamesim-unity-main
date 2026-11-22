@@ -56,6 +56,10 @@ namespace Gamesim.Episode
             public int Rounds { get; internal set; }
             /// <summary>Whether the field turned to the winner before the card (table and course).</summary>
             public bool TurnedToWinner { get; internal set; }
+            /// <summary>Course: each staged runner's post, where their leg starts and ends (competition show edges).</summary>
+            public Dictionary<string, Vector3> LegFrom { get; } = new Dictionary<string, Vector3>();
+            /// <summary>Course: each staged runner's turn mark, where their leg turns for home; none for a post with no leg.</summary>
+            public Dictionary<string, Vector3> LegTo { get; } = new Dictionary<string, Vector3>();
         }
 
         /// <summary>The last podium, table or course show's record; null before the first.</summary>
@@ -66,11 +70,6 @@ namespace Gamesim.Episode
 
         /// <summary>The run speed of a course leg, metres a second: the house walks at 2.2.</summary>
         public const float CompetitionCourseRunSpeed = 3.8f;
-
-        /// <summary>How far in front of a post (toward the house) a course's turn mark is tried, nearest last.</summary>
-        private static readonly float[] CourseMarkDistances = { 4.5f, 4f, 3.5f, 3f, 2.5f, 2f };
-        // Straight back toward the house first; where that yard is not clear, to either side of the post.
-        private static readonly Vector3[] CourseMarkDirections = { Vector3.back, Vector3.left, Vector3.right };
 
         /// <summary>One competitor's state in a family show.</summary>
         private sealed class CompetitionShowActor
@@ -83,6 +82,8 @@ namespace Gamesim.Episode
             public float PressFrom = -1f, PressUntil = -1f;
             public float ReactUntil;
             public bool Away, Homeward, Running, Finished, DidNotFinish;
+            /// <summary>Whether this is the player's houseguest, whose gait their controller owns.</summary>
+            public bool IsPlayer;
         }
 
         private sealed partial class CompetitionShowRun
@@ -141,7 +142,13 @@ namespace Gamesim.Episode
                 return false;
             }
             for (int i = 0; i < staged.Count; i++)
-                run.Actors[staged[i]] = new CompetitionShowActor { Rank = i, FaceSince = Time.unscaledTime };
+                run.Actors[staged[i]] = new CompetitionShowActor { Rank = i, FaceSince = Time.unscaledTime, IsPlayer = staged[i] == run.Plan.PlayerId };
+            foreach (var id in staged)
+            {
+                if (id == run.Plan.PlayerId) { if (competitionPlayerStation != null) run.FamilyRecord.LegFrom[id] = competitionPlayerStationPosition; }
+                else if (competitionArenaActors.TryGetValue(id, out var post) && post != null) run.FamilyRecord.LegFrom[id] = post.Position;
+                if (run.CourseMarks.TryGetValue(id, out var mark) && mark != null) run.FamilyRecord.LegTo[id] = mark.Position;
+            }
             return true;
         }
 
@@ -220,11 +227,13 @@ namespace Gamesim.Episode
                         if (run.Plan.Family == CompetitionShowFamily.Podium) record.Order.Add(run.Plan.WinnerId);
                     }
                     break;
+                // A course still waiting on a late runner lets them finish their leg first; the course's
+                // homecomings turn the field to the winner once everyone is settled (competition show edges).
                 case CompetitionShowBeatKind.TurnToWinner:
-                    TurnCompetitionShowToWinner(run, now);
+                    if (!run.Timeline.CardWaits(run.NextHome)) TurnCompetitionShowToWinner(run, now);
                     break;
                 case CompetitionShowBeatKind.Card:
-                    FinishCompetitionShow();
+                    if (!run.Timeline.CardWaits(run.NextHome)) FinishCompetitionShow();
                     break;
             }
         }
@@ -270,7 +279,10 @@ namespace Gamesim.Episode
                 string id = staged[run.NextHome];
                 var actor = CompetitionShowActorFor(id);
                 bool home = !actor.Away || actor.Homeward && CompetitionShowRunnerHome(run, id);
-                if (home && (actor.Homeward || !actor.Away) && t >= CourseEarliestFinish(run, actor))
+                // A late runner is waited for through their grace (competition show edges): they finish
+                // their leg and slap the pad in their place, and those below them wait at their posts.
+                var call = run.Timeline.CallFor(id, t, home, actor.Homeward);
+                if (call == CompetitionShowTimeline.CourseCall.Finish)
                 {
                     actor.Away = false;
                     StopCompetitionShowRunner(id, actor);
@@ -279,7 +291,7 @@ namespace Gamesim.Episode
                     run.NextHome++;
                     continue;
                 }
-                if (t > run.Timeline.FinishBy(id))
+                if (call == CompetitionShowTimeline.CourseCall.DidNotFinish)
                 {
                     actor.DidNotFinish = true;
                     run.FamilyRecord.DidNotFinish.Add(id);
@@ -293,15 +305,6 @@ namespace Gamesim.Episode
                 if (pair.Value.DidNotFinish && pair.Value.Away && pair.Value.Homeward && CompetitionShowRunnerHome(run, pair.Key))
                 { pair.Value.Away = false; StopCompetitionShowRunner(pair.Key, pair.Value); SetCompetitionShowPose(run, pair.Key, CharacterPresentation.Pose.AtEase); }
             if (run.NextHome >= staged.Count) TurnCompetitionShowToWinner(run, now);
-        }
-
-        /// <summary>A runner who never left their post finishes no sooner than their turn: the order still reads in time.</summary>
-        private static float CourseEarliestFinish(CompetitionShowRun run, CompetitionShowActor actor)
-        {
-            foreach (var beat in run.Timeline.Beats)
-                if (beat.Kind == CompetitionShowBeatKind.Turn && beat.Ids.Count > 0 && run.Actors.TryGetValue(beat.Ids[0], out var other) && other == actor)
-                    return actor.Homeward ? 0f : beat.At + 1f;
-            return 0f;
         }
 
         /// <summary>Whether a homeward runner stands at their own post again.</summary>
@@ -344,6 +347,9 @@ namespace Gamesim.Episode
                     // Back to the post whatever happens: the station's own route is the arena's.
                     player.TryBeginActivityMove(competitionPlayerOwner, competitionPlayerStationPosition, out _);
                 }
+                // The player's houseguest runs the leg as the others do (competition show edges): a leg is
+                // a few metres, which the controller's own choice of gait would walk.
+                else if (player.SetActivityGait(competitionPlayerOwner, true)) actor.Running = true;
             }
             else
             {
@@ -374,6 +380,7 @@ namespace Gamesim.Episode
         {
             if (!actor.Running) return;
             actor.Running = false;
+            if (actor.IsPlayer) { if (player != null) player.SetActivityGait(competitionPlayerOwner, false); return; }
             var root = BodyFor(id);
             var visual = root != null ? root.GetComponent<CharacterPresentation>() : null;
             if (visual != null) visual.SetRunning(false);
@@ -495,51 +502,145 @@ namespace Gamesim.Episode
             switch (show.Plan.Family)
             {
                 case CompetitionShowFamily.Table: return;
-                case CompetitionShowFamily.Course: ReserveCompetitionCourseMarks(show, state, staged, rooms, filter, floor, used); return;
+                case CompetitionShowFamily.Course: ReserveCompetitionCourseMarks(show, state, staged, rooms, filter, floor, used, places); return;
                 default: ReserveCompetitionShowSideMarks(show, state, staged, rooms, filter, floor, places, used); return;
             }
         }
 
         /// <summary>
-        /// Each post's turn mark, straight in front of it toward the house, as far as is clear (4.5 m
-        /// down to 2 m), or to either side where that is not clear: a whole standing reservation clear
-        /// of every station, place and set piece, as the side marks are. A post with no clear mark runs no leg.
+        /// Each post's turn mark (competition show edges, <see cref="CompetitionCourseLegs"/>): straight
+        /// back toward the house as far as is clear (4.5 m down to 2 m), or leaning away from the yard's
+        /// middle where a station stands in front of the post, so no leg runs through another station's
+        /// equipment or body or crosses another runner's leg - in one row or two. Each mark is a whole
+        /// standing reservation clear of every station, place and set piece, as the side marks are. A
+        /// post with no clear mark runs no leg.
         /// </summary>
         private void ReserveCompetitionCourseMarks(CompetitionShowRun show, EpisodeState state, IReadOnlyCollection<string> staged,
-            HouseRoomQuery rooms, NavMeshQueryFilter filter, Collider floor, List<Vector3> used)
+            HouseRoomQuery rooms, NavMeshQueryFilter filter, Collider floor, List<Vector3> used, IEnumerable<Vector3> places = null)
         {
             var playerCapsule = player.GetComponent<CapsuleCollider>();
+            // The player's own houseguest always runs a leg (competition show edges, after the built
+            // house's run, where their post at the middle of the yard found none of the course's own
+            // marks): theirs is tried every way and at the yard's own clear places too.
+            var placeSpots = places != null ? places.Select(p => new CompetitionCourseLegs.Spot(p.x, p.z)).ToList() : null;
+            var runners = new Dictionary<string, (Transform self, float radius, float height, Vector3 post)>();
             foreach (string id in show.Plan.Standings)
             {
-                Transform self; float radius, height; Vector3 post;
                 if (id == state.playerId)
                 {
                     if (competitionPlayerStation == null) continue;
-                    self = player.transform; radius = Mathf.Max(player.Agent.radius, playerCapsule != null ? playerCapsule.radius : 0); height = player.Agent.height;
-                    post = competitionPlayerStationPosition;
+                    runners[id] = (player.transform, Mathf.Max(player.Agent.radius, playerCapsule != null ? playerCapsule.radius : 0), player.Agent.height,
+                        competitionPlayerStationPosition);
                 }
                 else
                 {
                     if (!staged.Contains(id) || !competitionBodies.TryGetValue(id, out var body) || body.root == null || body.capsule == null
                         || !competitionArenaActors.TryGetValue(id, out var anchor) || anchor == null) continue;
-                    self = body.root.transform; radius = body.capsule.radius; height = body.capsule.height; post = anchor.Position;
+                    runners[id] = (body.root.transform, body.capsule.radius, body.capsule.height, anchor.Position);
                 }
-                bool marked = false;
-                foreach (var direction in CourseMarkDirections)
-                foreach (float distance in CourseMarkDistances)
+            }
+            if (runners.Count == 0) return;
+            // The yard's floor plan: every runner's station, and every other body standing on the deck.
+            float runnerRadius = runners.Values.Max(runner => runner.radius);
+            float reach = CompetitionStageFootprint.Reach(CompetitionApparatus.For(show.Definition, show.Plan.Category));
+            var deck = floor.bounds;
+            var legs = new CompetitionCourseLegs(deck.min.x, deck.max.x, deck.min.z, deck.max.z, runnerRadius + .33f, runnerRadius, deck.center.x);
+            foreach (var pair in runners)
+                legs.AddPost(pair.Key, pair.Value.post.x, pair.Value.post.z,
+                    CompetitionCourseLegs.Box.Station(pair.Value.post.x, pair.Value.post.z, pair.Value.radius, reach, CompetitionStageFootprint.HalfWidth));
+            foreach (var pair in competitionArenaActors)
+            {
+                if (runners.ContainsKey(pair.Key) || pair.Value == null) continue;
+                bool contestant = show.Plan.Standings.Contains(pair.Key);
+                var at = pair.Value.Position;
+                legs.AddObstacle(contestant ? CompetitionCourseLegs.Box.Station(at.x, at.z, runnerRadius, reach, CompetitionStageFootprint.HalfWidth)
+                    : CompetitionCourseLegs.Box.Body(at.x, at.z, runnerRadius));
+                if (pair.Value.Seated) legs.AddObstacle(CompetitionCourseLegs.Box.Body(pair.Value.Approach.x, pair.Value.Approach.z, runnerRadius));
+            }
+            // Everybody on their way to a stage place (the field and the audience, the player too) stands
+            // wherever the house left them while the marks are chosen; by the time a runner sets off each
+            // stands at the place the plan above keeps clear (CompetitionCourseMarkPasses.MoversAside).
+            var movers = new HashSet<Transform>(competitionRouteOwners);
+            movers.Add(player.transform);
+            foreach (string id in staged)
+                if (competitionBodies.TryGetValue(id, out var body) && body.root != null) movers.Add(body.root.transform);
+            foreach (string id in legs.Order)
+            {
+                var runner = runners[id];
+                bool isPlayer = id == state.playerId;
+                var tally = new CompetitionCourseMarkPasses.Tally();
+                Vector3 position = default;
+                CompetitionStageFootprint footprint = default;
+                bool found = CompetitionCourseMarkPasses.TryChoose(legs, id, isPlayer,
+                    () => isPlayer ? legs.EveryWayCandidates(id, placeSpots) : legs.Candidates(id),
+                    (CompetitionCourseLegs.Spot spot, CompetitionCourseMarkPasses.Pass pass, out CompetitionCourseLegs.Spot taken) =>
+                    {
+                        taken = spot;
+                        var wanted = new Vector3(spot.X, runner.post.y, spot.Z);
+                        if (!rooms.TrySampleFloor(wanted, runner.radius, filter, .25f, out position, out var room) || room != "Yard")
+                            return CompetitionCourseMarkPasses.Refusal.Floor;
+                        // The floor's own point, not the one asked for: the leg is checked again from there.
+                        taken = new CompetitionCourseLegs.Spot(position.x, position.z);
+                        if (!legs.Clears(id, taken)) return CompetitionCourseMarkPasses.Refusal.Legs;
+                        var at = position;
+                        if (used.Any(p => (p - at).sqrMagnitude < 1.6f)) return CompetitionCourseMarkPasses.Refusal.Spacing;
+                        footprint = CompetitionStageFootprint.Actor(position, runner.radius, runner.height);
+                        if (CompetitionCourseMarkPasses.ReadsBodies(pass))
+                        {
+                            bool bodyClear = CompetitionCourseMarkPasses.CountsMovers(pass)
+                                ? rooms.HasCapsuleClearance(position, runner.radius, runner.height, runner.self)
+                                : CompetitionCourseMarkClearOfStill(position, runner.radius, runner.height, runner.self, floor, movers);
+                            if (!bodyClear) return CompetitionCourseMarkPasses.Refusal.Body;
+                            bool fits = CompetitionCourseMarkPasses.CountsMovers(pass)
+                                ? FitsCompetitionFootprint(footprint, floor, runner.self)
+                                : FitsCompetitionCourseMark(footprint, floor) && footprint.HasStaticClearance(gameObject.scene.GetPhysicsScene(), floor,
+                                    competitionPlacementHits, movers, runner.self);
+                            if (!fits) return CompetitionCourseMarkPasses.Refusal.Footprint;
+                        }
+                        else if (!FitsCompetitionCourseMark(footprint, floor)) return CompetitionCourseMarkPasses.Refusal.Footprint;
+                        return CompetitionCourseMarkPasses.Refusal.None;
+                    }, tally, out _, out var takenIn);
+                if (found)
                 {
-                    if (marked) break;
-                    var wanted = post + direction * distance;
-                    if (!rooms.TrySampleFloor(wanted, radius, filter, .25f, out var position, out var room) || room != "Yard") continue;
-                    if (used.Any(p => (p - position).sqrMagnitude < 1.6f) || !rooms.HasCapsuleClearance(position, radius, height, self)) continue;
-                    var footprint = CompetitionStageFootprint.Actor(position, radius, height);
-                    if (!FitsCompetitionFootprint(footprint, floor, self)) continue;
                     var mark = HouseInteractionAnchor.Create(competitionArenaRoot.transform, "competition-course", "Yard", 200 + show.CourseMarks.Count,
                         position, CompetitionContestantFacing, false);
                     show.CourseMarks[id] = mark; used.Add(mark.Approach); competitionFootprints[id + ":course"] = footprint;
-                    marked = true;
+                    if (takenIn != CompetitionCourseMarkPasses.Pass.Strict)
+                        Debug.Log("[Gamesim competition show] turn mark for " + (isPlayer ? "your houseguest " : "") + id + " at " + position.ToString("F2")
+                            + " found in the " + takenIn + " pass (" + tally + ").", this);
                 }
+                else
+                    Debug.Log("[Gamesim competition show] no clear turn mark for " + (isPlayer ? "your houseguest " : "") + id + " at " + runner.post.ToString("F2")
+                        + ": " + tally + "; they run no leg.", this);
             }
+        }
+
+        /// <summary>A course mark's reservation on the deck, clear of every other reservation and of the scenery: the yard's plan, no collider read.</summary>
+        private bool FitsCompetitionCourseMark(CompetitionStageFootprint footprint, Collider floor)
+            => footprint.FitsOn(floor.bounds) && ClearsCompetitionNeighbours(footprint) && (competitionScenery == null || competitionScenery.Clears(footprint));
+
+        /// <summary>
+        /// Whether a body standing at <paramref name="feet"/> meets nothing but the yard's floor, itself
+        /// and those on their way to a stage place (<paramref name="movers"/>): the capsule the house
+        /// reads for a body (HouseRoomQuery.HasCapsuleClearance), with the movers set aside.
+        /// </summary>
+        private bool CompetitionCourseMarkClearOfStill(Vector3 feet, float radius, float height, Transform self, Collider floor, ISet<Transform> movers)
+        {
+            Physics.SyncTransforms();
+            if (height < radius * 2f) return false;
+            int count = gameObject.scene.GetPhysicsScene().OverlapCapsule(feet + Vector3.up * radius, feet + Vector3.up * (height - radius), radius,
+                competitionPlacementHits, HouseLayers.Sight, QueryTriggerInteraction.Ignore);
+            if (count == competitionPlacementHits.Length) return false;
+            for (int i = 0; i < count; i++)
+            {
+                var hit = competitionPlacementHits[i];
+                if (hit == null) return false;
+                if (hit == floor) continue;
+                bool moving = false;
+                for (var at = hit.transform; at != null && !moving; at = at.parent) moving = at == self || movers.Contains(at);
+                if (!moving) return false;
+            }
+            return true;
         }
     }
 }

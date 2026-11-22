@@ -474,7 +474,13 @@
 # 10990 = 10975 (the trivia rules on top of the two overhearing changes) + the trivia screen's 15 (10858 - 10843 on
 # this branch): disjoint cases, so the floor is their sum (the stacked landing of 22 November 2026). Counted from the
 # two sides.
-Gamesim.EditModeTests 10990
+# 10852 = 10835 + competition show edges: CompetitionShowEdgesTests 17 (the walk out waits for its whole field, the course's legs, a late runner), 2026-11-21.
+# 10859 = 10852 + the edges' fix after the built house's run: CompetitionShowEdgesFixTests 7 (nobody left out at any cast size or pace, the player's leg found every way), 2026-11-22.
+# 10864 = 10859 + the edges' second fix: CompetitionCourseMarkPassesTests 5 (the course's marks looked for in passes, a straggler tried again), 2026-11-22.
+# 11019 = 10990 (the role moments' held replay on the new main) + the competition show's edges' 29 (10864 - 10835 on
+# this branch): disjoint cases, so the floor is their sum (the competition landing of 22 November 2026). Counted from
+# the two sides.
+Gamesim.EditModeTests 11019
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and
@@ -731,7 +737,11 @@ Gamesim.EditModeTests 10990
 # 1682 = 1681 (the trivia rules on top of the two overhearing changes) + the trivia screen's 1 (1677 - 1676 on this
 # branch): disjoint cases, so the floor is their sum (the stacked landing of 22 November 2026). Counted from the two
 # sides.
-Gamesim.PlayModeTests 1682
+# 1678 = 1676 + competition show edges: the 2 EpisodePlayModeTests.CompetitionShowEdges cases (the player runs the course leg; sixteen at the quick pace), 2026-11-21.
+# 1684 = 1682 (the role moments' held replay on the new main) + the competition show's edges' 2 (1678 - 1676 on this
+# branch): disjoint cases, so the floor is their sum (the competition landing of 22 November 2026). Counted from the
+# two sides.
+Gamesim.PlayModeTests 1684
 # The UMA build of the same assembly, read by a plan built without -WithoutUma. 1281 = the 1241 above + the
 # 40 tests that compile only under GAMESIM_UMA, as run at r1 (2026-10-16): in EpisodePlayModeTests,
 # GroundedFarewell 11, Creator 9, HouseLife 8, Emotes 3, OpeningCaptures 2, and one each in CreatorEntry,
@@ -912,7 +922,11 @@ Gamesim.PlayModeTests 1682
 # 1727 = 1726 (the trivia rules on top of the two overhearing changes) + the trivia screen's 1 (1722 - 1721 on this
 # branch): disjoint cases, so the floor is their sum (the stacked landing of 22 November 2026). Counted from the two
 # sides.
-Gamesim.PlayModeTests.UmaBuild 1727
+# 1723 = 1721 + competition show edges: the 2 EpisodePlayModeTests.CompetitionShowEdges cases (the player runs the course leg; sixteen at the quick pace), 2026-11-21.
+# 1729 = 1727 (the role moments' held replay on the new main) + the competition show's edges' 2 (1723 - 1721 on this
+# branch): disjoint cases, so the floor is their sum (the competition landing of 22 November 2026). Counted from the
+# two sides.
+Gamesim.PlayModeTests.UmaBuild 1729
 # The UMA bodies: runs only where the GAMESIM_UMA define is set (the working tree and the D: copy).
 # 82 = the 89 run on 2026-10-15, less the 7 farewell probes moved to Gamesim.Uma.DiagnosticsPlayModeTests;
 # 85 = 82 + the 3 farewell readiness decision tests (UmaFarewellReadinessDecisionPlayModeTests, 2026-10-16);
@@ -1311,4 +1325,10 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # 23094 = 23089 (the new main, with overhearing and the trivia competition) + the role moments' held replay's 5 (22941
 # - 22936 on this branch): disjoint cases, so the floor is their sum (the competition landing of 22 November 2026).
 # Counted from the two sides.
-Gamesim.SimulationTests 23094
+# 22951 = 22934 + competition show edges: CompetitionShowEdgesTests 17 (the walk out waits for its whole field, the course's legs, a late runner), 2026-11-21.
+# 22958 = 22951 + the edges' fix after the built house's run: the same 7 CompetitionShowEdgesFixTests cases, 2026-11-22.
+# 22963 = 22958 + the edges' second fix: the same 5 CompetitionCourseMarkPassesTests cases, 2026-11-22.
+# 23123 = 23094 (the role moments' held replay on the new main) + the competition show's edges' 29 (22963 - 22934 on
+# this branch): disjoint cases, so the floor is their sum (the competition landing of 22 November 2026). Counted from
+# the two sides.
+Gamesim.SimulationTests 23123

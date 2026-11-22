@@ -248,6 +248,8 @@ namespace Gamesim.Tests.PlayMode
             while (director.IsCompetitionShowRunning && Time.realtimeSinceStartup < started + 60f) yield return null;
             float took = Time.realtimeSinceStartup - started;
             Assert.That(director.IsCompetitionShowRunning, Is.False);
+            // A walk out longer than its wait moves the bound on by as much (competition show edges).
+            bound += director.LastCompetitionShow.WalkOutSeconds - CompetitionShowPlan.WalkOutSeconds(false);
             Assert.That(took, Is.LessThanOrEqualTo(bound + .5f), "The show gives way to its card by its hard bound: " + took.ToString("0.0") + " s of " + bound.ToString("0.0") + ".");
             Assert.That(director.LastCompetitionShow.CardPlayed, Is.True);
             Assert.That(CompetitionCardPlaying(), Is.True);

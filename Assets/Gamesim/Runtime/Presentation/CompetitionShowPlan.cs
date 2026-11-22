@@ -148,6 +148,98 @@ namespace Gamesim.Presentation
         /// </summary>
         public static float WalkOutSeconds(bool quick) => AssemblySeconds(quick) - WalkOutMargin(quick);
 
+        // ------------------------------------------------------------ a walk out longer than its wait
+
+        /// <summary>
+        /// The pace a walk out that runs late is planned at, metres a second: under the top pace
+        /// (<see cref="TopWalkOutPace"/>), so a corner, the yard's door or a neighbour still has room
+        /// to be caught up before the wait for the field is up.
+        /// </summary>
+        public const float WalkOutPlanPace = 3.6f;
+
+        /// <summary>
+        /// The longest the walk out may run from the show's start, seconds: the far end of the house
+        /// with the whole of a sixteen-strong cast queuing at the yard's door. Past it whoever is still
+        /// walking is put on their station (<see cref="PlaceBy"/>).
+        /// </summary>
+        public static float MostWalkOutSeconds(bool quick) => quick ? 12f : 14f;
+
+        /// <summary>
+        /// When, from the show's start (<paramref name="startedAt"/>), the walk out means the field to
+        /// stand at its stations, read again <paramref name="now"/>: the time it meant until now
+        /// (<paramref name="walkOutBy"/>), or later when a walker with
+        /// <paramref name="remainingMetres"/> of route still to go cannot make it at
+        /// <paramref name="pace"/> (the planned walk-out pace, or the player's own gait). Never earlier
+        /// than it was or than <see cref="WalkOutSeconds"/>, and never past
+        /// <see cref="MostWalkOutSeconds"/>. A route of unknown length, no route or no pace moves nothing.
+        /// So a quick ceremony or a big cast waits for its whole field instead of leaving the far end out.
+        /// </summary>
+        public static float ExtendWalkOut(float walkOutBy, float now, float startedAt, bool quick, float remainingMetres, float pace = WalkOutPlanPace)
+        {
+            float least = startedAt + WalkOutSeconds(quick), most = startedAt + MostWalkOutSeconds(quick);
+            if (float.IsNaN(walkOutBy) || walkOutBy < least) walkOutBy = least;
+            if (float.IsNaN(remainingMetres) || float.IsInfinity(remainingMetres) || remainingMetres <= LastStepMetres
+                || float.IsNaN(pace) || pace <= .1f || float.IsNaN(now)) return walkOutBy > most ? most : walkOutBy;
+            float needed = now + remainingMetres / pace;
+            if (needed > walkOutBy) walkOutBy = needed;
+            return walkOutBy > most ? most : walkOutBy;
+        }
+
+        /// <summary>When the wait for the field is up, for a walk out meant to be over by <paramref name="walkOutBy"/>: its margin later.</summary>
+        public static float AssemblyBy(float walkOutBy, bool quick) => walkOutBy + WalkOutMargin(quick);
+
+        /// <summary>When the wait for the winner and a stationed player is up, for a walk out meant to be over by <paramref name="walkOutBy"/>.</summary>
+        public static float PrincipalBy(float walkOutBy, bool quick) => AssemblyBy(walkOutBy, quick) + (PrincipalSeconds(quick) - AssemblySeconds(quick));
+
+        // ------------------------------------------------------------ nobody is left out
+
+        /// <summary>
+        /// When a competitor still on their way is put on their station, for a walk out meant to be over
+        /// by <paramref name="walkOutBy"/> (competition show edges, after the built house's run): half
+        /// the walk out's margin later, so a walker in their last steps still arrives on foot, and the
+        /// hold still begins inside the wait for the field (<see cref="AssemblyBy"/>). However long a
+        /// route, a queue at the yard's door or a cast of sixteen at the quick pace, the show starts
+        /// with its whole field.
+        /// </summary>
+        public static float PlaceBy(float walkOutBy, bool quick) => walkOutBy + WalkOutMargin(quick) * .5f;
+
+        /// <summary>
+        /// Puts every one of <paramref name="stationed"/> who has not <paramref name="arrived"/> and is
+        /// not yet in <paramref name="placed"/> on their station by <paramref name="place"/>, and adds
+        /// each one put there to <paramref name="placed"/>. Returns how many are still neither: those
+        /// whose body could not be put there, who wait for the field as before.
+        /// </summary>
+        public static int PlaceStragglers(IEnumerable<string> stationed, System.Func<string, bool> arrived,
+            System.Func<string, bool> place, ICollection<string> placed)
+        {
+            int still = 0;
+            if (stationed == null || arrived == null || placed == null) return 0;
+            foreach (var id in stationed)
+            {
+                if (id == null || arrived(id) || placed.Contains(id)) continue;
+                if (place != null && place(id)) placed.Add(id);
+                else still++;
+            }
+            return still;
+        }
+
+        /// <summary>
+        /// The field when the hold begins: each of <paramref name="stationed"/> who <paramref name="arrived"/>
+        /// or was <paramref name="placed"/> holds on; anybody else - only a body that could not be put on
+        /// its station - is left out, as before.
+        /// </summary>
+        public static void SplitAtHold(IEnumerable<string> stationed, System.Func<string, bool> arrived,
+            ICollection<string> placed, ICollection<string> holding, ICollection<string> leftOut)
+        {
+            if (stationed == null || arrived == null) return;
+            foreach (var id in stationed)
+            {
+                if (id == null) continue;
+                if (arrived(id) || placed != null && placed.Contains(id)) holding?.Add(id);
+                else leftOut?.Add(id);
+            }
+        }
+
         /// <summary>
         /// The pace, metres a second, that brings a walker with <paramref name="remainingMetres"/> of
         /// route still to go to their station in <paramref name="secondsLeft"/>: never under the house's
@@ -222,10 +314,12 @@ namespace Gamesim.Presentation
 
         /// <summary>
         /// The longest a show may run from its start, the walk out included, before it gives way to the
-        /// card regardless: the wait for the winner, the whole field's hold, and a second to spare.
+        /// card regardless: the wait for the winner, the whole field's hold (a course's late runners'
+        /// grace included), and a second to spare. A walk out longer than its wait
+        /// (<see cref="ExtendWalkOut"/>) moves the bound on by as much.
         /// </summary>
         public float HardSeconds(bool quick, bool reduced) => PrincipalSeconds(quick)
-            + (Family == CompetitionShowFamily.Hold || reduced ? CardAt(quick, reduced) : Timeline(quick).CardAt) + 1f;
+            + (Family == CompetitionShowFamily.Hold || reduced ? CardAt(quick, reduced) : Timeline(quick).LatestCardAt) + 1f;
 
         /// <summary>
         /// How hard <paramref name="id"/> is working at <paramref name="t"/> seconds into the hold, 0

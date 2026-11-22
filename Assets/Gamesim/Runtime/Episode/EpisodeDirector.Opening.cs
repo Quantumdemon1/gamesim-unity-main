@@ -124,11 +124,12 @@ namespace Gamesim.Episode
                 WalkInKeys = WalkInKeys,
                 Stage = openingStage,
                 // The tour at every season's opening, as the reference build shows it in every new
-                // game's first week - seen before or not; its skip is one press away. Never in
-                // batchmode, for the reason OfferTutorial gives.
+                // game's first week - to a player who has been through it before, offered rather
+                // than replayed ("Take the tour?"); its skip is one press away. Never in batchmode,
+                // for the reason OfferTutorial gives.
                 RunTutorial = done =>
                 {
-                    if (tutorial != null && !Application.isBatchMode && !tutorial.IsShowing) tutorial.Show(FindChrome);
+                    if (tutorial != null && !Application.isBatchMode && !tutorial.IsShowing) tutorial.Offer(FindChrome);
                     if (tutorial == null || !tutorial.IsShowing) { done(); return; }
                     StartCoroutine(WaitForTutorial(done));
                 },

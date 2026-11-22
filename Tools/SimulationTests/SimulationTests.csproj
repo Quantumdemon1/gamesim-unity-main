@@ -92,6 +92,9 @@
     <!-- The weekly recap's arrival: when a queued recap is still due, keyed to the week; pure, so it runs here too. -->
     <Compile Include="$(EditMode)WeeklyRecapArrivalTests.cs" />
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/WeeklyRecapArrival.cs" />
+    <!-- The finale page set aside for the cast screen: when backing out brings it back; pure, so it runs here too. -->
+    <Compile Include="$(EditMode)FinaleAsideTests.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/FinaleAside.cs" />
     <!-- Menu slice 2, part d: the decisions' and the cards' one way out, held in the source; pure, so it runs here too. -->
     <Compile Include="$(EditMode)MenuOneWayBackDecisionsScanTests.cs" />
     <Compile Include="$(EditMode)HaveNotTests.cs" />

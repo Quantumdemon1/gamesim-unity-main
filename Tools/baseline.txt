@@ -464,7 +464,11 @@
 # 10967 = 10948 (overhearing in the rules on the new main) + overhearing on screen's 19 (10908 - 10889 on this
 # branch): disjoint cases, so the floor is their sum (the stacked landing of 22 November 2026). Counted from the two
 # sides.
-Gamesim.EditModeTests 10967
+# 10843 = 10835 + the trivia competition's rules (competition rules 6): CompetitionTriviaTests 8 (all also in the dotnet
+# subset; its season soak is compiled out of the editor), 2026-11-21.
+# 10975 = 10967 (the two overhearing changes on the new main) + the trivia rules' 8 (10843 - 10835 on this branch):
+# disjoint cases, so the floor is their sum (the stacked landing of 22 November 2026). Counted from the two sides.
+Gamesim.EditModeTests 10975
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and
@@ -1278,4 +1282,8 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # 23067 = 23048 (overhearing in the rules on the new main) + overhearing on screen's 19 (23007 - 22988 on this
 # branch): disjoint cases, so the floor is their sum (the stacked landing of 22 November 2026). Counted from the two
 # sides.
-Gamesim.SimulationTests 23067
+# 22942 = 22934 + the same 8 CompetitionTriviaTests cases the EditMode floor counts (the two soak cases are [Explicit],
+# run by name only), 2026-11-21.
+# 23075 = 23067 (the two overhearing changes on the new main) + the trivia rules' 8 (22942 - 22934 on this branch):
+# disjoint cases, so the floor is their sum (the stacked landing of 22 November 2026). Counted from the two sides.
+Gamesim.SimulationTests 23075

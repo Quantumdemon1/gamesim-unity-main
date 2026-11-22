@@ -60,7 +60,7 @@ namespace Gamesim.Tests.EditMode
             Assert.That(state.competitionRulesVersion, Is.EqualTo(CompetitionRules.Widened), "A built season starts on rules 4.");
             state.contestants[1].appearance.dna.Add(new AppearanceValue { id = "height", value = float.NaN });
             Assert.That(EpisodeValidation.TryValidate(state, out _), Is.False);
-            state.contestants[1].appearance.dna.Clear(); state.competitionRulesVersion = CompetitionRules.Current + 1;
+            state.contestants[1].appearance.dna.Clear(); state.competitionRulesVersion = CompetitionRules.Newest + 1;
             Assert.That(EpisodeValidation.TryValidate(state, out _), Is.False);
         }
 

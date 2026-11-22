@@ -312,7 +312,7 @@ namespace Gamesim.Tests.EditMode
             Assert.That(EpisodeValidation.TryValidate(state, out var reason), Is.True, reason);
             state.competitionRulesVersion = 5;
             Assert.That(EpisodeValidation.TryValidate(state, out reason), Is.True, reason);
-            state.competitionRulesVersion = 6;
+            state.competitionRulesVersion = CompetitionRules.Newest + 1; // 7 since rules 6 (the trivia) is defined
             Assert.That(EpisodeValidation.TryValidate(state, out _), Is.False, "Rules from the future are refused.");
         }
 

@@ -82,6 +82,10 @@
     <Compile Include="$(EditMode)CompetitionRules5Tests.cs" />
     <Compile Include="$(EditMode)RingTowerPuzzleTests.cs" />
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/RingTowerPuzzle.cs" />
+    <!-- The trivia competition: rules 6's selector, eligibility, quiz and result; pure, so they run here too. The soak is
+         compiled here only and run by name. -->
+    <Compile Include="$(EditMode)CompetitionTriviaTests.cs" />
+    <Compile Include="$(EditMode)CompetitionTriviaSeasonSoak.cs" />
     <!-- Competition show slice 1: the show's plan reads the committed standings and draws nothing; pure, so it runs here too. -->
     <Compile Include="$(EditMode)CompetitionShowPlanTests.cs" />
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/CompetitionShowPlan.cs" />

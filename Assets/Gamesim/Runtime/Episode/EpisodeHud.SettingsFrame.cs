@@ -175,6 +175,31 @@ namespace Gamesim.Episode
             modal.sizeDelta = new Vector2(width, height);
             UncapContent();
             ScreenHeader(GameMenuHeaderName, paused ? SettingsWords.PausedLabel : "", SettingsWords.GameMenuTitle, UiTheme.Icon("settings"));
+            if (paused) SizePausedLabel(s);
+        }
+
+        /// <summary>
+        /// The game menu's PAUSED, readable at every text size: the head's eyebrow drew it at 12 px in
+        /// the muted grey, free to shrink; it is drawn at <see cref="SettingsWords.PausedLabelFont"/>
+        /// in the heading's colour, never shrunk, in a box 1.3 times its size, above the title.
+        /// </summary>
+        private void SizePausedLabel(float s)
+        {
+            var header = modal != null ? modal.Find(GameMenuHeaderName) : null;
+            // The head's first text is its eyebrow, which is the label here.
+            var label = header != null ? header.GetComponentInChildren<TMP_Text>(true) : null;
+            if (label == null) return;
+            int size = SettingsWords.PausedLabelFont(s);
+            float box = SettingsWords.PausedLabelBox(size);
+            label.enableAutoSizing = false;
+            label.fontSize = size;
+            label.fontSizeMin = label.fontSizeMax = size;
+            label.color = UiTheme.Heading;
+            label.textWrappingMode = TextWrappingModes.NoWrap;
+            var rect = label.rectTransform;
+            // Its foot just above the title, which starts 34 x the scale down the head.
+            rect.anchoredPosition = new Vector2(rect.anchoredPosition.x, -Mathf.Max(4f, 32f * s - box));
+            rect.sizeDelta = new Vector2(rect.sizeDelta.x, box);
         }
 
         /// <summary>

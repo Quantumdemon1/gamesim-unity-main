@@ -17,7 +17,7 @@ namespace Gamesim.Tests.EditMode
             string[] away =
             {
                 "bb_set_comp_stack", "bb_set_comp_crate", "bb_set_comp_lane", "Start line", "Finish line", "bb_set_comp_gate",
-                "bb_set_sign_hoh", "bb_set_sign_pillars", "bb_set_sign_samehouse", "Competition podium",
+                "bb_set_sign_hoh", "bb_set_sign_pillars", "Competition podium",
             };
             string[] stays =
             {

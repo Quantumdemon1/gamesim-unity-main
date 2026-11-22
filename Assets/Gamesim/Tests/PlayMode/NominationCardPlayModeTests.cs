@@ -181,10 +181,10 @@ namespace Gamesim.Tests.PlayMode
                 string size = " at " + fontScale;
                 var keys = Keys(3, CeremonyPace.Quick, fontScale);
                 yield return null;
-                AssertLabelsStandInsideTheCard(keys, "The key card on the HUD, first beat" + size, "Tagline");
+                AssertLabelsStandInsideTheCard(keys, "The key card on the HUD, first beat" + size);
                 keys.SkipToResult();
                 yield return null;
-                AssertLabelsStandInsideTheCard(keys, "The key card on the HUD, the block" + size, "Tagline");
+                AssertLabelsStandInsideTheCard(keys, "The key card on the HUD, the block" + size);
                 keys.Cancel();
 
                 var reveal = Reveal(fontScale);

@@ -17,22 +17,22 @@ namespace Gamesim.Simulation
         /// The upper bound of the dialogue rules this build defines (DIALOGUE-PLAN §2): never a gate and never what a
         /// season is started on. Validation accepts the closed set <see cref="IsDefined"/> names, each at the schema
         /// that introduced it (<see cref="Admits"/>); behaviour is keyed to the version that introduced it
-        /// (<see cref="Rules1"/>, <see cref="Rules2"/>). <see cref="MaximumSteps"/> keeps its meaning, rules 1's.
+        /// (<see cref="Rules1"/>, <see cref="Rules2"/>, <see cref="Rules3"/>). <see cref="MaximumSteps"/> keeps its meaning, rules 1's.
         /// </summary>
-        public const int Version = 2, MaximumEpisodes = 100, MaximumEvents = 400, MaximumSteps = 3;
+        public const int Version = 3, MaximumEpisodes = 100, MaximumEvents = 400, MaximumSteps = 3;
         private const int MaximumAction = EpisodeEngine.LegacySocialActionBudget + WebSocialVocabulary.PurchaseCeiling;
 
         /// <summary>
         /// The dialogue rules the cast screen's preview chip starts a season on (DIALOGUE-PLAN §2): a pinned literal,
-        /// moved by hand only when a later stack brings the chip a new version. Rules 2 (D2's vote-word tree), since
-        /// the stack after the schema-30 bump moved the chip from D1's rules 1: a version freezes the first time a
-        /// shipped path can write it, the merge that lets the chip write it, so rules 2 freezes as D2 built it at the
-        /// merge that lands that stack, with the conversation budget P1(d)'s measurement leaves (§5.5), and the next
-        /// dialogue stack is rules 3. Never <see cref="Version"/>, the bound: a season keeps the rules it began on, so a
+        /// moved by hand only when a later stack brings the chip a new version. Rules 3 (D3's four campaign trees and the
+        /// appeal to the veto holder) since D3 moved it from rules 2, which the chip-2 stack froze: a version freezes the
+        /// first time a shipped path can write it, the merge that lets the chip write it, so rules 3 freezes as D3 built it
+        /// at the merge that lands D3, and the next dialogue stack (D4) is rules 4. Rules 2 seasons stay on rules 2.
+        /// Never <see cref="Version"/>, the bound: a season keeps the rules it began on, so a
         /// chip that wrote the bound would change the rules of every opted-in season the day it moved. Tests that mean a
         /// version write its literal; only the chip's own tests read this, and pin its value.
         /// </summary>
-        public const int Offered = 2;
+        public const int Offered = 3;
 
         // Schema 29 introduced the dialogue store, and a later schema carries it as it is (DIALOGUE-PLAN §6, item 1):
         // a lower bound, so the next schema's bump cannot switch every rules-1 season off. A version is on at the
@@ -111,7 +111,7 @@ namespace Gamesim.Simulation
         public static bool PleaWithoutConversation(EpisodeState s, string npcId, out string reason)
         {
             reason = null;
-            if (!On(s) || s.phase != EpisodePhase.Campaign || PleaInOpenConversation(s, npcId)
+            if (!On(s) || !ConversationPhase(s) || PleaInOpenConversation(s, npcId)
                 || TryBuildEntryCommand(s, npcId, out _)) return false;
             if (CanStart(s, npcId, out reason)) reason = null;
             return true;
@@ -127,9 +127,9 @@ namespace Gamesim.Simulation
         /// </summary>
         public static bool PleaInOpenConversation(EpisodeState s, string npcId)
         {
-            if (!On(s) || s.phase != EpisodePhase.Campaign || string.IsNullOrEmpty(npcId)) return false;
+            if (!On(s) || !ConversationPhase(s) || string.IsNullOrEmpty(npcId)) return false;
             var open = Active(s);
-            return open != null && open.npcId == npcId && open.occasionId == Occasion(s.week, npcId);
+            return open != null && open.npcId == npcId && open.occasionId == OccasionNow(s, npcId);
         }
 
         public static bool TryBuildChoiceCommand(EpisodeState s, string eventId, string optionId, out EpisodeCommand command)
@@ -431,7 +431,8 @@ namespace Gamesim.Simulation
         }
 
         internal static string EntryTemplateId(EpisodeState admittedSource, string npcId) =>
-            admittedSource.dialogueRulesVersion >= Rules2 ? DialogueCampaignWord.TemplateId
+            admittedSource.dialogueRulesVersion >= Rules3 ? Rules3EntryTemplate(admittedSource)
+            : admittedSource.dialogueRulesVersion >= Rules2 ? DialogueCampaignWord.TemplateId
             : PublicRescueSource(admittedSource, npcId, admittedSource.week) == null
                 ? DialogueCampaignV1.TemplateId : DialogueCampaignV2.TemplateId;
 

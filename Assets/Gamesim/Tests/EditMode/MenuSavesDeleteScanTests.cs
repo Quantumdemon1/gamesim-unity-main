@@ -38,6 +38,12 @@ namespace Gamesim.Tests.EditMode
         /// <summary>The one method allowed to delete: its file and its declaration.</summary>
         private const string StoreFile = "Persistence/EpisodeSaveStore.Delete.cs";
         private const string StoreMethod = "public static SeasonDeleteResult DeleteSeason(";
+        /// <summary>
+        /// The store's one remover, which the delete hands what it set aside and the list's sweep hands
+        /// what an interrupted delete left (the settings and saves leftovers): it deletes only files
+        /// carrying a delete's ".deleting-" mark.
+        /// </summary>
+        private const string StoreRemover = "private static int RemoveSetAside(";
 
         private sealed class Exemption
         {
@@ -94,18 +100,21 @@ namespace Gamesim.Tests.EditMode
         private static List<string> Problems(string file, string source, HashSet<Exemption> used)
         {
             string code = Code(source);
-            int allowedFrom = -1, allowedTo = -1;
+            int allowedFrom = -1, allowedTo = -1, removerFrom = -1, removerTo = -1;
             if (file == StoreFile)
             {
                 int start = code.IndexOf(StoreMethod, StringComparison.Ordinal);
                 Assert.That(start, Is.GreaterThanOrEqualTo(0), "The store's one delete method is where the scan expects it.");
                 allowedFrom = start;
                 allowedTo = EndOfBody(code, code.IndexOf('{', start));
+                int remover = code.IndexOf(StoreRemover, StringComparison.Ordinal);
+                if (remover >= 0) { removerFrom = remover; removerTo = EndOfBody(code, code.IndexOf('{', remover)); }
             }
             var problems = new List<string>();
             foreach (Match match in DeleteCall.Matches(code))
             {
                 if (match.Index >= allowedFrom && match.Index < allowedTo) continue;
+                if (match.Index >= removerFrom && match.Index < removerTo) continue;
                 string call = Regex.Replace(match.Value, @"\s+", "");
                 var exemption = Exemptions.FirstOrDefault(item => item.File == file && Regex.Replace(item.Call, @"\s+", "") == call);
                 if (exemption != null) { used.Add(exemption); continue; }

@@ -501,7 +501,7 @@ namespace Gamesim.Episode
             // act in the house underneath it.
             // Nor during a competition: the word game spells with every letter key, and J, E and
             // the rest would have opened the house's panels under the game.
-            if (shortcuts != null && !hud.IsTyping && !OpeningOwnsHouse && !TourIsUp && !CeremonyOverlays.OnScreen && !challengeActive)
+            if (shortcuts != null && !hud.IsTyping && !OpeningOwnsHouse && !TourIsUp && !CeremonyOverlays.OnScreen && !challengeActive && !FrontDoorUp)
             {
                 if (shortcuts.Notebook.WasPressedThisFrame()) OpenJournal();
                 if (shortcuts.Save.WasPressedThisFrame()) SaveNow();
@@ -870,7 +870,7 @@ namespace Gamesim.Episode
                 // A competition show still running is over: this commit has the screen now, and its card stays unplayed.
                 if (competitionShow != null) EndCompetitionArena();
                 if (TryPersistTimed(result.state, "command", out var installed, out var failure))
-                { engine = new EpisodeEngine(installed); result.state = engine.Snapshot; }
+                { engine = new EpisodeEngine(installed); result.state = engine.Snapshot; acceptedPlayerDecisions++; }
                 else
                 {
                     BeginPersistenceNotice(failure);

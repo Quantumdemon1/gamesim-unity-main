@@ -60,6 +60,8 @@ namespace Gamesim.Simulation
                 // Under the commitment rules (C1) a final two deal is a real obligation in the
                 // choice, not the web's deal term alone (about 4.5 points after its weight).
                 finalOptions.obligations.AddRange(FinalTwoTerms(s, s.hohId, finalContext.nominees));
+                // From minds level 1 that obligation is the deal's only count: the deal term leaves it out (FinalTwoDeals).
+                FinalTwoDeals.CountOnce(finalContext, s.hohId, finalContext.nominees, finalOptions);
                 // And (C9) the choice is the final three's: the jury, the pacts that hold, a final three
                 // kept, and none of the terms for a game still to play.
                 finalOptions.obligations.AddRange(FinalChoiceTerms(s, s.hohId, finalContext.nominees));

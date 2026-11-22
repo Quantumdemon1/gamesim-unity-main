@@ -250,8 +250,9 @@ namespace Gamesim.Tests.EditMode
                 // Rules 2 at 29 is not a parity row: RulesTwoAtTwentyNineIsRefusedInTheFrozenReadersWordsBeforeAnyLift holds it.
                 // Nor is story rules 10, defined from 30 as Blame: StoryRulesTenAtTwentyNineIsRefusedInTheFrozenReadersWordsBeforeAnyLift;
                 // nor 12, defined from 30 as Manners (plan 32 S1): StoryRulesTwelveAtTwentyNineIsRefusedInTheFrozenReadersWordsBeforeAnyLift.
-                // The parity row moves to 13, which neither reader defines yet.
-                yield return new TestCaseData(season, "dialogue-rules-3", false);
+                // The parity row moves to 13, which neither reader defines yet. Dialogue rules 3 is defined from 30 since D3,
+                // so its parity row moves to 4 the same way: lifted by hand, a rules-3 season is judged on rules 3's terms.
+                yield return new TestCaseData(season, "dialogue-rules-4", false);
                 yield return new TestCaseData(season, "dialogue-rules-minus-1", false);
                 yield return new TestCaseData(season, "story-rules-13", false);
                 yield return new TestCaseData(season, "conditional-veto", false);
@@ -567,6 +568,7 @@ namespace Gamesim.Tests.EditMode
                 }
                 case "dialogue-rules-2": s["dialogueRulesVersion"] = 2; break;
                 case "dialogue-rules-3": s["dialogueRulesVersion"] = 3; break;
+                case "dialogue-rules-4": s["dialogueRulesVersion"] = 4; break;
                 case "dialogue-rules-minus-1": s["dialogueRulesVersion"] = -1; break;
                 case "dialogue-rules-0-with-store": s["dialogueRulesVersion"] = 0; break;
                 case "story-rules-10": s["story"]["rulesVersion"] = 10; break;

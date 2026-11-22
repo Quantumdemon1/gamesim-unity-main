@@ -123,19 +123,24 @@ namespace Gamesim.Episode
         {
             var controls = new List<EpisodeHud.SeasonControl>();
             string title = Title(season);
-            string said = season.Readable ? title + ", " + SavesWords.Week(season.Week) : SavesWords.Unreadable;
+            string said = season.Readable ? title + ", " + SavesWords.Week(season.Week) : title;
             var shown = season;
-            if (season.Readable)
+            // Held by another program for a moment: may be a good save, so no Delete, and one way to look again.
+            if (season.InUse)
+                controls.Add(new EpisodeHud.SeasonControl { Caption = SavesWords.TryAgainCaption, Name = SavesWords.ControlName(SavesWords.TryAgainCaption, season.Key),
+                    Description = SavesWords.TryAgainCaption + ", " + said, Press = () => LookAgain(shown) });
+            else if (season.Readable)
                 controls.Add(new EpisodeHud.SeasonControl { Caption = SavesWords.LoadCaption, Name = SavesWords.ControlName(SavesWords.LoadCaption, season.Key),
                     Description = SavesWords.LoadCaption + " " + said, Press = () => PressLoad(shown) });
-            if (!own)
+            if (!own && !season.InUse)
                 controls.Add(new EpisodeHud.SeasonControl { Caption = SavesWords.DeleteCaption, Name = SavesWords.ControlName(SavesWords.DeleteCaption, season.Key),
                     Description = SavesWords.DeleteCaption + " " + said, Press = () => PressDelete(shown), Danger = true });
             hud.SeasonCard(season.Key, title, season.Readable ? SavesWords.Details(season.Week, season.Left) : null,
                 SavedLine(season.SavedUtc), false, controls);
             if (controls.Count > 0) drawnSeasons.Add((season.Path, controls[0].Name));
+            if (season.InUse) hud.MutedLine(SavesWords.InUseLine);
             // Only blocked recovery lists the running slot's own save: when it cannot be opened, Advanced mends it.
-            if (own && !season.Readable) hud.MutedLine(SavesWords.RecoveryLine);
+            else if (own && !season.Readable) hud.MutedLine(SavesWords.RecoveryLine);
 
             if (SamePath(savesLoadPick, season.Path))
                 SavesConfirm("load:" + season.Path, SavesWords.LoadQuestion(season.PlayerName, season.Week),
@@ -148,6 +153,15 @@ namespace Gamesim.Episode
                     SavesWords.DeleteThisSeason, () => DeleteFromShelf(shown));
             if (SamePath(savesFailurePath, season.Path) && !string.IsNullOrEmpty(savesFailure))
                 hud.MutedLine(savesFailure, SavesWords.FailureLineName);
+        }
+
+        /// <summary>A held save's Try again: the list looks again, with the keyboard on that card's first control as it now reads.</summary>
+        private void LookAgain(SavedSeason season)
+        {
+            if (season == null) return;
+            Render();
+            int at = drawnSeasons.FindIndex(card => SamePath(card.path, season.Path));
+            if (at >= 0) hud.FocusWhenWired(drawnSeasons[at].control);
         }
 
         /// <summary>A card's Load: at once from the main menu or with no season running; otherwise it asks first.</summary>
@@ -251,8 +265,10 @@ namespace Gamesim.Episode
                 SavesConfirm("go-back", running ? SavesWords.GoBackQuestion : SavesWords.GoBackQuietQuestion,
                     running ? SavesWords.KeepPlaying : SavesWords.NotNow, () => DisarmAdvanced(SavesWords.GoBackCaption),
                     SavesWords.GoBackResult, () => { advancedPick = AdvancedPick.None; confirmDrawnFor = null; LoadNow(); });
-            hud.SettingAction(RecoverBackupCaption, () => ArmAdvanced(AdvancedPick.Restore));
-            if (advancedPick == AdvancedPick.Restore)
+            // Not offered where there is no backup file: greyed, with the reason under it.
+            bool backup = HasBackupFile;
+            hud.SettingAction(RecoverBackupCaption, () => { if (HasBackupFile) ArmAdvanced(AdvancedPick.Restore); }, backup ? null : SavesWords.NoBackupWhy);
+            if (advancedPick == AdvancedPick.Restore && backup)
                 SavesConfirm("restore", SavesWords.RestoreQuestion, SavesWords.KeepMySave, () => DisarmAdvanced(RecoverBackupCaption),
                     SavesWords.RestoreResult, () => { advancedPick = AdvancedPick.None; confirmDrawnFor = null; RecoverBackup(); });
             CareerSettings();
@@ -309,8 +325,18 @@ namespace Gamesim.Episode
             return !blockedRecovery && !npcSaveSuspended && sessionSaveFailure == null;
         }
 
+        /// <summary>Whether the running slot has a backup file to restore (its name only: whether it reads is the restore's own check).</summary>
+        private bool HasBackupFile
+        {
+            get
+            {
+                try { return saves != null && File.Exists(saves.BackupPath); }
+                catch (Exception error) when (error is IOException || error is UnauthorizedAccessException || error is ArgumentException) { return false; }
+            }
+        }
+
         private static string Title(SavedSeason season) =>
-            !season.Readable ? SavesWords.Unreadable : string.IsNullOrWhiteSpace(season.PlayerName) ? SavesWords.NoName : season.PlayerName;
+            season.InUse ? SavesWords.InUseTitle : !season.Readable ? SavesWords.Unreadable : string.IsNullOrWhiteSpace(season.PlayerName) ? SavesWords.NoName : season.PlayerName;
 
         /// <summary>"saved 2 hours ago" by the Settings clock, or "not saved yet".</summary>
         private static string SavedLine(DateTime? savedUtc) =>

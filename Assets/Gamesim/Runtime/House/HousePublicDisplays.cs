@@ -20,7 +20,7 @@ namespace Gamesim.House
         public const string PhotoName="HoH photo", PlaqueName="Reward plaque", YardName="Yard display";
         private readonly Dictionary<Renderer,TMP_Text> labels=new Dictionary<Renderer,TMP_Text>();
         private readonly List<Renderer> photos=new List<Renderer>();
-        private static readonly string[] CompetitionLetterNames={"bb_set_sign_hoh","bb_set_sign_pillars","bb_set_sign_samehouse"};
+        private static readonly string[] CompetitionLetterNames={"bb_set_sign_hoh","bb_set_sign_pillars"};
         private readonly Dictionary<Canvas,bool> hiddenYardCanvases=new Dictionary<Canvas,bool>();
         private readonly Dictionary<Renderer,bool> hiddenYardLetters=new Dictionary<Renderer,bool>();
         private bool competitionBoardDrawn;

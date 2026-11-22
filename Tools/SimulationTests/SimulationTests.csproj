@@ -89,6 +89,10 @@
     <!-- Competition show edges: the walk out waits for its whole field, the course's legs and a late runner; pure, so they run here too. -->
     <Compile Include="$(EditMode)CompetitionShowEdgesTests.cs" />
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/CompetitionCourseLegs.cs" />
+    <!-- Competition drop-outs and the tower show: the field lets go from a preview of the commit, the tower's rings from the beats; pure, so they run here too. -->
+    <Compile Include="$(EditMode)CompetitionDropoutsTests.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/CompetitionHoldDropouts.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/CompetitionTowerShowRings.cs" />
     <!-- Competition yard slice 2: the list of what stands in the yard when; pure, so it runs here too. -->
     <Compile Include="$(EditMode)CompetitionYardPiecesTests.cs" />
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/CompetitionYardPieces.cs" />

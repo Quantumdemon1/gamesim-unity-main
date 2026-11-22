@@ -223,6 +223,9 @@
     <Compile Include="$(EditMode)YourWordInTheHouseTests.cs" />
     <Compile Include="$(EditMode)FinalChoiceTests.cs" />
     <Compile Include="$(EditMode)EndgameCommitmentsTests.cs" />
+    <Compile Include="$(EditMode)FinalTwoDealsTests.cs" />
+    <!-- Compiled out of Unity: the final two deal's lockstep seasons, and its soak (explicit, run by name). -->
+    <Compile Include="$(EditMode)FinalTwoDealsSeasonSoak.cs" />
     <!-- Explicit, and compiled out of Unity: the commitment rules' recorded-season evidence, run on demand. -->
     <Compile Include="$(EditMode)CommitmentRulesSeasonDigests.cs" />
     <!-- Compiled out of Unity with the digests it reaches: their checkpoint's native-29 arm (dialogue D1). -->

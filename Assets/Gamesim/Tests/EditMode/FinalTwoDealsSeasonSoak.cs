@@ -55,7 +55,7 @@ namespace Gamesim.Tests.EditMode
             TestContext.WriteLine("seed " + seed + (diverged ? ": diverged where a final two deal could act" : ": byte-equal to its end"));
         }
 
-        private const string Why = "Whole seasons: the final two deal soak, two arms of sixty. Run by name.";
+        private const string Why = "Whole seasons: the final two deal soak, two arms of two hundred, the player keeping their side. Run by name.";
 
         [Test, Explicit(Why)]
         public void FinalTwoDealSoak()
@@ -63,9 +63,9 @@ namespace Gamesim.Tests.EditMode
             foreach (int level in new[] { MindRules.Off, FinalTwoDeals.Level })
             {
                 var tally = new Dictionary<string, int>(StringComparer.Ordinal);
-                for (uint seed = 5201; seed < 5261; seed++) Season(seed, level, tally);
+                for (uint seed = 5201; seed < 5401; seed++) Season(seed, level, tally);
                 TestContext.Progress.WriteLine("F2SOAK level " + level + ": " + string.Join(", ", tally.OrderBy(p => p.Key, StringComparer.Ordinal).Select(p => p.Key + " " + p.Value)));
-                Assert.That(tally.TryGetValue("finished", out int finished) ? finished : 0, Is.EqualTo(60));
+                Assert.That(tally.TryGetValue("finished", out int finished) ? finished : 0, Is.EqualTo(200));
             }
         }
 
@@ -89,7 +89,7 @@ namespace Gamesim.Tests.EditMode
                     continue;
                 }
                 if (s.phase == EpisodePhase.FinalEviction) finalHoh = s.hohId;
-                Apply(engine, s);
+                Apply(engine, s, partner);
             }
             Assert.Fail("seed " + seed + ": the season did not finish.");
         }
@@ -143,9 +143,10 @@ namespace Gamesim.Tests.EditMode
             return JsonConvert.SerializeObject(s);
         }
 
-        private static void Apply(EpisodeEngine engine, EpisodeState s)
+        private static void Apply(EpisodeEngine engine, EpisodeState s, string partner = null)
         {
             var command = EpisodeEngineTests.NextCommand(s);
+            if (partner != null) KeepTheDeal(s, command, partner);
             if (command.kind == EpisodeCommandKind.AnswerJury && EpisodeEngine.FinaleOn(s))
             {
                 var exchange = s.juryExchanges[s.juryQuestionIndex];
@@ -154,6 +155,34 @@ namespace Gamesim.Tests.EditMode
             }
             var result = engine.Apply(command);
             Assert.That(result.accepted, Is.True, s.phase + ": " + result.reason);
+        }
+
+        /// <summary>
+        /// The soak's player keeps their side of the deal, as a player who made one would: never nominates the partner or
+        /// names them as the replacement while somebody else can go up, saves them with a veto they hold, and takes them to
+        /// the final two. Everything else is the plain walk's.
+        /// </summary>
+        private static void KeepTheDeal(EpisodeState s, EpisodeCommand command, string partner)
+        {
+            if (s.Find(partner)?.status != ContestantStatus.Active) return;
+            switch (command.kind)
+            {
+                case EpisodeCommandKind.Nominate:
+                    var pool = EpisodeEngine.NominationCandidates(s).Select(c => c.id).Where(id => id != partner).ToList();
+                    if (pool.Count >= 2) { command.targetId = pool[0]; command.secondTargetId = pool[1]; }
+                    break;
+                case EpisodeCommandKind.ResolveVeto:
+                    if (s.vetoHolderId == s.playerId && s.nominees.Contains(partner) && command.useVeto) command.targetId = partner;
+                    if (s.hohId == s.playerId && command.useVeto)
+                    {
+                        string other = EpisodeEngine.ReplacementCandidates(s).Select(c => c.id).FirstOrDefault(id => id != partner);
+                        if (other != null) command.secondTargetId = other;
+                    }
+                    break;
+                case EpisodeCommandKind.FinalEvict:
+                    command.targetId = s.Active.First(c => !c.isPlayer && c.id != partner).id;
+                    break;
+            }
         }
 
         private static void Add(Dictionary<string, int> tally, string key) => tally[key] = (tally.TryGetValue(key, out int n) ? n : 0) + 1;

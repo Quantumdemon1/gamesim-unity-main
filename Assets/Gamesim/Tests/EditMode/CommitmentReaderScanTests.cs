@@ -98,6 +98,7 @@ namespace Gamesim.Tests.EditMode
             new Site(Sim + "EpisodeEngine.cs", "FinalChoiceSettles(s, p, s.hohId)", 1, Why.RawKind, "final two"),
             new Site(Sim + "EpisodeEngine.Commitments.cs", "DealKind.InformationSharing", 2, Why.RawKind, "information"),
             new Site(Sim + "EpisodeEngine.FinalChoice.cs", null, 1, Why.RawKind, "final three"),
+            new Site(Sim + "FinalTwoDeals.cs", null, 4, Why.RawKind, "final two: the final choice's deal term leaves out what the obligation counts (minds 1)"),
             new Site(Sim + "EpisodeEngine.Negotiation.cs", "d.type == DealKind.VetoUse", 1, Why.RawKind, "the veto asks"),
             new Site(Sim + "FinalistRead.cs", "DealKind.FinalTwo && d.status == DealStatus.Active && Between", 1, Why.RawKind, "final two"),
             new Site(Sim + "FinalistRead.cs", "PromiseKind.FinalTwo", 3, Why.RawKind, "final two"),

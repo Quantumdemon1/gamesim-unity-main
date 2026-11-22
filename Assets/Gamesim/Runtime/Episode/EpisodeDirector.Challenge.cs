@@ -366,6 +366,8 @@ namespace Gamesim.Episode
             challengeRun = kind == CompetitionMiniGames.Kind.Precision ? null : new MiniGameRun(kind,
                 CompetitionMiniGames.AttemptSeed(state.seed, state.week, (int)state.phase, state.competitionRulesVersion, practice),
                 state.competitionRulesVersion, CompetitionDefinitions.For(state), ScrambleWords(state));
+            // A ranked endurance game's field lets go around the player, read from a preview of this very attempt's commit.
+            BeginCompetitionDropouts(state, practice);
             if (challengeRun != null)
             {
                 if (competitionScreen == null)
@@ -409,7 +411,7 @@ namespace Gamesim.Episode
                 return;
             }
             if (challengeResultShown) return;
-            competitionScreen.SetArenaStatus(competitionArenaStatus);
+            competitionScreen.SetArenaStatus(CompetitionDropoutsLine() ?? competitionArenaStatus);
             if (competitionScreen.IsAssembling)
             { competitionScreen.AdvanceAssembly(Time.unscaledDeltaTime, CompetitionArenaReady); return; }
             // The arena gates the start, not a game under way: a houseguest stepping off their mark
@@ -430,6 +432,7 @@ namespace Gamesim.Episode
             int expired = challengeRun.ExpiredTargets;
             challengeRun.Tick(Time.unscaledDeltaTime);
             if (challengeRun.ExpiredTargets > expired) audioBed.PlayCue(HouseAudio.Cue.SocialDown);
+            TickCompetitionDropouts();
             competitionScreen.Refresh();
             SyncCompetitionPlayerInstrument();
             if (!challengeRun.Finished) return;
@@ -438,6 +441,9 @@ namespace Gamesim.Episode
                 competitionScreen.ShowFinished("Practice complete. No competition result or season state was changed.", CompetitionGameScreen.BackToBriefingCaption, CancelChallenge, hideCancel: true);
             else
             {
+                // Everybody the result ranks under the player lets go with them.
+                EndCompetitionDropouts();
+                competitionScreen.SetArenaStatus(CompetitionDropoutsLine() ?? competitionArenaStatus);
                 competitionScreen.ShowRankedFinish("Your result goes to the standings in a moment. Scores commit once.");
                 challengeFinishHold = RankedFinishSeconds;
             }

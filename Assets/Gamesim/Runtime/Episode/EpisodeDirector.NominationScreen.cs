@@ -298,7 +298,7 @@ namespace Gamesim.Episode
                         if (choice.conduct) { storyStepPick = id; Render(); }
                         else { ClearStoryStep(); Commit(state, EpisodeCommandKind.ProgressStoryline, eventId, optionId, text: id); }
                     }));
-                }).ToList(), 57f * hud.FontScale + 12f);
+                }).ToList());
                 StoryChoicesBack();
                 return;
             }

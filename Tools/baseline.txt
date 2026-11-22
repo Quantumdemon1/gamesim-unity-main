@@ -506,7 +506,10 @@
 # two sides.
 # 11205 = 11201 (the tour on the new main) + the whole-house moves' lock's 4 (11025 - 11021 on this branch): disjoint
 # cases, so the floor is their sum (the second wave's landing of 22 November 2026). Counted from the two sides.
-Gamesim.EditModeTests 11205
+# 11133 = 11027 (the new main) + 106: the cases added by the season card, the tour and the whole-house moves' lock.
+# The 11205 above counted 72 cases twice: those of the first wave's changes, which this branch held from an older
+# chain and the new main holds too. Corrected 2026-11-22; the floor is the count the test lists give.
+Gamesim.EditModeTests 11133
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and
@@ -787,7 +790,10 @@ Gamesim.EditModeTests 11205
 # two sides.
 # 1696 = 1695 (the tour on the new main) + the whole-house moves' lock's 1 (1688 - 1687 on this branch): disjoint
 # cases, so the floor is their sum (the second wave's landing of 22 November 2026). Counted from the two sides.
-Gamesim.PlayModeTests 1696
+# 1690 = 1686 (the new main) + 4: the cases added by the season card, the tour and the whole-house moves' lock. The
+# 1696 above counted 6 cases twice: those of the first wave's changes, which this branch held from an older chain and
+# the new main holds too. Corrected 2026-11-22; the floor is the count the test lists give.
+Gamesim.PlayModeTests 1690
 # The UMA build of the same assembly, read by a plan built without -WithoutUma. 1281 = the 1241 above + the
 # 40 tests that compile only under GAMESIM_UMA, as run at r1 (2026-10-16): in EpisodePlayModeTests,
 # GroundedFarewell 11, Creator 9, HouseLife 8, Emotes 3, OpeningCaptures 2, and one each in CreatorEntry,
@@ -992,7 +998,10 @@ Gamesim.PlayModeTests 1696
 # two sides.
 # 1741 = 1740 (the tour on the new main) + the whole-house moves' lock's 1 (1733 - 1732 on this branch): disjoint
 # cases, so the floor is their sum (the second wave's landing of 22 November 2026). Counted from the two sides.
-Gamesim.PlayModeTests.UmaBuild 1741
+# 1735 = 1731 (the new main) + 4: the cases added by the season card, the tour and the whole-house moves' lock. The
+# 1741 above counted 6 cases twice: those of the first wave's changes, which this branch held from an older chain and
+# the new main holds too. Corrected 2026-11-22; the floor is the count the test lists give.
+Gamesim.PlayModeTests.UmaBuild 1735
 # The UMA bodies: runs only where the GAMESIM_UMA define is set (the working tree and the D: copy).
 # 82 = the 89 run on 2026-10-15, less the 7 farewell probes moved to Gamesim.Uma.DiagnosticsPlayModeTests;
 # 85 = 82 + the 3 farewell readiness decision tests (UmaFarewellReadinessDecisionPlayModeTests, 2026-10-16);
@@ -1422,4 +1431,7 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # two sides.
 # 23305 = 23301 (the tour on the new main) + the whole-house moves' lock's 4 (23120 - 23116 on this branch): disjoint
 # cases, so the floor is their sum (the second wave's landing of 22 November 2026). Counted from the two sides.
-Gamesim.SimulationTests 23305
+# 23232 = 23131 (the new main) + 101: the cases added by the season card, the tour and the whole-house moves' lock.
+# The 23305 above counted 73 cases twice: those of the first wave's changes, which this branch held from an older
+# chain and the new main holds too. Corrected 2026-11-22; the floor is the count the test lists give.
+Gamesim.SimulationTests 23232

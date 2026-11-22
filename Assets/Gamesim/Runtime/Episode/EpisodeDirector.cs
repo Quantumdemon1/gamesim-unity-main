@@ -1333,7 +1333,7 @@ namespace Gamesim.Episode
             var played = WeeklyRecap.Season(state).Where(w => w.evicted != null).ToList();
             if (played.Count > 0)
             {
-                hud.Heading("WEEKS SO FAR");
+                hud.Heading(StorySoFarWords.WeeksSoFarHeading);
                 foreach (var week in played)
                 {
                     int number = week.week;

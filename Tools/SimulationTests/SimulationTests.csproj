@@ -605,6 +605,9 @@
     <!-- The one way out's words and measures (menu slice 2): its plain-C# half, without the builders. -->
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/WayOut.cs" />
     <Compile Include="$(EditMode)WayOutWordsTests.cs" />
+    <!-- Largest text (U9, backlog item 23): the menus, side cards and ways out follow the text size; plain C#, with its source scan. -->
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/TextSizeFit.cs" />
+    <Compile Include="$(EditMode)TextSizeFitTests.cs" />
     <!-- Menu slice 3, part b: the one trust chip's bands and words (plain C#; its builder is EditMode only), and the scan that every reading page draws it. -->
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/TrustChip.cs" />
     <Compile Include="$(EditMode)MenuNotebookBTrustChipTests.cs" />

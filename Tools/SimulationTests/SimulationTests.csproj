@@ -90,6 +90,8 @@
     <Compile Include="$(EditMode)CompetitionShowEdgesTests.cs" />
     <Compile Include="$(EditMode)CompetitionShowEdgesFixTests.cs" />
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/CompetitionCourseLegs.cs" />
+    <Compile Include="$(EditMode)CompetitionCourseMarkPassesTests.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/CompetitionCourseMarkPasses.cs" />
     <!-- Competition yard slice 2: the list of what stands in the yard when; pure, so it runs here too. -->
     <Compile Include="$(EditMode)CompetitionYardPiecesTests.cs" />
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/CompetitionYardPieces.cs" />

@@ -72,8 +72,6 @@ namespace Gamesim.Presentation
                 "Competition lettering (HOH) over the backdrop."),
             new Piece("bb_set_sign_pillars", "Set Pieces/Competition course", 1, Everyday.PutAway, false,
                 "Competition lettering beside it."),
-            new Piece("bb_set_sign_samehouse", "Set Pieces/Competition course", 1, Everyday.PutAway, false,
-                "Competition lettering beside it."),
             new Piece(Podium, "Set Pieces/Podiums, and the box blocks under the house's root", 3, Everyday.PutAway, true,
                 "The contestants' podiums: competition furniture standing in the yard."),
             new Piece("bb_set_comp_backdrop", "Set Pieces/Competition course", 1, Everyday.Stays, false,

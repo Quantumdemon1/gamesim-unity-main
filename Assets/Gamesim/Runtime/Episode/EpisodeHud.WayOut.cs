@@ -23,6 +23,13 @@ namespace Gamesim.Episode
         /// <summary>What the page's way back does, or null on a page that has none: what Escape and B press first.</summary>
         public Action WayBackAction { get; private set; }
 
+        /// <summary>
+        /// The safe answer of the confirm card this render drew (<see cref="SettingsConfirm"/>), or
+        /// null with none up: Escape and B take it before the page's way back, so a card that asks is
+        /// answered "no" and never stepped around.
+        /// </summary>
+        public Action ConfirmCancelAction { get; private set; }
+
         /// <summary>The panel's Close this render, or null with no panel up.</summary>
         public Button PanelClose => panelClose;
 
@@ -34,6 +41,7 @@ namespace Gamesim.Episode
             panelClose = null; wayBack = null; wayBackRoomOwed = false;
             decisionPageBack = null;
             WayBackAction = null;
+            ConfirmCancelAction = null;
         }
 
         /// <summary>

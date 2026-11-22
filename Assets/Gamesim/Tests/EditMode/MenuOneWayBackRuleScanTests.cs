@@ -60,6 +60,7 @@ namespace Gamesim.Tests.EditMode
             new Exemption("Presentation/InputGlossary.cs", ExitWord, "\"Leave the board; in a ranked attempt the first press asks\"", "the controls list's line for Back on a competition board"),
             new Exemption("Presentation/KeyBindings.cs", ExitWord, "\"Cancel\"", "the input system's UI Cancel action, by name"),
             new Exemption("Presentation/CharacterCreator.Studio.cs", ExitWord, "\"Return to edited look\"", "the compare toggle's other state, not a way out"),
+            new Exemption("Presentation/WeeklyRecapScreen.cs", ExitWord, "\"Return to the house\"", "the live recap's one foot button, which ends the week's summary rather than backing out of a screen (the lead's ruling L4)"),
             new Exemption("Presentation/CharacterCreator.cs", OldName, "\"Edit appearance\"", "the cast screen's start-from-this-look chip; one entry into the creator is the review's change 8, a later slice"),
             new Exemption("Presentation/CharacterCreator.Studio.cs", OldName, "\"Customize your look. Your appearance is independent of pronouns, personality and competition stats.\"", "the Appearance step's sentence, not a name for editing a houseguest"),
             new Exemption("Presentation/WeeklyRecapScreen.cs", OldName, "\"Deals and promises\"", "an object's name for tests, never drawn"),

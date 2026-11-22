@@ -56,7 +56,7 @@ namespace Gamesim.Presentation
         private readonly List<Transform> rings = new List<Transform>();
         private readonly List<Mesh> meshes = new List<Mesh>();
         private float scale = 1f, spread = 1f;
-        private Func<MiniGameRun> attempt;
+        private Func<RingTowerPuzzle> puzzle;
         private Func<bool> reducedMotion;
 
         /// <summary>The stacks, left to right as the camera sees them (west to east).</summary>
@@ -79,6 +79,14 @@ namespace Gamesim.Presentation
         /// </summary>
         public static CompetitionRingTower Build(Transform parent, IReadOnlyList<Transform> standing, int ringCount,
             Func<MiniGameRun> attempt, Func<bool> reducedMotion, Action<Renderer> conceal)
+            => BuildFollowing(parent, standing, ringCount, () => attempt?.Invoke()?.Tower, reducedMotion, conceal);
+
+        /// <summary>
+        /// The same tower, its rings following <paramref name="puzzle"/> - a tower show's scripted solve
+        /// (<see cref="CompetitionTowerShowRings"/>) rather than the player's attempt. Null as <see cref="Build"/> is.
+        /// </summary>
+        public static CompetitionRingTower BuildFollowing(Transform parent, IReadOnlyList<Transform> standing, int ringCount,
+            Func<RingTowerPuzzle> puzzle, Func<bool> reducedMotion, Action<Renderer> conceal)
         {
             if (parent == null || standing == null || standing.Count != RingTowerPuzzle.Stacks) return null;
             var ordered = new List<Transform>(standing);
@@ -113,7 +121,7 @@ namespace Gamesim.Presentation
             var root = new GameObject("Ring tower");
             root.transform.SetParent(parent, false);
             var tower = root.AddComponent<CompetitionRingTower>();
-            tower.attempt = attempt; tower.reducedMotion = reducedMotion;
+            tower.puzzle = puzzle; tower.reducedMotion = reducedMotion;
             // The placed stacks' own size against the authored one: a scaled import still gets rings to its own scale.
             var reference = found[0].box;
             tower.scale = reference.size.y > .01f ? reference.size.y / AuthoredHeight : 1f;
@@ -180,7 +188,7 @@ namespace Gamesim.Presentation
         /// <summary>Where a ring belongs now: on its stack at its level, or hanging over its peg when lifted.</summary>
         public Vector3 Home(int size)
         {
-            var tower = attempt?.Invoke()?.Tower;
+            var tower = puzzle?.Invoke();
             int stack = 0, level = rings.Count - size;
             bool lifted = false;
             if (tower != null)

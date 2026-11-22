@@ -463,18 +463,18 @@ namespace Gamesim.Presentation
             public readonly float Text;
             /// <summary>Where the rows sit, from the top, and how tall each is.</summary>
             public readonly float EyebrowY, EyebrowH, TitleY, TitleH, Trophy, HohY, HohH, StageY, KeysY, KeysH,
-                ProgressY, ProgressH, RuleY, DismissY, DismissH, ControlsY, ControlsH, TaglineY, Glass, Neon;
+                ProgressY, ProgressH, RuleY, DismissY, DismissH, ControlsY, ControlsH, Glass, Neon;
 
             private Frame(bool screen, float width, float height, float top, float slotW, float slotH, float blockW, float blockH,
                 float blockStep, float pip, float step, float text, float eyebrowY, float eyebrowH, float titleY, float titleH,
                 float trophy, float hohY, float hohH, float stageY, float keysY, float keysH, float progressY, float progressH,
-                float ruleY, float dismissY, float dismissH, float controlsY, float controlsH, float taglineY, float glass, float neon)
+                float ruleY, float dismissY, float dismissH, float controlsY, float controlsH, float glass, float neon)
             {
                 Screen = screen; Width = width; Height = height; Top = top; SlotW = slotW; SlotH = slotH;
                 BlockW = blockW; BlockH = blockH; BlockStep = blockStep; Pip = pip; Step = step; Text = text;
                 EyebrowY = eyebrowY; EyebrowH = eyebrowH; TitleY = titleY; TitleH = titleH; Trophy = trophy; HohY = hohY; HohH = hohH;
                 StageY = stageY; KeysY = keysY; KeysH = keysH; ProgressY = progressY; ProgressH = progressH; RuleY = ruleY;
-                DismissY = dismissY; DismissH = dismissH; ControlsY = controlsY; ControlsH = controlsH; TaglineY = taglineY;
+                DismissY = dismissY; DismissH = dismissH; ControlsY = controlsY; ControlsH = controlsH;
                 Glass = glass; Neon = neon;
             }
 
@@ -486,7 +486,7 @@ namespace Gamesim.Presentation
                     SlotWidth * scale, slotH * scale, (SlotWidth + 44f) * scale, 16f * scale, 24f * scale, scale,
                     -10f * scale, 16f * scale, -26f * scale, 30f * scale, 24f * scale, -58f * scale, 22f * scale, -88f * scale,
                     -(96f + slotH) * scale, 20f * scale, -(120f + slotH) * scale, 18f * scale, -(144f + slotH) * scale,
-                    -(150f + slotH) * scale, 16f * scale, -(168f + slotH) * scale, 16f * scale, -(CardHeight + 22f) * scale,
+                    -(150f + slotH) * scale, 16f * scale, -(168f + slotH) * scale, 16f * scale,
                     12f * scale, 30f * scale);
             }
 
@@ -504,7 +504,7 @@ namespace Gamesim.Presentation
                 return new Frame(true, ScreenSurface.ReferenceWidth, ScreenSurface.ReferenceHeight, 0f, ScreenRoster.BeatFace, ScreenRoster.BandHeight,
                     ScreenRoster.BlockFace, ScreenRoster.BlockFace, ScreenRoster.BlockStep, Mathf.Min(76f, step * 0.8f), step, text,
                     -24f, 36f, -60f, 72f, 58f, -136f, 52f, ScreenRoster.BandTop, -596f, 88f, -690f, 40f, float.NaN, float.NaN, 0f,
-                    -734f, 36f, float.NaN, 0f, 16f);
+                    -734f, 36f, 0f, 16f);
             }
         }
 
@@ -735,19 +735,7 @@ namespace Gamesim.Presentation
             controls = HudPrimitives.Label("Controls", column, 11f * scale, UiTheme.Muted, TextAlignmentOptions.Center);
             controls.text = CeremonyTakeover.ControlsFor(usingPad);
             Place(controls.rectTransform, width, f.ControlsH, f.ControlsY);
-
-            if (!f.Screen)
-            {
-                // The show's line under the screen, the way mockup-10 writes it on the wall below the
-                // board. On the set's screen the wall is the wall.
-                var tagline = HudPrimitives.Label("Tagline", column, 12f * scale, UiTheme.Glow, TextAlignmentOptions.Center);
-                var semibold = UiTheme.Font(UiTheme.Weight.SemiBold);
-                if (semibold != null) tagline.font = semibold;
-                tagline.fontStyle = FontStyles.Italic;
-                tagline.characterSpacing = 12f;
-                tagline.text = "SAME HOUSE.  DIFFERENT STORIES.";
-                Place(tagline.rectTransform, width * 1.4f, 18f * scale, f.TaglineY);
-            }
+            // No slogan under the board (the owner, 2026-11-21): the controls line closes the card.
         }
 
         /// <summary>The screen's size and where it hangs, in reference units at the standard text size.</summary>

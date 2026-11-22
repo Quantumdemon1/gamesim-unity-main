@@ -465,7 +465,8 @@
 # Counted from the two sides.
 # 10925 = 10919 + the ceremony cards' press and speed: CeremonyCardPressTests 6 (all also in the dotnet subset), 2026-11-22.
 # 10926 = 10925 + the review's fix: CeremonyCardDeviceTests 1 (also in the dotnet subset), 2026-11-22.
-Gamesim.EditModeTests 10926
+# 10933 = 10926 + one card clock and one controls chip: CeremonyCardClockTests 7 (all also in the dotnet subset), 2026-11-22.
+Gamesim.EditModeTests 10933
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and
@@ -724,7 +725,8 @@ Gamesim.EditModeTests 10926
 # - 1678 on this branch): disjoint cases, so the floor is their sum (the stacked landing of 22 November 2026). Counted
 # from the two sides.
 # 1686 = 1684 + the ceremony cards' press and speed: CeremonyCardPressPlayModeTests 2, 2026-11-22.
-Gamesim.PlayModeTests 1686
+# 1687 = 1686 + one card clock and one controls chip: CeremonyControlsChipPlayModeTests 1, 2026-11-22.
+Gamesim.PlayModeTests 1687
 # The UMA build of the same assembly, read by a plan built without -WithoutUma. 1281 = the 1241 above + the
 # 40 tests that compile only under GAMESIM_UMA, as run at r1 (2026-10-16): in EpisodePlayModeTests,
 # GroundedFarewell 11, Creator 9, HouseLife 8, Emotes 3, OpeningCaptures 2, and one each in CreatorEntry,
@@ -907,7 +909,8 @@ Gamesim.PlayModeTests 1686
 # - 1723 on this branch): disjoint cases, so the floor is their sum (the stacked landing of 22 November 2026). Counted
 # from the two sides.
 # 1731 = 1729 + the ceremony cards' press and speed: CeremonyCardPressPlayModeTests 2, 2026-11-22.
-Gamesim.PlayModeTests.UmaBuild 1731
+# 1732 = 1731 + one card clock and one controls chip: CeremonyControlsChipPlayModeTests 1, 2026-11-22.
+Gamesim.PlayModeTests.UmaBuild 1732
 # The UMA bodies: runs only where the GAMESIM_UMA define is set (the working tree and the D: copy).
 # 82 = the 89 run on 2026-10-15, less the 7 farewell probes moved to Gamesim.Uma.DiagnosticsPlayModeTests;
 # 85 = 82 + the 3 farewell readiness decision tests (UmaFarewellReadinessDecisionPlayModeTests, 2026-10-16);
@@ -1292,4 +1295,5 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # Counted from the two sides.
 # 23025 = 23019 + the ceremony cards' press and speed: the same 6 CeremonyCardPressTests cases, 2026-11-22.
 # 23026 = 23025 + the review's fix: the same CeremonyCardDeviceTests case, 2026-11-22.
-Gamesim.SimulationTests 23026
+# 23033 = 23026 + one card clock and one controls chip: the same 7 CeremonyCardClockTests cases, 2026-11-22.
+Gamesim.SimulationTests 23033

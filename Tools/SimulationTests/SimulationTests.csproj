@@ -111,6 +111,10 @@
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/CeremonyCardWords.cs" />
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/CeremonyPacing.cs" />
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/CaptionTiming.cs" />
+    <!-- One card clock and one controls chip on every ceremony card (UI-UX plan D3a, D3b): pure, so it runs here too. -->
+    <Compile Include="$(EditMode)CeremonyCardClockTests.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/CeremonyCardClock.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/CeremonyChipMetrics.cs" />
     <!-- Menu slice 2, part d: the decisions' and the cards' one way out, held in the source; pure, so it runs here too. -->
     <Compile Include="$(EditMode)MenuOneWayBackDecisionsScanTests.cs" />
     <!-- No slogan on a screen or a sign (the owner, 2026-11-14 and 2026-11-21), held in the source and the scenes. -->

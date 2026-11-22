@@ -281,9 +281,11 @@ namespace Gamesim.Tests.PlayMode
         /// The two states the right column's fold did not reach (the fix lane's review, finding 2),
         /// with the controls card open on every review frame at every text size. Somebody in focus:
         /// the relationships card is seven rows and 400 tall, and it ended at 668 against the open
-        /// card's 596 on 16:9; now it gives way a row at a time, the one in focus last. The Final 3
-        /// with the tagline: the objectives are 224 tall, and at the larger text on 16:9 even Recent
-        /// Events' heading alone ended 9 units into the card; now the live feed goes there too.
+        /// card's 596 on 16:9; now it gives way a row at a time, the one in focus last. The Final 3:
+        /// with its tagline gone (the owner, 2026-11-21: no slogan on the season's screens) a
+        /// finalist's objectives are 206 tall, so at the Larger text on 16:9 Recent Events' heading
+        /// alone ends at 568, clear of the open card at 577, and the live feed stays; at the Largest
+        /// text the card begins at 558 and the feed gives way.
         /// </summary>
         [UnityTest, Timeout(600000)]
         public IEnumerator Accessibility_TheColumnGivesWayToTheControlsWithSomeoneInFocusAndAtTheFinalThree()
@@ -300,7 +302,8 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(director.TextSize, Is.EqualTo(textSize));
                 director.ClosePanels();
                 yield return null;
-                Assert.That(ActiveChromePanel(EpisodeHud.ObjectivesTaglineName), Is.Not.Null, "A finalist's objectives carry the tagline at three.");
+                Assert.That(ActiveChromePanel(EpisodeHud.ObjectivesCardName), Is.Not.Null, "A finalist's objectives stand at three.");
+                Assert.That(ActiveChromePanel("Objectives tagline"), Is.Null, "with no tagline under their heading.");
                 bool feedUp = ActiveChromePanel(EpisodeDirector.LiveFeedCardName) != null;
                 ButtonWithCaption(ExpandControlsCaption).onClick.Invoke();
                 yield return null;
@@ -308,11 +311,18 @@ namespace Gamesim.Tests.PlayMode
                     where =>
                     {
                         AssertColumnClear(where, EpisodeHud.ObjectivesCardName, EpisodeHud.RecentEventsCardName, "Exploration controls");
-                        // The one state the fold alone could not clear: the feed gives way there.
+                        // On a 900-tall canvas the fold alone clears the card at the Larger text, so the
+                        // feed stays; at the Largest only the feed's room clears it, so the feed gives way.
                         var canvas = director.GetComponentsInChildren<Canvas>(true).First(item => item.name == "Gamesim Episode HUD");
                         if (feedUp && larger && Mathf.Abs(((RectTransform)canvas.transform).rect.height - EpisodeHud.ReferenceHeight) < 1f)
-                            Assert.That(ActiveChromePanel(EpisodeDirector.LiveFeedCardName), Is.Null,
-                                where + ": the live feed gives way on a 900-tall canvas above the standard text.");
+                        {
+                            if (textSize == TextSize.Largest)
+                                Assert.That(ActiveChromePanel(EpisodeDirector.LiveFeedCardName), Is.Null,
+                                    where + ": the live feed gives way on a 900-tall canvas at the Largest text.");
+                            else
+                                Assert.That(ActiveChromePanel(EpisodeDirector.LiveFeedCardName), Is.Not.Null,
+                                    where + ": the live feed stays on a 900-tall canvas at the Larger text, the folded column clear of the card.");
+                        }
                     });
                 ButtonWithCaption(CollapseControlsCaption).onClick.Invoke();
                 yield return null;

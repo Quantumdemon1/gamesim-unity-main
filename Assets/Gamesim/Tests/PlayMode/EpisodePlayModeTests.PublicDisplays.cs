@@ -27,7 +27,7 @@ namespace Gamesim.Tests.PlayMode
             var yardLabel=yard.GetComponentInChildren<TMP_Text>();
             var yardCanvas=yardLabel.GetComponentInParent<Canvas>();
             var course=SceneComponents<Transform>().Single(t=>t.name=="Competition course");
-            var lettering=new[]{"bb_set_sign_hoh","bb_set_sign_pillars","bb_set_sign_samehouse"}
+            var lettering=new[]{"bb_set_sign_hoh","bb_set_sign_pillars"}
                 .SelectMany(name=>course.Find(name).GetComponentsInChildren<Renderer>(true))
                 .Select(renderer=>(Renderer:renderer,Enabled:renderer.enabled)).ToArray();
             var scenery=course.Find("bb_set_comp_backdrop").GetComponentsInChildren<Renderer>(true)

@@ -100,7 +100,7 @@ namespace Gamesim.Tests.EditMode
                     }
             Assert.That(trivia, Is.GreaterThan(0));
             Assert.That(CompetitionDefinitions.Trivia.Category, Is.EqualTo(CompetitionRules.Mental), "Rolled as a mental game.");
-            Assert.That(CompetitionDefinitions.All, Does.Not.Contain(CompetitionDefinitions.Trivia), "Not a console game.");
+            Assert.That(CompetitionDefinitions.All.Contains(CompetitionDefinitions.Trivia), Is.False, "Not a console game.");
             Assert.That(CompetitionDefinitions.Catalogue.Last(), Is.SameAs(CompetitionDefinitions.Trivia));
             Assert.That(CompetitionDefinitions.Catalogue.Select(d => d.Id).Distinct().Count(), Is.EqualTo(CompetitionDefinitions.Catalogue.Count));
         }

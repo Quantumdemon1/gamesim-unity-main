@@ -244,13 +244,15 @@ namespace Gamesim.Tests.EditMode
         public void TheGeometryMeasuresSegmentsAndBoxes()
         {
             var a = new CompetitionCourseLegs.Spot(0f, 0f); var b = new CompetitionCourseLegs.Spot(2f, 0f);
-            Assert.That(CompetitionCourseLegs.SegmentDistance(a, b, new CompetitionCourseLegs.Spot(1f, -1f), new CompetitionCourseLegs.Spot(1f, 1f)), Is.EqualTo(0f), "Crossing.");
+            Assert.That(CompetitionCourseLegs.SegmentDistance(a, b, new CompetitionCourseLegs.Spot(1f, -1f), new CompetitionCourseLegs.Spot(1f, 1f)), Is.EqualTo(0f).Within(1e-5f), "Crossing.");
             Assert.That(CompetitionCourseLegs.SegmentDistance(a, b, new CompetitionCourseLegs.Spot(0f, 1f), new CompetitionCourseLegs.Spot(2f, 1f)), Is.EqualTo(1f).Within(1e-5f), "Parallel, a metre apart.");
             Assert.That(CompetitionCourseLegs.SegmentDistance(a, b, new CompetitionCourseLegs.Spot(3f, 0f), new CompetitionCourseLegs.Spot(5f, 0f)), Is.EqualTo(1f).Within(1e-5f), "In line, end to end.");
             var box = new CompetitionCourseLegs.Box(1f, 2f, 1f, 2f);
-            Assert.That(CompetitionCourseLegs.SegmentBoxDistance(a, new CompetitionCourseLegs.Spot(3f, 3f), box), Is.EqualTo(0f), "Through the box.");
+            Assert.That(CompetitionCourseLegs.SegmentBoxDistance(a, new CompetitionCourseLegs.Spot(3f, 3f), box), Is.EqualTo(0f).Within(1e-5f), "Through the box.");
             Assert.That(CompetitionCourseLegs.SegmentBoxDistance(a, b, box), Is.EqualTo(1f).Within(1e-5f), "Under it.");
-            Assert.That(CompetitionCourseLegs.SegmentBoxDistance(new CompetitionCourseLegs.Spot(1.5f, 1.5f), new CompetitionCourseLegs.Spot(9f, 9f), box), Is.EqualTo(0f), "From inside it.");
+            Assert.That(CompetitionCourseLegs.SegmentBoxDistance(new CompetitionCourseLegs.Spot(0f, 3f), new CompetitionCourseLegs.Spot(3f, 0f), box), Is.EqualTo(0f).Within(1e-5f), "Corner to corner across it.");
+            Assert.That(CompetitionCourseLegs.SegmentDistance(a, b, new CompetitionCourseLegs.Spot(1f, 0f), new CompetitionCourseLegs.Spot(1f, 3f)), Is.EqualTo(0f), "An end on the other leg touches it.");
+            Assert.That(CompetitionCourseLegs.SegmentBoxDistance(new CompetitionCourseLegs.Spot(1.5f, 1.5f), new CompetitionCourseLegs.Spot(9f, 9f), box), Is.EqualTo(0f).Within(1e-5f), "From inside it.");
             var station = CompetitionCourseLegs.Box.Station(0f, 0f, .3f, 1.05f, .51f);
             Assert.That(station.MinX, Is.EqualTo(-.51f).Within(1e-5f)); Assert.That(station.MaxZ, Is.EqualTo(1.05f).Within(1e-5f));
             Assert.That(station.MinZ, Is.EqualTo(-.3f).Within(1e-5f), "The console stands ahead of the body, toward the back wall.");

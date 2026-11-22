@@ -234,10 +234,13 @@ namespace Gamesim.Presentation
 
         private static float Cross(Spot o, Spot a, Spot b) => (a.X - o.X) * (b.Z - o.Z) - (a.Z - o.Z) * (b.X - o.X);
 
+        // Crossing or touching - an end on the other segment, or a leg through a box's corner - counts:
+        // the distance is nothing. Two segments on one line are left to the distances, which measure them.
         private static bool SegmentsCross(Spot a, Spot b, Spot c, Spot d)
         {
             float d1 = Cross(c, d, a), d2 = Cross(c, d, b), d3 = Cross(a, b, c), d4 = Cross(a, b, d);
-            return (d1 > 0f && d2 < 0f || d1 < 0f && d2 > 0f) && (d3 > 0f && d4 < 0f || d3 < 0f && d4 > 0f);
+            if (d1 == 0f && d2 == 0f && d3 == 0f && d4 == 0f) return false;
+            return (d1 >= 0f && d2 <= 0f || d1 <= 0f && d2 >= 0f) && (d3 >= 0f && d4 <= 0f || d3 <= 0f && d4 >= 0f);
         }
     }
 }

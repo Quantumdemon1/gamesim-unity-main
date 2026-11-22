@@ -486,6 +486,11 @@
     <Compile Include="$(EditMode)LineBankLintTests.cs" />
     <Compile Include="$(EditMode)HouseTalkNotesTests.cs" />
     <Compile Include="$(EditMode)HouseTalkValidationTests.cs" />
+    <!-- Plan 32 S2a: overhearing in the rules - the Notice and the Listen, their records, S1's follow-up cases, and the lab arm (compiled out of Unity). -->
+    <Compile Include="$(EditMode)OverhearTests.cs" />
+    <Compile Include="$(EditMode)OverhearValidationTests.cs" />
+    <Compile Include="$(EditMode)HouseTalkS1FollowUpTests.cs" />
+    <Compile Include="$(EditMode)HouseTalkLab.cs" />
     <!-- Free talk slice 1, the screen: the words the panel, the tile and the notebook blocks show, and the command a reply sends. -->
     <Compile Include="$(EditMode)TalkScreenLinesTests.cs" />
     <!-- Free talk slice 2, the screen: the "Between you" and "How you come across" lines, the favour's pills and the third beat at talk rules 2. -->

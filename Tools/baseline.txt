@@ -454,7 +454,12 @@
 # 10857 = 10850 + the review's fixes: FinalTwoDealsReviewTests 7 (all also in the dotnet subset), 2026-11-22.
 # 10894 = 10872 (dialogue rules 3 on top of the three fixes) + the final two deal's 22 (10857 - 10835 on this branch):
 # disjoint cases, so the floor is their sum (the stacked landing of 22 November 2026). Counted from the two sides.
-Gamesim.EditModeTests 10894
+# 10889 = 10835 + the house talk's slice S2a (overhearing in the rules): OverhearTests 18, OverhearValidationTests 24 and
+# HouseTalkS1FollowUpTests 11 (all also in the dotnet subset), and NpcPairingRoomTests 1 (EditMode only), 2026-11-21.
+# 10948 = 10894 (the new main, with the recap, the finale page, the saves leftovers, the campaign conversations and
+# the final two deal) + overhearing in the rules' 54 (10889 - 10835 on this branch): disjoint cases, so the floor is
+# their sum (the stacked landing of 22 November 2026). Counted from the two sides.
+Gamesim.EditModeTests 10948
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and
@@ -1252,4 +1257,10 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # 22959 = 22952 + the review's fixes: the same 7 FinalTwoDealsReviewTests cases, 2026-11-22.
 # 22994 = 22969 (dialogue rules 3 on top of the three fixes) + the final two deal's 25 (22959 - 22934 on this branch):
 # disjoint cases, so the floor is their sum (the stacked landing of 22 November 2026). Counted from the two sides.
-Gamesim.SimulationTests 22994
+# 22988 = 22934 + the house talk's slice S2a: the same 53 OverhearTests, OverhearValidationTests and
+# HouseTalkS1FollowUpTests cases the EditMode floor counts, and HouseTalkLab's one walker case (compiled out of Unity; its
+# Stack A report is [Explicit], run by name, and not counted), 2026-11-21.
+# 23048 = 22994 (the new main, with the recap, the finale page, the saves leftovers, the campaign conversations and
+# the final two deal) + overhearing in the rules' 54 (22988 - 22934 on this branch): disjoint cases, so the floor is
+# their sum (the stacked landing of 22 November 2026). Counted from the two sides.
+Gamesim.SimulationTests 23048

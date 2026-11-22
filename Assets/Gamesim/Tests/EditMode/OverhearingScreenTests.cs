@@ -113,7 +113,7 @@ namespace Gamesim.Tests.EditMode
             Seen(s, npcs[0], npcs[1], HunchTone.Scheming, s.week);
             Seen(s, npcs[2], npcs[3], HunchTone.Warm, s.week);
             // Other sources between the same two are not sightings.
-            s.ledger.standings.Add(new StandingRow { week = s.week, fromId = npcs[4], toId = npcs[5], source = ClaimSource.Overheard, score = 40 });
+            s.ledger.standings.Add(new StandingRow { week = s.week, fromId = npcs[0], toId = npcs[2], source = ClaimSource.Overheard, score = 40 });
             Assert.That(AllianceRead.SuspectedPairs(s), Is.Empty, "No pact the player knows of, and still a line.");
             Assert.That(Overhearing.Hunches(s).Count, Is.EqualTo(2));
             s.Find(npcs[3]).status = ContestantStatus.Evicted;

@@ -174,6 +174,25 @@ namespace Gamesim.Episode
             (EpisodeEngine.WeekRulesOn(state) ? EpisodeEngine.Window(state) != Windows.None : state.phase == EpisodePhase.Social || state.phase == EpisodePhase.Campaign)
             && EpisodeEngine.SocialActionsSpent(state) < EpisodeEngine.SocialActionBudget(state);
 
+        /// <summary>A whole-house move's foot when the engine would refuse it outside free time and the campaign.</summary>
+        public const string TileNotNow = "Not during this part of the week";
+
+        /// <summary>
+        /// Why a whole-house move (a house meeting or listening in) cannot be made now, in its tile's
+        /// foot: <see cref="TileNoActionsLeft"/> when the window's actions are spent, otherwise
+        /// <see cref="TileNotNow"/>; null when the engine would take it. The engine's own rule,
+        /// read through <see cref="WholeHouseMoves.Lock"/>, so the lock and the refusal agree.
+        /// </summary>
+        public static string ActionLockReason(EpisodeState state, EpisodeCommandKind kind)
+        {
+            switch (WholeHouseMoves.Lock(state, kind))
+            {
+                case HouseMoveLock.Open: return null;
+                case HouseMoveLock.NoActionsLeft: return TileNoActionsLeft;
+                default: return TileNotNow;
+            }
+        }
+
         /// <summary>
         /// Where a rule break would leave the player on production's ladder, said before it is
         /// pressed: the strike it would be, or that it would be the last.

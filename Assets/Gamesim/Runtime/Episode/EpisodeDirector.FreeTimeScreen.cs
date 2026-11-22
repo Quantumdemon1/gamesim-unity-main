@@ -335,9 +335,9 @@ namespace Gamesim.Episode
             else hud.Eyebrow("THE WHOLE HOUSE", UiTheme.Muted);
             var tiles = new List<EpisodeHud.MoveTile>
             {
-                Tile(EpisodeHud.RallyHouseCaption, "Rally the house for a meeting. Moves everybody at once: mostly warmer, with one sceptic.",
+                Tile(state, EpisodeHud.RallyHouseCaption, "Rally the house for a meeting. Moves everybody at once: mostly warmer, with one sceptic.",
                     EpisodeCommandKind.HouseMeeting, "people", () => Commit(state, EpisodeCommandKind.HouseMeeting, text: EpisodeEngine.RallyTroops), "Risky"),
-                Tile(EpisodeHud.AirLaundryCaption, "No middle ground: each housemate comes down with you or against you."
+                Tile(state, EpisodeHud.AirLaundryCaption, "No middle ground: each housemate comes down with you or against you."
                         + (EpisodeEngine.EconomyRulesOn(state) ? " If the airing lands, record their reactions in your reads. No vote is promised." : ""),
                     EpisodeCommandKind.HouseMeeting, "target", () => Commit(state, EpisodeCommandKind.HouseMeeting, text: EpisodeEngine.AirDirtyLaundry), AiringRiskLabel(state)),
             };
@@ -348,16 +348,16 @@ namespace Gamesim.Episode
             if (asCards && FinalCaseEarlyAvailable(state)) tiles.Insert(JuryHouseAvailable(state) ? 2 : 1, FinalCaseTile(OpenFinalCase));
             // Listening in needs no one to talk to, so it sits here rather than in a conversation.
             if (state.Active.Count(c => !c.isPlayer) >= 2)
-                tiles.Add(Tile("Listen in on a conversation", "Works seven times in ten; the rest of the time somebody notices.",
+                tiles.Add(Tile(state, "Listen in on a conversation", "Works seven times in ten; the rest of the time somebody notices.",
                     EpisodeCommandKind.Eavesdrop, "eye", () => Commit(state, EpisodeCommandKind.Eavesdrop)));
             int left = WebSocialVocabulary.PurchaseCeiling - state.boughtActionPoints;
             if (left > 0)
             {
                 string purchases = left + (left == 1 ? " purchase" : " purchases") + " left.";
-                tiles.Add(Tile(EpisodeHud.BuyBurnOneCaption, "One more action for " + Mathf.Abs((int)WebSocialVocabulary.BurnOneCost)
+                tiles.Add(Tile(state, EpisodeHud.BuyBurnOneCaption, "One more action for " + Mathf.Abs((int)WebSocialVocabulary.BurnOneCost)
                         + " goodwill with a housemate you choose. " + purchases,
                     EpisodeCommandKind.BuyActionPoint, "exit", () => OpenActionPurchase(state), "Risky", "Gains 1 action"));
-                tiles.Add(Tile(EpisodeHud.BuySpreadCaption, "One more action for " + Mathf.Abs((int)WebSocialVocabulary.SpreadAllCost)
+                tiles.Add(Tile(state, EpisodeHud.BuySpreadCaption, "One more action for " + Mathf.Abs((int)WebSocialVocabulary.SpreadAllCost)
                         + " goodwill with every housemate. " + purchases,
                     EpisodeCommandKind.BuyActionPoint, "chat", () => Commit(state, EpisodeCommandKind.BuyActionPoint, text: WebSocialVocabulary.SpreadAll), null, "Gains 1 action"));
             }
@@ -366,20 +366,29 @@ namespace Gamesim.Episode
                 hud.Footnote("You have bought as much time as the house will give you this " + (EpisodeEngine.LeverRulesOn(state) ? "week" : "season") + ".");
         }
 
-        private EpisodeHud.MoveTile Tile(string caption, string description, EpisodeCommandKind kind, string glyph, System.Action choose,
-            string risk = null, string foot = "Cost: 1 action")
+        /// <summary>
+        /// One whole-house move as a tile. A move that costs an action is drawn locked, its caption
+        /// kept, with the reason in its foot where the cost was (<see cref="ActionLockReason"/>) when
+        /// the engine would refuse it now; buying time is never locked here, since it has its own rule.
+        /// </summary>
+        private EpisodeHud.MoveTile Tile(EpisodeState state, string caption, string description, EpisodeCommandKind kind, string glyph, System.Action choose,
+            string risk = null, string foot = TileCostsAction)
         {
             string category = Category(kind);
             string corner = risk ?? (category == "risky" ? "Risky" : category == "strategic" ? "Strategic" : category == "social" ? "Social" : category);
+            string reason = foot == TileCostsAction && (kind == EpisodeCommandKind.HouseMeeting || kind == EpisodeCommandKind.Eavesdrop)
+                ? ActionLockReason(state, kind) : null;
             return new EpisodeHud.MoveTile
             {
-                Caption = caption, Description = description, Corner = corner, CornerTint = RiskTint(corner), Glyph = glyph, Foot = foot, Choose = choose,
+                Caption = caption, Description = description, Corner = corner, CornerTint = RiskTint(corner), Glyph = glyph,
+                Foot = reason ?? foot, Choose = choose, Locked = reason != null,
             };
         }
 
-        /// <summary>A risk or category word's colour on a tile: risk in the warning amber, high risk in red, strategic in the action blue, social in the allied green.</summary>
+        /// <summary>A risk or category word's colour on a tile: risk in the warning amber, high risk in red (the airing's "Read · high risk" too, as on the board), strategic in the action blue, social in the allied green.</summary>
         private static Color RiskTint(string word)
         {
+            if (word != null && word.IndexOf("high risk", System.StringComparison.OrdinalIgnoreCase) >= 0) return UiTheme.Danger;
             switch (word)
             {
                 case "Risky": case "risky": case "Medium risk": return UiTheme.Joke;

@@ -34,5 +34,13 @@ namespace Gamesim.Presentation
         /// controls line already names A.
         /// </summary>
         public static bool ShowsClickLine(bool pad) => !pad;
+
+        /// <summary>
+        /// The device a card opens in the words of: the one the house last heard a press from, when the
+        /// card was handed a way to ask (the director's hints); otherwise the one it last saw itself.
+        /// A card's first frames ignore input, so without this a controller player's first card of
+        /// each kind would name the keyboard until the very press that closes it.
+        /// </summary>
+        public static bool StartsOnPad(System.Func<bool> padHints, bool lastSeen) => padHints != null ? padHints() : lastSeen;
     }
 }

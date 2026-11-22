@@ -113,6 +113,13 @@ namespace Gamesim.Presentation
         /// </summary>
         public event System.Action<float> SpeedChanged;
 
+        /// <summary>
+        /// The device the house last heard a press from, asked as the card opens (UI-UX plan U5): a
+        /// controller player's first card names A from its first frame, not only after a press on it.
+        /// Unset, the card starts on the device it last saw.
+        /// </summary>
+        public System.Func<bool> PadHints { get; set; }
+
         private CanvasGroup group;
         private RectTransform column, scrim, dotRow, banner, tiePip, tieMark;
         private TMP_Text eyebrow, title, progress, bannerText, host, controls, speedMark;
@@ -239,6 +246,7 @@ namespace Gamesim.Presentation
             bool evictedIsPlayer = false, ScreenSurface screen = null, float speed = 1f)
         {
             if (block == null || block.Count != 2 || votes == null || votes.Count == 0) return false;
+            usingPad = CeremonyCardWords.StartsOnPad(PadHints, usingPad);
 
             nominees = new List<Nominee>(block);
             // Reveal in a stable order, and never one that leaks the result: committed order is the

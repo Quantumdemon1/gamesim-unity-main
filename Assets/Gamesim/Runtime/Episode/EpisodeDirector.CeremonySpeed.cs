@@ -25,13 +25,24 @@ namespace Gamesim.Episode
         /// <summary>Keeps the speed a reveal was just set to, for the reveals after it.</summary>
         private void RememberCeremonySpeed(float speed) => ceremonySpeed = CeremonyPacing.SessionSpeed(speed);
 
-        /// <summary>Listens to every reveal the director attaches at its start for the player's Speed up.</summary>
+        /// <summary>
+        /// Listens to every reveal the director attaches at its start for the player's Speed up, and
+        /// hands each a way to ask which device the house last heard.
+        /// </summary>
         private void ListenForCeremonySpeed()
         {
             if (keyCeremony != null) keyCeremony.SpeedChanged += RememberCeremonySpeed;
             if (voteReveal != null) voteReveal.SpeedChanged += RememberCeremonySpeed;
             if (juryReveal != null) juryReveal.SpeedChanged += RememberCeremonySpeed;
             if (takeover != null) takeover.SpeedChanged += RememberCeremonySpeed;
+            // Each card opens in the words of the device the house last heard (UI-UX plan U5).
+            if (keyCeremony != null) keyCeremony.PadHints = CardsOnPad;
+            if (voteReveal != null) voteReveal.PadHints = CardsOnPad;
+            if (juryReveal != null) juryReveal.PadHints = CardsOnPad;
+            if (takeover != null) takeover.PadHints = CardsOnPad;
         }
+
+        /// <summary>The device the house's hints are in, which a ceremony card opens in.</summary>
+        private bool CardsOnPad() => padHints;
     }
 }

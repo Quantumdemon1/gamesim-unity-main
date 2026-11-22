@@ -96,6 +96,13 @@ namespace Gamesim.Presentation
         /// </summary>
         public event System.Action<float> SpeedChanged;
 
+        /// <summary>
+        /// The device the house last heard a press from, asked as the card opens (UI-UX plan U5): a
+        /// controller player's first card names A from its first frame, not only after a press on it.
+        /// Unset, the card starts on the device it last saw.
+        /// </summary>
+        public System.Func<bool> PadHints { get; set; }
+
         private CanvasGroup group;
         private RectTransform column, scrim, jurorRow, banner;
         private TMP_Text eyebrow, title, progress, countEyebrow, countLine, host, bannerText, controls, speedMark;
@@ -188,6 +195,7 @@ namespace Gamesim.Presentation
             if (pair == null || pair.Count != 2 || jury == null || jury.Count == 0) return false;
             if (winner != pair[0].Id && winner != pair[1].Id) return false;
             foreach (var juror in jury) if (juror.TargetId != pair[0].Id && juror.TargetId != pair[1].Id) return false;
+            usingPad = CeremonyCardWords.StartsOnPad(PadHints, usingPad);
 
             finalists = new List<Finalist>(pair);
             jurors = new List<Juror>(jury);

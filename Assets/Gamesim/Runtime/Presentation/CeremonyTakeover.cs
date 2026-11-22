@@ -124,6 +124,13 @@ namespace Gamesim.Presentation
         /// </summary>
         public event System.Action<float> SpeedChanged;
 
+        /// <summary>
+        /// The device the house last heard a press from, asked as the card opens (UI-UX plan U5): a
+        /// controller player's first card names A from its first frame, not only after a press on it.
+        /// Unset, the card starts on the device it last saw.
+        /// </summary>
+        public System.Func<bool> PadHints { get; set; }
+
         private RectTransform rule, glassGround;
         private TMP_Text dismiss;
         private CanvasGroup group;
@@ -313,6 +320,7 @@ namespace Gamesim.Presentation
             if (string.IsNullOrEmpty(TitleFor(kind))) return;
             // A card after a meeting on the set's screen plays where every card did: on the HUD frame.
             LeaveTheScreen();
+            usingPad = CeremonyCardWords.StartsOnPad(PadHints, usingPad);
             string name = string.IsNullOrEmpty(titleText) ? TitleFor(kind) : titleText;
             playingKind = kind;
 
@@ -750,6 +758,7 @@ namespace Gamesim.Presentation
         {
             if (screen == null || script == null || !script.Playable) return false;
             playingKind = CeremonySting.VetoKind;
+            usingPad = CeremonyCardWords.StartsOnPad(PadHints, usingPad);
             // The HUD's pieces are built for the group they share, and kept down while the meeting plays.
             Build();
             column.gameObject.SetActive(false);

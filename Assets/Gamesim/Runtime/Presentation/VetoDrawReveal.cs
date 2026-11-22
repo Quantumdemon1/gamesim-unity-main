@@ -89,6 +89,13 @@ namespace Gamesim.Presentation
         /// </summary>
         public event System.Action<float> SpeedChanged;
 
+        /// <summary>
+        /// The device the house last heard a press from, asked as the card opens (UI-UX plan U5): a
+        /// controller player's first card names A from its first frame, not only after a press on it.
+        /// Unset, the card starts on the device it last saw.
+        /// </summary>
+        public System.Func<bool> PadHints { get; set; }
+
         /// <summary>Matches the HUD's text size, so a large-text player gets a large card.</summary>
         public float FontScale { get; set; } = 1f;
 
@@ -149,6 +156,7 @@ namespace Gamesim.Presentation
             CeremonyPace pace = CeremonyPace.Suspenseful, float speed = 1f)
         {
             if (drawnPlayers == null || drawnPlayers.Count == 0) return false;
+            usingPad = CeremonyCardWords.StartsOnPad(PadHints, usingPad);
             drawn.Clear();
             drawn.AddRange(drawnPlayers);
             order.Clear();

@@ -77,6 +77,7 @@ namespace Gamesim.Episode
             {
                 drawReveal = VetoDrawReveal.Attach(gameObject);
                 drawReveal.SpeedChanged += RememberCeremonySpeed;
+                drawReveal.PadHints = CardsOnPad;
             }
             drawReveal.FontScale = TextScale;
             VetoDrawReveal.Player Entry(string id, string badge)

@@ -92,6 +92,13 @@ namespace Gamesim.Presentation
         /// </summary>
         public event System.Action<float> SpeedChanged;
 
+        /// <summary>
+        /// The device the house last heard a press from, asked as the card opens (UI-UX plan U5): a
+        /// controller player's first card names A from its first frame, not only after a press on it.
+        /// Unset, the card starts on the device it last saw.
+        /// </summary>
+        public System.Func<bool> PadHints { get; set; }
+
         private CanvasGroup group;
         private RectTransform column, scrim, slotRow, stage, faces, rosterRow, titleMark;
         private Image heldKey;
@@ -201,6 +208,7 @@ namespace Gamesim.Presentation
             IList<Person> roster = null, float speed = 1f)
         {
             if (safeHouseguests == null || block == null || block.Count == 0) return false;
+            usingPad = CeremonyCardWords.StartsOnPad(PadHints, usingPad);
 
             safe = new List<Person>(safeHouseguests);
             nominated = new List<Person>(block);

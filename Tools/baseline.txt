@@ -485,7 +485,22 @@
 # 11027 = 11019 (the competition show's edges on the new main) + the drop-outs and the tower show's 8 (10872 - 10864
 # on this branch): disjoint cases, so the floor is their sum (the competition landing of 22 November 2026). Counted
 # from the two sides.
-Gamesim.EditModeTests 11027
+# 10876 = 10859 (the recap, the finale page and the saves leftovers) + the competition show's edges' 17 (10852 - 10835
+# on this branch): disjoint cases, so the floor is their sum (the stacked landing of 22 November 2026). Counted from
+# 10884 = 10876 (the show's edges on top of the recap, finale and saves fixes) + the drop-outs and tower show's 8
+# (10860 - 10852 on this branch): disjoint cases, so the floor is their sum (the stacked landing of 22 November 2026).
+# 10897 = 10884 (the competition slices on top of the three fixes) + dialogue rules 3's 13 (10848 - 10835 on this
+# 10919 = 10897 (dialogue rules 3 on top of the competition slices and the three fixes) + the final two deal's 22
+# (10857 - 10835 on this branch): disjoint cases, so the floor is their sum (the stacked landing of 22 November 2026).
+# 10958 = 10919 + the main menu's season card: SaveHeaderTests 34 (all also in the dotnet subset) and
+# MainMenuSeasonCardSaveTests 5, 2026-11-22.
+# 11138 = 11027 (the new main, with the competition show's edges and the drop-outs) + the main menu's season card's
+# 111 (10958 - 10847 on this branch): disjoint cases, so the floor is their sum (the second wave's landing of 22
+# November 2026). Counted from the two sides.
+# 11066 = 11027 (the new main) + 39: the cases added by the main menu's season card. The 11138 above counted 72 cases
+# twice: those of the first wave's changes, which this branch held from an older chain and the new main holds too.
+# Corrected 2026-11-22; the floor is the count the test lists give.
+Gamesim.EditModeTests 11066
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and
@@ -750,7 +765,17 @@ Gamesim.EditModeTests 11027
 # 1686 = 1684 (the competition show's edges on the new main) + the drop-outs and the tower show's 2 (1680 - 1678 on
 # this branch): disjoint cases, so the floor is their sum (the competition landing of 22 November 2026). Counted from
 # the two sides.
-Gamesim.PlayModeTests 1686
+# 1682 = 1680 (the recap, the finale page and the saves leftovers) + the competition show's edges' 2 (1678 - 1676 on
+# 1684 = 1682 (the show's edges on top of the recap, finale and saves fixes) + the drop-outs and tower show's 2 (1680
+# - 1678 on this branch): disjoint cases, so the floor is their sum (the stacked landing of 22 November 2026). Counted
+# 1685 = 1684 + the main menu's season card: the 1 EpisodePlayModeTests.MainMenuSeasonCard case, 2026-11-22.
+# 1693 = 1686 (the new main, with the competition show's edges and the drop-outs) + the main menu's season card's 7
+# (1685 - 1678 on this branch): disjoint cases, so the floor is their sum (the second wave's landing of 22 November
+# 2026). Counted from the two sides.
+# 1687 = 1686 (the new main) + 1: the cases added by the main menu's season card. The 1693 above counted 6 cases
+# twice: those of the first wave's changes, which this branch held from an older chain and the new main holds too.
+# Corrected 2026-11-22; the floor is the count the test lists give.
+Gamesim.PlayModeTests 1687
 # The UMA build of the same assembly, read by a plan built without -WithoutUma. 1281 = the 1241 above + the
 # 40 tests that compile only under GAMESIM_UMA, as run at r1 (2026-10-16): in EpisodePlayModeTests,
 # GroundedFarewell 11, Creator 9, HouseLife 8, Emotes 3, OpeningCaptures 2, and one each in CreatorEntry,
@@ -939,7 +964,17 @@ Gamesim.PlayModeTests 1686
 # 1731 = 1729 (the competition show's edges on the new main) + the drop-outs and the tower show's 2 (1725 - 1723 on
 # this branch): disjoint cases, so the floor is their sum (the competition landing of 22 November 2026). Counted from
 # the two sides.
-Gamesim.PlayModeTests.UmaBuild 1731
+# 1727 = 1725 (the recap, the finale page and the saves leftovers) + the competition show's edges' 2 (1723 - 1721 on
+# 1729 = 1727 (the show's edges on top of the recap, finale and saves fixes) + the drop-outs and tower show's 2 (1725
+# - 1723 on this branch): disjoint cases, so the floor is their sum (the stacked landing of 22 November 2026). Counted
+# 1730 = 1729 + the main menu's season card: the 1 EpisodePlayModeTests.MainMenuSeasonCard case, 2026-11-22.
+# 1738 = 1731 (the new main, with the competition show's edges and the drop-outs) + the main menu's season card's 7
+# (1730 - 1723 on this branch): disjoint cases, so the floor is their sum (the second wave's landing of 22 November
+# 2026). Counted from the two sides.
+# 1732 = 1731 (the new main) + 1: the cases added by the main menu's season card. The 1738 above counted 6 cases
+# twice: those of the first wave's changes, which this branch held from an older chain and the new main holds too.
+# Corrected 2026-11-22; the floor is the count the test lists give.
+Gamesim.PlayModeTests.UmaBuild 1732
 # The UMA bodies: runs only where the GAMESIM_UMA define is set (the working tree and the D: copy).
 # 82 = the 89 run on 2026-10-15, less the 7 farewell probes moved to Gamesim.Uma.DiagnosticsPlayModeTests;
 # 85 = 82 + the 3 farewell readiness decision tests (UmaFarewellReadinessDecisionPlayModeTests, 2026-10-16);
@@ -1349,4 +1384,18 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # 23131 = 23123 (the competition show's edges on the new main) + the drop-outs and the tower show's 8 (22971 - 22963
 # on this branch): disjoint cases, so the floor is their sum (the competition landing of 22 November 2026). Counted
 # from the two sides.
-Gamesim.SimulationTests 23131
+# 22973 = 22956 (the recap, the finale page and the saves leftovers) + the competition show's edges' 17 (22951 - 22934
+# on this branch): disjoint cases, so the floor is their sum (the stacked landing of 22 November 2026). Counted from
+# 22981 = 22973 (the show's edges on top of the recap, finale and saves fixes) + the drop-outs and tower show's 8
+# (22959 - 22951 on this branch): disjoint cases, so the floor is their sum (the stacked landing of 22 November 2026).
+# 22994 = 22981 (the competition slices on top of the three fixes) + dialogue rules 3's 13 (22947 - 22934 on this
+# 23019 = 22994 (dialogue rules 3 on top of the competition slices and the three fixes) + the final two deal's 25
+# (22959 - 22934 on this branch): disjoint cases, so the floor is their sum (the stacked landing of 22 November 2026).
+# 23053 = 23019 + the main menu's season card: SaveHeaderTests 34, 2026-11-22.
+# 23238 = 23131 (the new main, with the competition show's edges and the drop-outs) + the main menu's season card's
+# 107 (23053 - 22946 on this branch): disjoint cases, so the floor is their sum (the second wave's landing of 22
+# November 2026). Counted from the two sides.
+# 23165 = 23131 (the new main) + 34: the cases added by the main menu's season card. The 23238 above counted 73 cases
+# twice: those of the first wave's changes, which this branch held from an older chain and the new main holds too.
+# Corrected 2026-11-22; the floor is the count the test lists give.
+Gamesim.SimulationTests 23165

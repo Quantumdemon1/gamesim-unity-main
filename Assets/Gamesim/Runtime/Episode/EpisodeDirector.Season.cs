@@ -154,7 +154,7 @@ namespace Gamesim.Episode
             // "Load a season" once any season is saved in the folder (menu slice 4): Settings on Saves.
             bool anySaved = EpisodeSaveStore.SeasonFiles(saveRoot).Count > 0;
             mainMenu.Show(canContinue, blockedRecovery ? message : null,
-                CloseMainMenu, NewSeason, OpenSettingsFromMenu, QuitGame, CareerLine(), anySaved ? (Action)OpenSavesFromMenu : null);
+                CloseMainMenu, NewSeason, OpenSettingsFromMenu, QuitGame, CareerStats(), anySaved ? (Action)OpenSavesFromMenu : null, ContinueCardFacts(canContinue));
             Render();
         }
 

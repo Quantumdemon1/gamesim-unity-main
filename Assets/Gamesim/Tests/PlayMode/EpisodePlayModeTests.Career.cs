@@ -90,8 +90,8 @@ namespace Gamesim.Tests.PlayMode
             director.OpenMainMenu();
             yield return null;
             yield return null;
-            Assert.That(Menu().GetComponentsInChildren<TMP_Text>(true).Select(t => t.text)
-                .Any(text => text.StartsWith("Your career:")), Is.False, "No seasons, no line.");
+            Assert.That(Menu().GetComponentsInChildren<TMP_Text>(false).Select(t => t.text)
+                .Any(text => text == CareerStrip.Heading), Is.False, "No seasons, no strip.");
             director.CloseMainMenu();
             yield return null;
 
@@ -102,10 +102,11 @@ namespace Gamesim.Tests.PlayMode
             director.OpenMainMenu();
             yield return null;
             yield return null;
-            var line = Menu().GetComponentsInChildren<TMP_Text>(true).Select(t => t.text)
-                .FirstOrDefault(text => text.StartsWith("Your career:"));
-            Assert.That(line, Is.Not.Null, "One finished season is a career.");
-            Assert.That(line, Does.Contain("1 season"));
+            // The career strip (change 10): a heading, then each figure over its label in words.
+            var texts = Menu().GetComponentsInChildren<TMP_Text>(false).Select(t => t.text).ToList();
+            Assert.That(texts, Does.Contain(CareerStrip.Heading), "One finished season is a career.");
+            Assert.That(texts, Does.Contain("season"), "Its count is labelled in words.");
+            Assert.That(texts, Does.Contain("median finish"));
             Assert.That(CastButtons(MainMenu.NewSeasonCaption), Has.Length.EqualTo(1), "The buttons are unchanged.");
             director.CloseMainMenu();
             yield return null;

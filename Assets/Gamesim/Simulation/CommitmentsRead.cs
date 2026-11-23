@@ -570,8 +570,9 @@ namespace Gamesim.Simulation
                         || FinalTwoAtStake(s);
                 // So is a keep-the-block deal (R4), by the veto, as a veto deal is.
                 case DecisionKinds.Veto:
-                    return DealStanding(s, DealKind.VetoUse, DealKind.SafetyAgreement, DealKind.TargetAgreement, DealKind.FinalThree, DealKind.VetoHold,
-                            DealKind.VetoIf)
+                    // Never a veto_if (DIALOGUE-PLAN §4.2 point 5): it is never the player's own word, so this dry run of the
+                    // player's own veto decision does not weigh it.
+                    return DealStanding(s, DealKind.VetoUse, DealKind.SafetyAgreement, DealKind.TargetAgreement, DealKind.FinalThree, DealKind.VetoHold)
                         || PromiseStanding(s, PromiseKind.Safety, PromiseKind.AllianceLoyalty) || OathStanding(s) || FinalTwoAtStake(s);
                 case DecisionKinds.Vote:
                     return DealStanding(s, DealKind.VoteSave, DealKind.VoteEvict) || PromiseStanding(s, PromiseKind.Vote) || OathStanding(s)

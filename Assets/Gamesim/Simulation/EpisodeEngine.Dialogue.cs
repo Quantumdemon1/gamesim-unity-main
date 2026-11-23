@@ -20,7 +20,7 @@ namespace Gamesim.Simulation
                 && LobbyAsk.TryDecode(command.text, out string ask, out _) && DialogueRules.ClosesOnPlea(active, ask);
             // Dialogue rules 4: an open veto question lapses at the competition's result, which these commands play (§4.1).
             bool result = active != null && active.occasionKind == DialogueVetoQuestion.Kind && current.phase == EpisodePhase.Veto
-                && (command.kind == EpisodeCommandKind.Compete || command.kind == EpisodeCommandKind.ThrowCompetition);
+                && VetoQuestionLapsesOn(command.kind);
             if (!choice && !advance && !lobby && !result) return null;
             Require(DialogueRules.On(current), "Paid dialogue is not enabled for this season.");
             Require(pendingDialogue == null && ReferenceEquals(candidate, applyingDialogueCandidate)
@@ -97,7 +97,7 @@ namespace Gamesim.Simulation
                         Require(SocialActionsSpent(original) < SocialActionBudget(original), "You have no conversations left this week.");
                     }
                     else Require((request.kind == EpisodeCommandKind.Advance || originalEpisode.occasionKind == DialogueVetoQuestion.Kind
-                            && (request.kind == EpisodeCommandKind.Compete || request.kind == EpisodeCommandKind.ThrowCompetition))
+                            && VetoQuestionLapsesOn(request.kind))
                         && original.phase == DialogueRules.PhaseOf(originalEpisode),
                         "Only the campaign boundary can lapse this conversation.");
                 }

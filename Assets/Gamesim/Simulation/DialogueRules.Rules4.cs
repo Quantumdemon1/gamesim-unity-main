@@ -26,6 +26,12 @@ namespace Gamesim.Simulation
         /// <summary>The words the veto question is refused in once it has nothing left to ask.</summary>
         public const string VetoQuestionRefusal = "The veto competition is no longer ahead of you.";
 
+        /// <summary>The refusal when the player is not on the block: only a nominee has the veto question to ask.</summary>
+        public const string VetoQuestionNotNominated = "You can ask about the veto only while you are on the block.";
+
+        /// <summary>The refusal when the houseguest asked is not another veto player still in the house.</summary>
+        public const string VetoQuestionNotAVetoPlayer = "Ask a houseguest who is playing in this veto.";
+
         /// <summary>The prefix of a conditional promise's id. No other deal prefix begins this way (§4.2 point 2).</summary>
         public const string IfWinPrefix = "deal-ifwin-";
 
@@ -56,10 +62,13 @@ namespace Gamesim.Simulation
         private static bool VetoQuestionEligible(EpisodeState s, string npcId, out string error)
         {
             if (s.phase != EpisodePhase.Veto || s.competitionResolved || s.Find(s.playerId)?.status != ContestantStatus.Active
-                || s.nominees == null || !s.nominees.Contains(s.playerId) || s.vetoPlayers == null
-                || string.IsNullOrEmpty(npcId) || npcId == s.playerId || !s.vetoPlayers.Contains(npcId)
-                || s.Find(npcId)?.status != ContestantStatus.Active)
+                || s.vetoPlayers == null)
                 return Fail(out error, VetoQuestionRefusal);
+            if (s.nominees == null || !s.nominees.Contains(s.playerId))
+                return Fail(out error, VetoQuestionNotNominated);
+            if (string.IsNullOrEmpty(npcId) || npcId == s.playerId || !s.vetoPlayers.Contains(npcId)
+                || s.Find(npcId)?.status != ContestantStatus.Active)
+                return Fail(out error, VetoQuestionNotAVetoPlayer);
             error = null;
             return true;
         }

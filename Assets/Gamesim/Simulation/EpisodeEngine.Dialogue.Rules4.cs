@@ -6,6 +6,13 @@ namespace Gamesim.Simulation
     public sealed partial class EpisodeEngine
     {
         /// <summary>
+        /// The commands that play the veto competition's result, at which an open veto question lapses (DIALOGUE-PLAN §4.1):
+        /// playing it, throwing it, or the competition screen's Simulate.
+        /// </summary>
+        internal static bool VetoQuestionLapsesOn(EpisodeCommandKind kind) => kind == EpisodeCommandKind.Compete
+            || kind == EpisodeCommandKind.ThrowCompetition || kind == EpisodeCommandKind.SimulateCompetition;
+
+        /// <summary>
         /// Dialogue rules 4 at the veto meeting's opening (DIALOGUE-PLAN §4.2 point 3): the week's veto occasion - the holder,
         /// the Head of Household, the veto players and the nominees as the result stands - and every conditional promise whose
         /// condition the result did not meet lapses, neutrally: its maker did not win, or the player is off the block or out of

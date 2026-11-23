@@ -108,12 +108,15 @@ namespace Gamesim.Simulation
                 int window = holder ? Windows.AfterNominations : Windows.AfterVeto;
                 int before = original.windowActions[window];
                 string occasion = DialogueRules.OccasionNow(original, request.targetId);
+                // From rules 4 the nominee's grant, while it is open, pays in place of the action (DialogueRules.Grants.cs).
+                var grant = DialogueRules.GrantFor(original, kind);
                 var episode = new DialogueEpisodeState { id = cycle.id, npcId = request.targetId, occasionKind = kind,
                     occasionId = occasion, contentVersion = holder ? DialogueHolderAppeal.ContentVersion : DialogueCampaignTrees.ContentVersion,
                     week = state.week, window = window, startedPhase = original.phase,
                     startedRevision = revision, startedSequence = sequence, entryEventId = opening.id,
-                    entry = new DialogueEntryReceiptState { kind = DialogueRules.ActionEntry, revision = revision,
-                        windowActionBefore = before, windowActionAfter = checked(before + 1) } };
+                    entry = grant != null ? GrantEntry(grant, before)
+                        : new DialogueEntryReceiptState { kind = DialogueRules.ActionEntry, revision = revision,
+                            windowActionBefore = before, windowActionAfter = checked(before + 1) } };
                 state.dialogue.episodes.Add(episode); expected.episodes.Add(episode.Clone());
                 future.Add(episode, DialogueRevisionField.Started); future.Add(episode.entry, DialogueRevisionField.Entry);
                 if (holder)
@@ -129,7 +132,7 @@ namespace Gamesim.Simulation
                     Step(state, episode, cycle, DialogueCampaignTrees.OpenCase, DialogueCampaignTrees.Listening, false,
                         history ? DialogueCampaignTrees.ApproachHistory : DialogueCampaignTrees.Approach);
                 }
-                SpendSocialAction(state);
+                if (grant != null) UseGrant(state, grant.id, episode.id); else SpendSocialAction(state);
             }
 
             private void ChooseRules3(EpisodeState state)

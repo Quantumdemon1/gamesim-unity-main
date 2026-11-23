@@ -120,7 +120,8 @@ namespace Gamesim.Simulation
                 return Fail(out error, RoomRefusal);
             if (s.houseEvents.Any(e => !e.resolved && HouseEventKind.Asks(e.kind)))
                 return Fail(out error, "Answer the existing house moment first.");
-            if (EpisodeEngine.SocialActionsSpent(s) >= EpisodeEngine.SocialActionBudget(s))
+            // From rules 4 the nominee's grant pays in place of the action (DialogueRules.Grants.cs); never for the veto question.
+            if (EpisodeEngine.SocialActionsSpent(s) >= EpisodeEngine.SocialActionBudget(s) && GrantFor(s, kind) == null)
                 return Fail(out error, "You have no conversations left this week.");
             return true;
         }
@@ -246,7 +247,9 @@ namespace Gamesim.Simulation
             if (e.entry == null || !AcceptsFunding(version, e.entry.kind))
                 return Fail(out error, "This version funds a conversation with the window's action only.");
             string tick = EntryTick(e.entry, e.week, e.window);
-            if (tick == null || e.entry.grantId != null
+            // From rules 4 a nominee's grant may pay instead of the action (DialogueRules.Grants.cs); AcceptsFunding refuses it below.
+            if (e.entry.kind == GrantEntry) { if (!GrantEntryRules4(s, e, pending, ticks, out error)) return false; }
+            else if (tick == null || e.entry.grantId != null
                 || e.entry.revision != e.startedRevision || !Revision(s, e.entry.revision, e.entry, DialogueRevisionField.Entry, pending)
                 || e.entry.windowActionBefore < 0 || e.entry.windowActionAfter > MaximumAction
                 || (long)e.entry.windowActionAfter != (long)e.entry.windowActionBefore + 1

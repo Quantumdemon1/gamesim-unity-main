@@ -128,6 +128,7 @@ namespace Gamesim.Tests.EditMode
             var rules3 = stop.State.Clone();
             rules3.dialogueRulesVersion = DialogueRules.Rules3;
             rules3.dialogue.vetoOccasions.Clear(); // Earlier weeks' occasions are rules 4's own rows.
+            rules3.dialogue.grants.Clear(); // So is the nominee's grant (D5a).
             Assert.That(EpisodeValidation.TryValidate(rules3, out string error), Is.True, error);
             Assert.That(DialogueRules.CanAskVetoQuestion(rules3, npc), Is.False);
             Assert.That(DialogueRules.TryBuildEntryCommand(rules3, npc, out _), Is.False, "Rules 3 has no conversation in the veto competition.");
@@ -323,6 +324,7 @@ namespace Gamesim.Tests.EditMode
                     bad.dialogue.episodes.Clear();
                     bad.storylines.RemoveAll(c => c.templateId == DialogueVetoQuestion.TemplateId);
                     bad.houseEvents.RemoveAll(e => e.contentId != null && e.contentId.StartsWith(DialogueVetoQuestion.TemplateId + ":", StringComparison.Ordinal));
+                    bad.dialogue.grants.Clear(); // The nominee's grant (D5a) is rules 4's too: the occasion alone is the defect.
                     bad.dialogueRulesVersion = DialogueRules.Rules3;
                     break;
                 default: deal.status = DealStatus.Fulfilled; deal.settledWeek = bad.week; break;

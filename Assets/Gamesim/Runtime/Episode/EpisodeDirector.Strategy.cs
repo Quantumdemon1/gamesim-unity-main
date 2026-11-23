@@ -77,7 +77,7 @@ namespace Gamesim.Episode
             && lobbyDeciderId == npc.id && lobbyAsk != null
             && StrategyRules.Pleas(state, npc.id).Count > 0
             && !state.lobbies.Any(l => l.week == state.week && l.phase == state.phase && l.deciderId == npc.id)
-            && EpisodeEngine.SocialActionsSpent(state) < EpisodeEngine.SocialActionBudget(state)
+            && (EpisodeEngine.SocialActionsSpent(state) < EpisodeEngine.SocialActionBudget(state) || DialogueRules.OnTheHouseWith(state, npc.id))
             && StrategyRules.CanLobby(state, npc.id, lobbyAsk, lobbySubjectId, out _);
 
         /// <summary>
@@ -95,7 +95,10 @@ namespace Gamesim.Episode
                 hud.Paragraph("You have had your plea with " + npc.name + ". They were " + had.response + ".");
                 return;
             }
-            if (EpisodeEngine.SocialActionsSpent(state) >= EpisodeEngine.SocialActionBudget(state))
+            bool broke = EpisodeEngine.SocialActionsSpent(state) >= EpisodeEngine.SocialActionBudget(state);
+            // Dialogue rules 4 (D5a): a nominee's conversation on the house opens with no action left (EpisodeDirector.Grants.cs).
+            bool onTheHouse = DialogueRules.OnTheHouseWith(state, npc.id);
+            if (broke && !onTheHouse)
             {
                 hud.Paragraph("You have no actions left this week to spend on a plea.");
                 return;
@@ -119,6 +122,7 @@ namespace Gamesim.Episode
                 bool inTheTalk = paidCampaign && DialogueRules.PleaInOpenConversation(state, decider);
                 if (withoutTalk) hud.Paragraph(NoConversationLine(npc.name, why));
                 else if (inTheTalk) hud.Paragraph(OpenConversationLine(npc.name));
+                else if (paidCampaign && onTheHouse) hud.Paragraph(OnTheHouseEntryLine);
                 else if (paidCampaign)
                     hud.Paragraph("A desperate plea starts a conversation for one action. Its replies and final plea cost no further actions; you can walk away and return.");
                 foreach (string approach in LobbyApproach.All)
@@ -127,8 +131,10 @@ namespace Gamesim.Episode
                     string tag = KnownOdds.Plea(state, decider, ask, subject, how).word
                         + (how == LobbyApproach.Deal ? " · " + DealTag : how == LobbyApproach.Pressure ? " · can backfire" : "");
                     bool entry = paidCampaign && how == LobbyApproach.Emotional && !withoutTalk;
-                    bool available = !entry || DialogueRules.TryBuildEntryCommand(state, decider, out _);
+                    bool available = entry ? DialogueRules.TryBuildEntryCommand(state, decider, out _) : !broke;
                     if (withoutTalk && how == LobbyApproach.Emotional) tag += " · " + NoConversationTag;
+                    if (entry && onTheHouse) tag += " · " + OnTheHouseTag;
+                    string lockedTag = broke && !entry ? NoActionTag : OpenConversationTag;
                     string caption = EpisodeHud.LobbyApproachCaption(how, forYourself);
                     var button = available ? hud.Action(caption, () =>
                     {
@@ -142,13 +148,14 @@ namespace Gamesim.Episode
                     }) : hud.LockedAction(caption);
                     // The one locked row is the desperate plea of the voter whose conversation is open (inTheTalk): every
                     // other refusal makes it the one-shot plea above. Its tag points to the talk; the caption stays as it is.
-                    hud.Tag(button, available ? tag : OpenConversationTag);
+                    hud.Tag(button, available ? tag : lockedTag);
                 }
                 // Back to what to ask is the page's one way back, at the column's top left (ConversationAsksBackCaption):
                 // the "Ask something else" row that stood here was a second.
                 return;
             }
             hud.Paragraph(LobbyLine(state, npc));
+            if (onTheHouse) hud.Paragraph(DialogueRules.GrantLine);
             foreach (var plea in StrategyRules.Pleas(state, npc.id))
             {
                 string ask = plea.ask, subject = plea.subjectId, decider = npc.id;

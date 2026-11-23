@@ -34,7 +34,7 @@ namespace Gamesim.Simulation
         {
             if (used && replacement == s.playerId) GrantTheNominee(s, DialogueRules.FromReplacement);
             SettleConditionalVeto(s, used, saved, replacement);
-            if (pending?.SealedFor(s) != null) pending.AdmitHouseRows(s);
+            if (DialogueRules.VetoQuestionOn(s) && pending?.SealedFor(s) != null) pending.AdmitHouseRows(s);
         }
 
         internal sealed partial class PendingDialogueCommand
@@ -56,16 +56,38 @@ namespace Gamesim.Simulation
             }
 
             /// <summary>
-            /// The house's own dialogue rows (veto occasions and grants) as the command left them, admitted to the expected
-            /// delta after the conversation's lapse was sealed: they are the house's, never the conversation's, and the
-            /// whole-state validator judges them. Only for a command whose conversation has lapsed and been sealed.
+            /// The house's own dialogue rows written after the conversation's lapse was sealed, admitted to the expected
+            /// delta: they are the house's, never the conversation's, and the whole-state validator judges them. Only for a
+            /// command whose conversation has lapsed and been sealed; see <see cref="AdmitTheHousesRows"/>.
             /// </summary>
             internal void AdmitHouseRows(EpisodeState state)
             {
                 Require(Bound(state) && sealedDelta && Same(source, original), "The house's rows are not this command's to admit.");
-                expected.vetoOccasions = state.dialogue.vetoOccasions?.Select(o => o?.Clone()).ToList();
-                expected.grants = state.dialogue.grants?.Select(g => g?.Clone()).ToList();
+                AdmitTheHousesRows(expected, state);
             }
+        }
+
+        /// <summary>
+        /// The two rows the house writes at its veto decision, and only those, copied from the candidate into the expected
+        /// delta: the week's veto occasion's decision (when the expected occasion has none yet) and this week's nominee grant
+        /// (when the expected delta has none). Every other row stays as the command expected it, so the check still proves
+        /// the lapsing conversation left them alone. Nothing below dialogue rules 4.
+        /// </summary>
+        internal static void AdmitTheHousesRows(DialogueState expected, EpisodeState state)
+        {
+            if (expected == null || state?.dialogue == null || !DialogueRules.VetoQuestionOn(state) && !DialogueRules.GrantsOn(state)) return;
+            var occasion = state.dialogue.vetoOccasions?.LastOrDefault(o => o != null && o.week == state.week);
+            int at = expected.vetoOccasions == null ? -1 : expected.vetoOccasions.FindLastIndex(o => o != null && o.week == state.week);
+            if (occasion?.decision != null && at >= 0 && expected.vetoOccasions[at].decision == null)
+            {
+                var admitted = expected.vetoOccasions[at].Clone();
+                admitted.decision = occasion.decision.Clone();
+                expected.vetoOccasions[at] = admitted;
+            }
+            string id = DialogueRules.GrantId(state.week, DialogueRules.NomineeRole);
+            var grant = state.dialogue.grants?.FirstOrDefault(g => g != null && g.id == id);
+            if (grant != null && expected.grants != null && !expected.grants.Any(g => g != null && g.id == id))
+                expected.grants.Add(grant.Clone());
         }
     }
 }

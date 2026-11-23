@@ -1260,4 +1260,5 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # 23015 = 22994 + dialogue D4's 21 shared cases: DialogueRules4Tests 20 and the ladder's rules-4 schema case 1, 2026-11-22.
 # 23019 = 23015 + the D4 review's fixes: the same 4 DialogueRules4ReviewTests cases, 2026-11-22.
 # 23033 = 23019 + dialogue D5a, the nominee's grant: the same 14 DialogueRules4GrantTests cases, 2026-11-22.
-Gamesim.SimulationTests 23033
+# 23035 = 23033 + the D5a review's fix: 2 DialogueRules4GrantAdmitTests cases, dotnet only (internal), 2026-11-22.
+Gamesim.SimulationTests 23035

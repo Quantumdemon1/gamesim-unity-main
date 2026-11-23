@@ -65,6 +65,7 @@
     <Compile Include="$(EditMode)DialogueRules4ReviewTests.cs" />
     <!-- Dialogue rules 4's nominee grant (DIALOGUE-PLAN D5a): one conversation a week on the house. -->
     <Compile Include="$(EditMode)DialogueRules4GrantTests.cs" />
+    <Compile Include="$(EditMode)DialogueRules4GrantAdmitTests.cs" />
     <!-- The seasons the rules-2 HUD's PlayMode tests replay, proven headlessly (EpisodePlayModeTests.DialogueRules2Hud). -->
     <Compile Include="$(EditMode)DialogueRules2HudWitnessTests.cs" />
     <!-- NpcInvitation.cs is included by the whole Simulation glob above. -->

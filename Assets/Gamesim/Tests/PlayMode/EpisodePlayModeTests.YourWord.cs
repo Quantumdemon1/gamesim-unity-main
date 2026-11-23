@@ -884,6 +884,12 @@ namespace Gamesim.Tests.PlayMode
 
             ButtonWithCaption(breakingCaption).onClick.Invoke();
             yield return null; yield return null;
+            // The press picks the finalist to take; the commit under the screen that names the result makes it
+            // (EpisodeDirector.PickThenConfirm.cs).
+            Assert.That(director.Snapshot.revision, Is.EqualTo(seeded.revision), "The pick commits nothing,");
+            Assert.That(director.DecisionPickCommitCaption, Is.Not.Null, "and a commit names the result.");
+            ButtonWithCaption(director.DecisionPickCommitCaption).onClick.Invoke();
+            yield return null; yield return null;
             var after = director.Snapshot;
             Assert.That(after.revision, Is.EqualTo(seeded.revision + 1), "One command.");
             Assert.That(after.deals.Single(d => d.id == "deal-final-word").status, Is.EqualTo(DealStatus.Broken),

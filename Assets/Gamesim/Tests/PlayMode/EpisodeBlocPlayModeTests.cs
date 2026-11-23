@@ -340,6 +340,14 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(button.IsInteractable(), Is.True, caption);
             button.onClick.Invoke();
             yield return null; yield return null;
+            // The veto meeting, the ballot and the final choice: the press picks, and the commit under the screen that
+            // names the result makes it (EpisodeDirector.PickThenConfirm.cs). Every other command commits on the press.
+            if (director.DecisionPickCommitCaption != null)
+            {
+                Assert.That(director.Snapshot.revision, Is.EqualTo(revision), caption + ": the pick commits nothing");
+                ButtonWithCaption(director.DecisionPickCommitCaption).onClick.Invoke();
+                yield return null; yield return null;
+            }
             Assert.That(director.Snapshot.revision, Is.EqualTo(revision + 1), caption + ": " + director.StatusMessage);
         }
 

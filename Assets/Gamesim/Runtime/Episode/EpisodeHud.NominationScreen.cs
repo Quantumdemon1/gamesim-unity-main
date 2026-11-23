@@ -398,15 +398,17 @@ namespace Gamesim.Episode
 
         /// <summary>
         /// A story option's "who?": the people it can name as a grid of faces and names, each named
-        /// and captioned by the name, fitted to the step's room less <paramref name="reserveBelow"/>
-        /// for the rows after it. It was a column of up to fifteen rows, each with the player's own
-        /// trust reading, so each cell keeps that reading under the name.
+        /// and captioned by the name, fitted to all the room the step has left: it is the step's last
+        /// row, since its way back went up to the panel's top left (EpisodeDirector.StoryChoicesBack),
+        /// and the room the column kept under it for that row is the grid's again. It was a column of
+        /// up to fifteen rows, each with the player's own trust reading, so each cell keeps that
+        /// reading under the name.
         /// </summary>
-        public void NominationPeople(IList<(string Id, string Caption, Action Press)> people, float reserveBelow)
+        public void NominationPeople(IList<(string Id, string Caption, Action Press)> people)
         {
             if (content == null || people == null || people.Count == 0) return;
             float s = FontScale, gap = 10f * s, column = ContentWidth();
-            float fit = Mathf.Max(0f, NominationRoomLeft() - reserveBelow);
+            float fit = Mathf.Max(0f, NominationRoomLeft());
             SolveCardGrid(people.Count, column, fit, 200f * s, 320f * s, 52f * s, 64f * s, gap, out float width, out float height, out int columns);
             int rows = Mathf.CeilToInt(people.Count / (float)columns);
             var grid = new GameObject(StoryPeopleName, typeof(RectTransform), typeof(GridLayoutGroup), typeof(LayoutElement)).GetComponent<RectTransform>();

@@ -506,11 +506,12 @@ namespace Gamesim.Episode
             if (open || Compact) helpExpanded = false;
             RightColumn(state);
 
-            // Five lines, not four, because click-to-follow had to be added without lengthening a
-            // line: this box is a fixed 258 wide and the accessibility suite fails any copy that
-            // clips at either text size. Thirty-five characters is the proven ceiling — a forty
-            // character line is what broke it — so the panel grew downward instead. It stays in the
-            // lower right, well clear of the ceremony banner that must not overlap the chrome.
+            // Seven lines on the keyboard (the lead's ruling L14: the map, the notebook, your moves and
+            // the follow keys joined the five), and the box grows with them: it is a fixed 258 wide and
+            // the accessibility suite fails any copy that clips at any text size. Thirty-five
+            // characters is the proven ceiling — a forty character line is what broke it — so the card
+            // grows downward, by its lines at the size the text is drawn (ExpandedHelpHeight). It stays
+            // in the lower right, well clear of the ceremony banner that must not overlap the chrome.
             BuildExplorationHelp();
             // Spans the viewport with margins instead of assuming a 1200px width, so the caption
             // still fits when the window is narrower than the reference resolution.
@@ -624,7 +625,9 @@ namespace Gamesim.Episode
             // LiberationSans SDF is a static atlas without U+2191/U+2193, so the arrow glyphs
             // would render as tofu. Words also read better to a screen reader.
             // "Scroll for more" is said only of a panel that scrolls (FitStandardPanel).
-            var controlHint = FixedText(modal,PanelHintScrollCopy,15,UiTheme.Muted,new Vector2(24,-72),new Vector2(550,26));
+            // In the device's words (U7); RewordPanelHint keeps it so as the panel fits and the device changes.
+            panelScrolls = true;
+            var controlHint = FixedText(modal,InputGlossary.PanelHint(padHints, true),15,UiTheme.Muted,new Vector2(24,-72),new Vector2(550,26));
             controlHint.name = PanelHintName;
             var scrollRoot = new GameObject("Episode scroll",typeof(RectTransform),typeof(ScrollRect)); scrollRoot.transform.SetParent(modal,false);
             var scrollRect = (RectTransform)scrollRoot.transform; Stretch(scrollRect,20,104,20,22);
@@ -1960,11 +1963,52 @@ namespace Gamesim.Episode
         {
             if (string.IsNullOrEmpty(name)) return;
             var chip = Chrome(FollowChipName, canvas.transform);
-            Anchor(chip, new Vector2(.5f, 1), new Vector2(.5f, 1), new Vector2(0, -78), new Vector2(360, 34));
-            var text = FixedText(chip, "FOLLOWING · " + name.ToUpperInvariant() + "   F recenter · ] next", 13, UiTheme.Accent,
-                new Vector2(12, -8), new Vector2(336, 20));
+            Anchor(chip, new Vector2(.5f, 1), new Vector2(.5f, 1), new Vector2(0, -78), new Vector2(FollowChipWidth, 34));
+            var text = FixedText(chip, FollowChipWords(name), 13, UiTheme.Accent,
+                new Vector2(12, -8), new Vector2(FollowChipWidth - 24f, 20));
             text.alignment = TextAlignmentOptions.Center;
             ClickThrough(chip);
+            followChipText = text;
+            followChipName = name;
+            FitFollowChip();
+        }
+
+        /// <summary>The follow chip's width as it always was, which it keeps whenever its words fit.</summary>
+        private const float FollowChipWidth = 360f;
+        /// <summary>The widest the chip grows for a long name with the pad's longer keys; past it the words shrink to fit.</summary>
+        private const float FollowChipWidest = 520f;
+
+        /// <summary>The newest follow chip's words and whom they name, so a device change rewords it in place.</summary>
+        private TMP_Text followChipText;
+        private string followChipName;
+
+        /// <summary>"FOLLOWING · MAYA   F recenter · ]/[ follow", the keys in the device last used (InputGlossary.FollowHint).</summary>
+        private string FollowChipWords(string name) => "FOLLOWING · " + name.ToUpperInvariant() + "   " + InputGlossary.FollowHint(padHints);
+
+        /// <summary>The follow chip in the device last used, reworded in place and widened as its words need (RewordPanelHint).</summary>
+        private void RewordFollowChip()
+        {
+            if (followChipText == null || string.IsNullOrEmpty(followChipName)) return;
+            string said = Localisation.Text(FollowChipWords(followChipName));
+            if (followChipText.text == said) return;
+            followChipText.text = said;
+            FitFollowChip();
+        }
+
+        /// <summary>
+        /// Widens the chip, centred where it stands, to hold its words on one line at the size they
+        /// are drawn: never narrower than it always was, never wider than <see cref="FollowChipWidest"/>.
+        /// </summary>
+        private void FitFollowChip()
+        {
+            if (followChipText == null) return;
+            var chip = followChipText.rectTransform.parent as RectTransform;
+            if (chip == null) return;
+            float needed = followChipText.GetPreferredValues(followChipText.text, float.PositiveInfinity, 20f).x + 24f + 8f;
+            float width = Mathf.Clamp(needed, FollowChipWidth, FollowChipWidest);
+            if (Mathf.Abs(chip.sizeDelta.x - width) > .5f) chip.sizeDelta = new Vector2(width, chip.sizeDelta.y);
+            var words = followChipText.rectTransform;
+            if (Mathf.Abs(words.sizeDelta.x - (width - 24f)) > .5f) words.sizeDelta = new Vector2(width - 24f, words.sizeDelta.y);
         }
 
         public void ChallengeMeter()

@@ -19,10 +19,10 @@ namespace Gamesim.Episode
     /// </summary>
     public sealed partial class EpisodeHud
     {
-        /// <summary>The hint over the Standard panel, and its two readings.</summary>
+        /// <summary>The hint over the Standard panel, and its two readings on the keyboard (a pad's: InputGlossary.PanelHint).</summary>
         public const string PanelHintName = "Panel control hint";
-        public const string PanelHintCopy = "Tab / Up / Down select · Enter confirm";
-        public const string PanelHintScrollCopy = PanelHintCopy + " · Scroll for more";
+        public const string PanelHintCopy = InputGlossary.KeyboardPanelHint;
+        public const string PanelHintScrollCopy = InputGlossary.KeyboardPanelHintScroll;
         /// <summary>Peer choices, two to a row.</summary>
         public const string ChoiceRowName = "Choice row";
 
@@ -208,9 +208,29 @@ namespace Gamesim.Episode
             // Said of a hidden hint too: a layout that stands the hint down (the strategy stage, a
             // screen of its own) still has a scroll, and the words it built with - "Scroll for more"
             // - are not true of one that fits.
-            var hint = modal.Find(PanelHintName);
+            panelScrolls = content.rect.height > modalScroll.viewport.rect.height + .5f;
+            RewordPanelHint();
+        }
+
+        /// <summary>Whether the open panel scrolls, as FitStandardPanel last found it: a new panel is built saying it does.</summary>
+        private bool panelScrolls = true;
+
+        /// <summary>
+        /// The one place the panel's control hint and the follow chip are worded (U7): in the device
+        /// last used - the keyboard's words as they always read, or the pad's buttons - and, for the
+        /// hint, whether the panel scrolls. Called as a panel is fitted and as the device changes
+        /// (SetPadHints), so both reword in place. Said of a hidden hint and a hidden chip too: a
+        /// layout that stands either down may show it again.
+        /// </summary>
+        private void RewordPanelHint()
+        {
+            var hint = modal != null ? modal.Find(PanelHintName) : null;
             if (hint != null && hint.GetComponent<TMP_Text>() is TMP_Text words)
-                words.text = Localisation.Text(content.rect.height > modalScroll.viewport.rect.height + .5f ? PanelHintScrollCopy : PanelHintCopy);
+            {
+                string said = Localisation.Text(InputGlossary.PanelHint(padHints, panelScrolls));
+                if (words.text != said) words.text = said;
+            }
+            RewordFollowChip();
         }
 
         /// <summary>A rect in the canvas's own units, from its bottom-left corner.</summary>

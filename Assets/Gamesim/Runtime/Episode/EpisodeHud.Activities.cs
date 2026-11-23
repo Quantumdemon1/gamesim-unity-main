@@ -545,8 +545,28 @@ namespace Gamesim.Episode
             MarkChromeChanged();
         }
 
-        /// <summary>The controls card's height while it is open: the toggle's row over the five lines of the card.</summary>
-        private const float ExpandedHelpHeight = 180f;
+        /// <summary>The card's words: their size at the standard text, and the room each line takes, as a share of that size.</summary>
+        private const int HelpCardFont = 16;
+        private const float HelpLineRoom = 1.3f;
+        /// <summary>The toggle's row over the card's words, and the margin under them.</summary>
+        private const float HelpCardTop = 50f, HelpCardFoot = 8f;
+
+        /// <summary>
+        /// The room the card's words take: the longer card's lines (seven on the keyboard, the
+        /// lead's ruling L14) at the size the text is drawn, so the card grows with the text size and
+        /// a device change never resizes it.
+        /// </summary>
+        private float HelpWordsHeight => InputGlossary.HelpCardLines * HelpCardFont * FontScale * HelpLineRoom;
+
+        /// <summary>The controls card's height while it is open: the toggle's row over the card's lines.</summary>
+        private float ExpandedHelpHeight => HelpCardTop + HelpWordsHeight + HelpCardFoot;
+
+        /// <summary>
+        /// Whether the live feed gave way to the open controls card. The card grows with the text,
+        /// so on a 900-tall canvas at the Larger and the Largest text no folded column with the feed
+        /// clears it (FoldColumn): the feed goes while the card is open and comes back as it closes.
+        /// </summary>
+        public bool LiveFeedGivesWayToTheControls => helpExpanded && columnFold.HasValue && columnFold.Value.FeedShed;
 
         private void BuildExplorationHelp()
         {
@@ -595,7 +615,7 @@ namespace Gamesim.Episode
             // The card's words follow the device last used (PLAN A, A4): the keyboard's as they
             // always read, or the pad's buttons, swapped in place when the device changes.
             helpText = helpExpanded
-                ? FixedText(explorationHelp, InputGlossary.HelpCard(padHints), 16, Paper, new Vector2(14, -50), new Vector2(258, 122))
+                ? FixedText(explorationHelp, InputGlossary.HelpCard(padHints), HelpCardFont, Paper, new Vector2(14, -HelpCardTop), new Vector2(258, HelpWordsHeight))
                 : null;
         }
     }

@@ -172,6 +172,7 @@ namespace Gamesim.Presentation
                 case CompetitionMiniGames.Kind.Words: BuildWords(); break;
                 // The ring tower's board is the yard's stacks drawn small; the stacks themselves stand behind it.
                 case CompetitionMiniGames.Kind.Tower: BuildTower(); break;
+                case CompetitionMiniGames.Kind.Trivia: BuildTrivia(); break;
             }
             BuildOverlay();
             BuildFinishPlate();
@@ -427,6 +428,7 @@ namespace Gamesim.Presentation
                 case CompetitionMiniGames.Kind.Dice: RefreshDice(); break;
                 case CompetitionMiniGames.Kind.Words: RefreshWords(); break;
                 case CompetitionMiniGames.Kind.Tower: RefreshTower(); break;
+                case CompetitionMiniGames.Kind.Trivia: RefreshTrivia(); break;
             }
             RefreshBoardEdge();
         }

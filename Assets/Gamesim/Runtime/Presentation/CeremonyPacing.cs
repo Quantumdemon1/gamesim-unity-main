@@ -21,14 +21,56 @@ namespace Gamesim.Presentation
     /// settings can make every one quick.</para>
     ///
     /// <para>Reduced motion keeps these timings: they are reading time, not movement.</para>
+    ///
+    /// <para>Unity-free, so the subset holds the numbers itself.</para>
     /// </summary>
     public static class CeremonyPacing
     {
         /// <summary>How much faster a reveal plays while the player has asked it to speed up.</summary>
         public const float SpeedUp = 3f;
 
+        /// <summary>
+        /// The speed a reveal starts at, from the one the player last left a reveal at in this session
+        /// (UI-UX plan D2): sped up stays sped up, anything else is the reveal's own pace. The director
+        /// keeps the last one in a field of its own and hands it to each Play; nothing keeps it longer
+        /// than the session, and nothing saves it.
+        /// </summary>
+        public static float SessionSpeed(float lastSpeed) => lastSpeed > 1f ? SpeedUp : 1f;
+
         public const float FadeIn = 0.30f;
         public const float FadeOut = 0.45f;
+
+        // ------------------------------------------------------------ the ceremony card
+
+        /// <summary>What the generic ceremony card was written to hold, before its reading time is counted.</summary>
+        public const float CardAuthoredHold = 2.6f;
+
+        /// <summary>
+        /// How long the generic ceremony card holds between its fades: its authored 2.6 seconds, or
+        /// the time to read its title and its line, whichever is longer, at the caption setting's
+        /// multiplier - as the ceremony strip holds (CaptionTiming). A long line stays up long enough
+        /// to read; a short one holds as it always did.
+        /// </summary>
+        public static float CardHold(string title, string line, CaptionTime time) =>
+            (float)CaptionTiming.Hold(CardAuthoredHold, (title ?? string.Empty) + " " + (line ?? string.Empty), time);
+
+        // ------------------------------------------------------------ the veto draw
+
+        /// <summary>The beat with every chip in the bag, before the first comes out.</summary>
+        public static float DrawIntro(CeremonyPace pace) => pace == CeremonyPace.Quick ? 0.35f : 0.70f;
+
+        /// <summary>How long each chip holds the stage: out of the bag, the slot lit, the face turned over.</summary>
+        public static float PerChip(CeremonyPace pace) => pace == CeremonyPace.Quick ? 0.45f : 0.90f;
+
+        /// <summary>How long a chip takes to leave the bag, and then its face to turn over.</summary>
+        public static float ChipTurn(CeremonyPace pace) => pace == CeremonyPace.Quick ? 0.20f : 0.30f;
+
+        /// <summary>How long the whole field holds once every chip is out.</summary>
+        public static float FieldHold(CeremonyPace pace) => pace == CeremonyPace.Quick ? 1.6f : 2.6f;
+
+        /// <summary>The whole draw at its own pace, fade to fade, when nobody speeds it up or skips it.</summary>
+        public static float VetoDraw(CeremonyPace pace, int chips) =>
+            FadeIn + DrawIntro(pace) + System.Math.Max(0, chips) * PerChip(pace) + FieldHold(pace) + FadeOut;
 
         // ------------------------------------------------------------ the key ceremony
 

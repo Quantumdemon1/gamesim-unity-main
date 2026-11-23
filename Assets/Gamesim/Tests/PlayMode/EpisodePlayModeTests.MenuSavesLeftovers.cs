@@ -77,7 +77,8 @@ namespace Gamesim.Tests.PlayMode
             director.OpenSettingsAt(SettingsSection.Advanced);
             yield return Frames(2);
 
-            var recover = ButtonWithCaption(EpisodeDirector.RecoverBackupCaption);
+            // The plain finder: this row is greyed on purpose, and ButtonWithCaption refuses a control that cannot be pressed.
+            var recover = FindButton(EpisodeDirector.RecoverBackupCaption);
             Assert.That(recover.interactable, Is.False, "With no backup, Recover backup cannot be picked,");
             Assert.That(director.GetComponentsInChildren<TMP_Text>().Any(text => text.isActiveAndEnabled
                 && text.name == EpisodeHud.WhyDisabledName && text.text == SavesWords.NoBackupWhy), Is.True, "and the line under it says why.");

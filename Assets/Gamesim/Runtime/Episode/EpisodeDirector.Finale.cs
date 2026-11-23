@@ -58,7 +58,7 @@ namespace Gamesim.Episode
             if (state == null || state.phase != EpisodePhase.Finished || juryReveal == null || JuryRevealPlaying) return;
             EndCeremonyCards();
             if (juryReveal.Play(JuryFinalists(state), JuryVotes(state), state.winnerId,
-                    reducedMotion, ceremonyPace, unchecked((int)state.seed)))
+                    reducedMotion, ceremonyPace, unchecked((int)state.seed), ceremonySpeed))
                 HoldHudForReveal();
         }
 

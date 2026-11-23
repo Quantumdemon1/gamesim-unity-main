@@ -245,7 +245,8 @@ namespace Gamesim.Tests.EditMode
             Assert.That(KeyBindings.Substitute("Hit the target  [Space]"), Is.EqualTo("Hit the target  [Space]"), "A competition's Hit is its own, and not rebound.");
             Assert.That(KeyBindings.Substitute("Space  Speed up   ·   Enter  Skip"), Is.EqualTo("Space  Speed up   ·   Enter  Skip"));
             Assert.That(KeyBindings.Substitute(InputGlossary.KeyboardHelpCard), Is.EqualTo(
-                "Click a houseguest: talk\nClick floor: walk  ·  C: recenter\nWASD/arrows: pan  ·  Wheel: zoom\nRight-drag: orbit · Mid-drag: pan\nR: diary · T: interact · Esc: close"));
+                "Click a houseguest: talk\nClick floor: walk  ·  C: recenter\nWASD/arrows: pan  ·  Wheel: zoom\nRight-drag: orbit · Mid-drag: pan\n"
+                + "R: diary · T: interact · M: map\nK: notebook · G: moves\n]/[: follow · Esc: close"));
             Assert.That(KeyBindings.Substitute(InputGlossary.KeyboardTourLine), Is.EqualTo("Click the floor to walk. Press T near a houseguest to talk. Esc closes this tour."));
             Assert.That(KeyBindings.Substitute(InputGlossary.KeyboardStationArrived), Is.EqualTo("At the episode screen  ·  T to open"));
             Assert.That(KeyBindings.Substitute(InputGlossary.KeyboardDiaryWalk), Is.EqualTo("Walk to the private room, then press T to open your diary. No choice is committed by entering."));
@@ -359,7 +360,8 @@ namespace Gamesim.Tests.EditMode
             bindings.Set(Camera("OrbitRate", "Right"), KeyBindings.KeyboardScheme, "<Keyboard>/v");
             KeyBindings.Show(bindings);
             Assert.That(KeyBindings.Substitute(InputGlossary.KeyboardHelpCard), Is.EqualTo(
-                "Click a houseguest: talk\nClick floor: walk  ·  F: recenter\nIJSD/arrows: pan  ·  Wheel: zoom\nRight-drag: orbit · Mid-drag: pan\nR: diary · E: interact · Esc: close"),
+                "Click a houseguest: talk\nClick floor: walk  ·  F: recenter\nIJSD/arrows: pan  ·  Wheel: zoom\nRight-drag: orbit · Mid-drag: pan\n"
+                + "R: diary · E: interact · M: map\nJ: notebook · G: moves\n]/[: follow · Esc: close"),
                 "The pan's keys in WASD's order, the two left as shipped among them.");
             Assert.That(KeyBindings.Substitute(settings), Is.EqualTo(
                 "The speed is the mouse's drag, the right stick and Q and V alike; the tilt is up and down on each."));

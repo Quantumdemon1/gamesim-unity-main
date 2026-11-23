@@ -72,6 +72,31 @@ namespace Gamesim.Episode
         }
 
         /// <summary>
+        /// A card headed by a houseguest's name (the vote page's read, a card a voter) makes that name
+        /// a link to their profile, opened from <paramref name="fromSection"/>. The eyebrow is the
+        /// card's first line of text. Nothing for the player or a card with no text.
+        /// </summary>
+        public Button LinkCardEyebrow(RectTransform card, ContestantState actor, string fromSection)
+        {
+            if (card == null) return null;
+            return ProfileLink(card.GetComponentInChildren<TMP_Text>(true), actor, fromSection);
+        }
+
+        /// <summary>
+        /// The room map's people (the notebook's Who is where) as links: each name the map marks with
+        /// <see cref="HouseMap.OccupantNamePrefix"/> and an id becomes a press that opens that
+        /// houseguest's profile, from the room map. The player's own name is never marked.
+        /// </summary>
+        private void WireRoomProfiles(RectTransform map)
+        {
+            var state = director != null ? director.Snapshot : null;
+            if (map == null || state == null) return;
+            foreach (var name in map.GetComponentsInChildren<TMP_Text>(true)
+                         .Where(t => t.name.StartsWith(HouseMap.OccupantNamePrefix, System.StringComparison.Ordinal)).ToList())
+                ProfileLink(name, state.Find(name.name.Substring(HouseMap.OccupantNamePrefix.Length)), EpisodeDirector.NotebookSection.Rooms);
+        }
+
+        /// <summary>
         /// The relationship web's people as links (its allies and rivals rows, and the link under a
         /// chosen houseguest's head): each row the web marks for a profile becomes a press that opens
         /// it, from Relationships. Wired here, where the HUD's press and the director are.

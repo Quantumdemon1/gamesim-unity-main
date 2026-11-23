@@ -539,7 +539,11 @@
 # 11178 = 11162 (the new main, with the menu, hint and ceremony changes) + the wording fixes' 16 (10935 - 10919 on
 # this branch): disjoint cases, so the floor is their sum (the lines landing of 22 November 2026). Counted from the
 # two sides.
-Gamesim.EditModeTests 11178
+# 10940 = 10935 + notebook rows open profiles (backlog 21): NotebookProfileNotesTests 3 (also in the dotnet subset) and
+# NotebookRowsProfilesTests 2, 2026-11-22.
+# 11183 = 11178 (the wording fixes on the new main) + the notebook rows' 5 (10940 - 10935 on this branch): disjoint
+# cases, so the floor is their sum (the lines landing of 22 November 2026). Counted from the two sides.
+Gamesim.EditModeTests 11183
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and
@@ -850,7 +854,10 @@ Gamesim.EditModeTests 11178
 # 1698 = 1696 (the new main, with the menu, hint and ceremony changes) + the wording fixes' 2 (1686 - 1684 on this
 # branch): disjoint cases, so the floor is their sum (the lines landing of 22 November 2026). Counted from the two
 # sides.
-Gamesim.PlayModeTests 1698
+# 1688 = 1686 + notebook rows open profiles (backlog 21): EpisodePlayModeTests.NotebookRowsProfiles 2, 2026-11-22.
+# 1700 = 1698 (the wording fixes on the new main) + the notebook rows' 2 (1688 - 1686 on this branch): disjoint cases,
+# so the floor is their sum (the lines landing of 22 November 2026). Counted from the two sides.
+Gamesim.PlayModeTests 1700
 # The UMA build of the same assembly, read by a plan built without -WithoutUma. 1281 = the 1241 above + the
 # 40 tests that compile only under GAMESIM_UMA, as run at r1 (2026-10-16): in EpisodePlayModeTests,
 # GroundedFarewell 11, Creator 9, HouseLife 8, Emotes 3, OpeningCaptures 2, and one each in CreatorEntry,
@@ -1085,7 +1092,10 @@ Gamesim.PlayModeTests 1698
 # 1743 = 1741 (the new main, with the menu, hint and ceremony changes) + the wording fixes' 2 (1731 - 1729 on this
 # branch): disjoint cases, so the floor is their sum (the lines landing of 22 November 2026). Counted from the two
 # sides.
-Gamesim.PlayModeTests.UmaBuild 1743
+# 1733 = 1731 + notebook rows open profiles (backlog 21): the same 2 EpisodePlayModeTests.NotebookRowsProfiles, 2026-11-22.
+# 1745 = 1743 (the wording fixes on the new main) + the notebook rows' 2 (1733 - 1731 on this branch): disjoint cases,
+# so the floor is their sum (the lines landing of 22 November 2026). Counted from the two sides.
+Gamesim.PlayModeTests.UmaBuild 1745
 # The UMA bodies: runs only where the GAMESIM_UMA define is set (the working tree and the D: copy).
 # 82 = the 89 run on 2026-10-15, less the 7 farewell probes moved to Gamesim.Uma.DiagnosticsPlayModeTests;
 # 85 = 82 + the 3 farewell readiness decision tests (UmaFarewellReadinessDecisionPlayModeTests, 2026-10-16);
@@ -1548,4 +1558,7 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # 23273 = 23261 (the new main, with the menu, hint and ceremony changes) + the wording fixes' 12 (23031 - 23019 on
 # this branch): disjoint cases, so the floor is their sum (the lines landing of 22 November 2026). Counted from the
 # two sides.
-Gamesim.SimulationTests 23273
+# 23034 = 23031 + notebook rows open profiles (backlog 21): NotebookProfileNotesTests 3, 2026-11-22.
+# 23276 = 23273 (the wording fixes on the new main) + the notebook rows' 3 (23034 - 23031 on this branch): disjoint
+# cases, so the floor is their sum (the lines landing of 22 November 2026). Counted from the two sides.
+Gamesim.SimulationTests 23276

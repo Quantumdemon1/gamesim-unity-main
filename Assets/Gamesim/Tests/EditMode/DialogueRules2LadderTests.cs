@@ -35,18 +35,19 @@ namespace Gamesim.Tests.EditMode
         }
 
         /// <summary>
-        /// The chip writes the pinned <see cref="DialogueRules.Offered"/>: rules 3 since D3 moved it from rules 2 (which the
-        /// chip-2 stack froze), and that move freezes rules 3 as D3 built it (§2: a version freezes the first time a shipped
+        /// The chip writes the pinned <see cref="DialogueRules.Offered"/>: rules 4 since D5c moved it from rules 3 (which D3
+        /// froze), and that move freezes rules 4 as D4, D5a and D5c built it (§2: a version freezes the first time a shipped
         /// path can write it). It is a defined version a new season's schema admits, never the bound by reference, and the
-        /// shipped default stays on 0 until D7. Re-pinned and renamed from TheChipWritesRules2AndTheDefaultStaysOn0 by D3.
+        /// shipped default stays on 0 until D7. Re-pinned and renamed from TheChipWritesRules2AndTheDefaultStaysOn0 by D3,
+        /// and from TheChipWritesRules3AndTheDefaultStaysOn0 by D5c.
         /// </summary>
         [Test]
-        public void TheChipWritesRules3AndTheDefaultStaysOn0()
+        public void TheChipWritesRules4AndTheDefaultStaysOn0()
         {
-            Assert.That(DialogueRules.Offered, Is.EqualTo(3), "The chip writes rules 3 since D3.");
+            Assert.That(DialogueRules.Offered, Is.EqualTo(4), "The chip writes rules 4 since D5c.");
             var chip = SeasonBuilder.Create(new SeasonBuilder.Choice { HouseSize = 8, CampaignConversations = true }, 7);
             ShippedRules.ApplyFresh(chip, new SeasonBuilder.Choice { HouseSize = 8, CampaignConversations = true });
-            Assert.That(chip.dialogueRulesVersion, Is.EqualTo(3), "The chip's season is on rules 3 since D3.");
+            Assert.That(chip.dialogueRulesVersion, Is.EqualTo(4), "The chip's season is on rules 4 since D5c.");
             Assert.That(DialogueRules.Admits(chip.dialogueRulesVersion, chip.schemaVersion), Is.True, "A new season's schema admits it.");
             Assert.That(DialogueRules.On(chip), Is.True);
             var plain = SeasonBuilder.Create(new SeasonBuilder.Choice { HouseSize = 8 }, 7);

@@ -328,11 +328,14 @@ namespace Gamesim.Tests.EditMode
         /// </summary>
         private static void RequireFrozenDialogue(EpisodeState state, JObject source, int frozen)
         {
-            // Rules 3 (D3's trees and holder appeal) joins the sets with the chip's move to it: it freezes at that merge.
-            Require(frozen == 1 || frozen == 2 || frozen == 3, "Only dialogue rules 1, 2 and 3, the frozen sets, are admitted natively.");
+            // Rules 3 (D3's trees and holder appeal) joins the sets with the chip's move to it: it freezes at that merge. Rules 4
+            // (D4, D5a and D5c) joins the same way with D5c's move; a rules-4 season is admitted here only while its store holds
+            // no grant and no veto occasion (RequireNativeStore), as a fresh season does.
+            Require(frozen == 1 || frozen == 2 || frozen == 3 || frozen == 4, "Only dialogue rules 1, 2, 3 and 4, the frozen sets, are admitted natively.");
             Require(Integer(source["dialogueRulesVersion"], frozen) && state.dialogueRulesVersion == frozen,
                 frozen == 1 ? "Only present integer-one dialogue rules are admitted natively."
-                : frozen == 2 ? "Only present integer-two dialogue rules are admitted natively." : "Only present integer-three dialogue rules are admitted natively.");
+                : frozen == 2 ? "Only present integer-two dialogue rules are admitted natively."
+                : frozen == 3 ? "Only present integer-three dialogue rules are admitted natively." : "Only present integer-four dialogue rules are admitted natively.");
             Require(DialogueRules.TryValidate(state, out string own) && DialogueRules.On(state),
                 (frozen == 1 ? "The pilot's own validator refuses the source: " : "Dialogue rules " + frozen + "'s own validator refuses the source: ") + own);
             LegacyDigestSchema29Observer.RequireNativeStore(source);

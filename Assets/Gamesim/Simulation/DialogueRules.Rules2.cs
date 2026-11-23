@@ -235,6 +235,7 @@ namespace Gamesim.Simulation
                 return Fail(out error, "Only action-funded campaign conversations are supported by this version.");
             if (version >= Rules4 && !VetoOccasionsRules4(s, out error)) return false;
             if (version >= GrantFundingFrom && !GrantsRules4(s, out error)) return false;
+            if (version >= TimeFrom && !TimeRules4(s, out error)) return false;
             if (s.storylines.Any(c => c.templateId?.StartsWith("dialogue-", StringComparison.Ordinal) == true && !IsTemplateFor(version, c.templateId))
                 || s.houseEvents.Any(e => e.contentId?.StartsWith("dialogue-", StringComparison.Ordinal) == true && !IsContentFor(version, e.contentId)))
                 return Fail(out error, "Unknown dialogue content is not supported by this version.");

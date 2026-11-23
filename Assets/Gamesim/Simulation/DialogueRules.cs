@@ -18,22 +18,23 @@ namespace Gamesim.Simulation
         /// season is started on. Validation accepts the closed set <see cref="IsDefined"/> names, each at the schema
         /// that introduced it (<see cref="Admits"/>); behaviour is keyed to the version that introduced it
         /// (<see cref="Rules1"/>, <see cref="Rules2"/>, <see cref="Rules3"/>, <see cref="Rules4"/>). <see cref="MaximumSteps"/> keeps its
-        /// meaning, rules 1's. Rules 4 (D4's veto question and conditional promise) is defined and not yet offered.
+        /// meaning, rules 1's. Rules 4 (D4's veto question and conditional promise, D5a's nominee grant, D5c's conversation time) is the chip's since D5c.
         /// </summary>
         public const int Version = 4, MaximumEpisodes = 100, MaximumEvents = 400, MaximumSteps = 3;
         private const int MaximumAction = EpisodeEngine.LegacySocialActionBudget + WebSocialVocabulary.PurchaseCeiling;
 
         /// <summary>
         /// The dialogue rules the cast screen's preview chip starts a season on (DIALOGUE-PLAN §2): a pinned literal,
-        /// moved by hand only when a later stack brings the chip a new version. Rules 3 (D3's four campaign trees and the
-        /// appeal to the veto holder) since D3 moved it from rules 2, which the chip-2 stack froze: a version freezes the
-        /// first time a shipped path can write it, the merge that lets the chip write it, so rules 3 freezes as D3 built it
-        /// at the merge that lands D3, and the next dialogue stack (D4) is rules 4. Rules 2 seasons stay on rules 2.
+        /// moved by hand only when a later stack brings the chip a new version. Rules 4 (D4's veto question and conditional
+        /// promise, D5a's nominee grant and D5c's conversation time) since D5c moved it from rules 3, which D3 froze: a version
+        /// freezes the first time a shipped path can write it, the merge that lets the chip write it, so rules 4 freezes as
+        /// D4, D5a and D5c built it at the merge that lands D5c, and the next dialogue stack is rules 5. Rules 2 and 3
+        /// seasons stay on their rules.
         /// Never <see cref="Version"/>, the bound: a season keeps the rules it began on, so a
         /// chip that wrote the bound would change the rules of every opted-in season the day it moved. Tests that mean a
         /// version write its literal; only the chip's own tests read this, and pin its value.
         /// </summary>
-        public const int Offered = 3;
+        public const int Offered = 4;
 
         // Schema 29 introduced the dialogue store, and a later schema carries it as it is (DIALOGUE-PLAN §6, item 1):
         // a lower bound, so the next schema's bump cannot switch every rules-1 season off. A version is on at the

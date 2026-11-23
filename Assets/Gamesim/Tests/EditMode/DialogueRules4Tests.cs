@@ -16,11 +16,11 @@ namespace Gamesim.Tests.EditMode
         private static EpisodeState Accepted(EpisodeEngine engine, EpisodeCommand command) => DialogueRules2Season.Accepted(engine, command);
 
         [Test]
-        public void RulesFourIsDefinedAndNotOfferedAndItsTemplateIsClosedFreshAndWithinTheShapeBounds()
+        public void RulesFourIsDefinedAndOfferedAndItsTemplateIsClosedFreshAndWithinTheShapeBounds()
         {
             Assert.That(DialogueRules.Rules4, Is.EqualTo(4));
             Assert.That(DialogueRules.IsDefined(4), Is.True);
-            Assert.That(DialogueRules.Offered, Is.EqualTo(3), "The chip moves to 4 only in the stack's last slice.");
+            Assert.That(DialogueRules.Offered, Is.EqualTo(4), "The chip moved to 4 in the stack's last slice, D5c.");
             var first = DialogueRules.ContentFor(4, DialogueVetoQuestion.TemplateId, DialogueVetoQuestion.ContentVersion);
             var second = DialogueRules.ContentFor(4, DialogueVetoQuestion.TemplateId, DialogueVetoQuestion.ContentVersion);
             Assert.That(first, Is.Not.Null);

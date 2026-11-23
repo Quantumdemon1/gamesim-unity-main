@@ -15,7 +15,7 @@ namespace Gamesim.Simulation
     /// its own step (EpisodeEngine.Dialogue.Rules4.cs).
     ///
     /// <para>Rules 4 keeps rules 3 whole and adds no saved field: every row it writes has a home at schema 30 (§6). It is
-    /// defined and not offered: <see cref="Offered"/> stays 3 until the stack's last slice moves the chip. Nothing here reads
+    /// the chip's since D5c (<see cref="Offered"/> 4), the stack's last slice. Nothing here reads
     /// <see cref="Version"/> for behaviour.</para>
     /// </summary>
     public static partial class DialogueRules

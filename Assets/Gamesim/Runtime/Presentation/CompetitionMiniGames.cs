@@ -21,16 +21,19 @@ namespace Gamesim.Presentation
         public const int WidenedRules = 4;
         /// <summary>The ring tower on the yard's stacks (competition rules 5).</summary>
         public const int TowerRules = 5;
+        /// <summary>The trivia about the season's own events (competition rules 6).</summary>
+        public const int TriviaRules = 6;
         /// <summary>The newest rules an attempt may be played under. A bound, never a behaviour: each
         /// rule is checked against the version that introduced it, so a new version changes nothing old.</summary>
-        public const int CurrentRules = TowerRules;
+        public const int CurrentRules = TriviaRules;
 
         /// <summary>
         /// The game a competition plays: its definition's own game where the definition names one - the ring
         /// tower is a mental game with a board of its own - and otherwise its kind's (<see cref="For(string)"/>).
         /// </summary>
         public static Kind For(CompetitionDefinition definition, string category) =>
-            definition != null && definition.Pattern == CompetitionPattern.RingTower ? Kind.Tower : For(definition?.Category ?? category);
+            definition != null && definition.Pattern == CompetitionPattern.RingTower ? Kind.Tower
+            : definition != null && definition.Pattern == CompetitionPattern.Trivia ? Kind.Trivia : For(definition?.Category ?? category);
 
         /// <summary>A ranked attempt is identical after cancel/reload and never spends season RNG.</summary>
         public static uint AttemptSeed(uint seasonSeed, int week, int phase, int rulesVersion, bool practice)
@@ -119,6 +122,10 @@ namespace Gamesim.Presentation
                     return "Move the tower of " + RingTowerPuzzle.StandardRings + " rings from the first stack to the last. "
                         + "Pick a stack to lift its top ring, then pick the stack to put it on: one ring at a time, never a larger ring on a smaller one. "
                         + "Click a stack, or use the arrows / D-pad and Enter / A. Finishing earns most; fewer moves and time left add to it.";
+                case Kind.Trivia:
+                    return "Answer questions about what has happened in your season, one at a time. Each has one right answer; "
+                        + "you see at once whether you were right. Click an answer, or use the arrows / D-pad and Enter / A. "
+                        + "Your score is the share you get right. Practice asks about the house rules instead.";
                 default: return Brief(kind);
             }
         }
@@ -129,7 +136,7 @@ namespace Gamesim.Presentation
         /// the fallback rather than being removed, because a category nobody has written a game for
         /// should still be playable — and because it is what every existing test drives.</para>
         /// </summary>
-        public enum Kind { Precision, Endurance, Reaction, Memory, Dice, Words, Tower }
+        public enum Kind { Precision, Endurance, Reaction, Memory, Dice, Words, Tower, Trivia }
 
         /// <summary>
         /// The game a category plays: the reference's five, one each.
@@ -161,6 +168,7 @@ namespace Gamesim.Presentation
                 case Kind.Reaction: return "Skill";
                 case Kind.Memory: return "Mental";
                 case Kind.Tower: return "Mental";
+                case Kind.Trivia: return "Mental";
                 case Kind.Dice: return "Luck";
                 case Kind.Words: return "Social";
                 default: return null;
@@ -178,6 +186,7 @@ namespace Gamesim.Presentation
                 case Kind.Dice: return 30;
                 case Kind.Words: return 30;
                 case Kind.Tower: return 90;
+                case Kind.Trivia: return 60;
                 default: return 0;   // The timing bar has no clock; it takes three attempts.
             }
         }
@@ -342,6 +351,8 @@ namespace Gamesim.Presentation
                     return Brief(kind, WidenedRules);
                 case Kind.Tower:
                     return Brief(kind, TowerRules);
+                case Kind.Trivia:
+                    return Brief(kind, TriviaRules);
                 default:
                     return "HOUSE SIGNALS: stop the marker near the center three times.";
             }
@@ -361,6 +372,7 @@ namespace Gamesim.Presentation
                 case Kind.Dice: return "Roll the Dice";
                 case Kind.Words: return "Unscramble the Words";
                 case Kind.Tower: return "Ring Tower";
+                case Kind.Trivia: return "Season Trivia";
                 default: return "Stop the Marker";
             }
         }
@@ -376,6 +388,7 @@ namespace Gamesim.Presentation
                 case Kind.Dice: return "Enter luck challenge";
                 case Kind.Words: return "Enter word challenge";
                 case Kind.Tower: return "Enter tower challenge";
+                case Kind.Trivia: return "Enter trivia challenge";
                 default: return "Enter precision challenge";
             }
         }

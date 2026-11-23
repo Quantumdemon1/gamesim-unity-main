@@ -61,12 +61,8 @@ namespace Gamesim.Episode
 
         private CareerSummary CareerNow() => career == null ? null : CareerSummary.Of(career.Load());
 
-        /// <summary>The one line the main menu carries under its buttons, or null before any season has finished.</summary>
-        private string CareerLine()
-        {
-            var summary = CareerNow();
-            return summary == null || summary.Seasons == 0 ? null : "Your career: " + summary.Line();
-        }
+        /// <summary>The career strip the main menu carries under its buttons: empty before any season has finished.</summary>
+        private System.Collections.Generic.IReadOnlyList<CareerStat> CareerStats() => CareerStrip.Of(CareerNow());
 
         /// <summary>The settings panel's career block, with a reset that takes two clicks.</summary>
         private void CareerSettings()

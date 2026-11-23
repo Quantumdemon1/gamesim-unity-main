@@ -313,12 +313,17 @@ namespace Gamesim.Simulation
         /// </summary>
         private static void WitnessNpcAct(EpisodeState s, EpisodeCommand c)
         {
+            // At story rules 12 a text naming a conversation is a Notice or a Listen (plan 32 §I1). Below 12 it falls to the
+            // act's own checks, which refuse it as they always did: no act has that id.
+            if (IsConversationText(c.text) && StoryAt(s, StoryRules.Manners)) { Overhear(s, c); return; }
             string refusal = WitnessRefusal(s, c.text, c.targetId, c.secondTargetId);
             Require(refusal == null, refusal);
             var act = s.npcSocial.acts.First(a => a != null && a.id == c.text.Trim());
             act.sighted = true;
             if (NpcActKinds.IsLoud(act.kind)) act.overheard = true;
             Log(s, NpcActKinds.IsLoud(act.kind) ? WaveDEventKinds.Overheard : WaveDEventKinds.Sighting, SightingLine(s, act), s.playerId);
+            // At 12 the sighting is a Notice of the two as well (§I2): nothing below 12.
+            NoticeSighting(s, act);
         }
 
         /// <summary>

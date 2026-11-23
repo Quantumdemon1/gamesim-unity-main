@@ -73,6 +73,7 @@ namespace Gamesim.Episode
             var drawn = DecisionPageBackControl;
             if (drawn != null) return drawn;
             wayBack = WayOut.AddBack(modal, caption, back, FontScale, InputGlossary.BackKeyHint);
+            KeepWayOutsAboveTheHeader();
             WayBackAction = back;
             // The key answers the way back now, so its hint stands there and not beside Close.
             TakeKeyHintFromClose();

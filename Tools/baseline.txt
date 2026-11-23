@@ -446,27 +446,100 @@
 # 10859 = 10847 (the finale page with the recap on the new main) + the settings and saves leftovers' 12 (10857 - 10845
 # on this branch): disjoint cases, so the floor is their sum (the stacked landing of 22 November 2026). Counted from
 # the two sides.
-# 10852 = 10835 + competition show edges: CompetitionShowEdgesTests 17 (the walk out waits for its whole field, the course's legs, a late runner), 2026-11-21.
-# 10876 = 10859 (the recap, the finale page and the saves leftovers) + the competition show's edges' 17 (10852 - 10835
-# on this branch): disjoint cases, so the floor is their sum (the stacked landing of 22 November 2026). Counted from
-# the two sides.
-# 10860 = 10852 + competition drop-outs and tower show: CompetitionDropoutsTests 8 (the preview is the commit, the field lets go under the player, the tower show's order and rings), 2026-11-22.
-# 10884 = 10876 (the show's edges on top of the recap, finale and saves fixes) + the drop-outs and tower show's 8
-# (10860 - 10852 on this branch): disjoint cases, so the floor is their sum (the stacked landing of 22 November 2026).
-# Counted from the two sides.
 # 10848 = 10835 + dialogue D3's 13 DialogueRules3Tests cases (2026-11-21); the re-pinned and renamed chip tests add none.
-# 10897 = 10884 (the competition slices on top of the three fixes) + dialogue rules 3's 13 (10848 - 10835 on this
-# branch): disjoint cases, so the floor is their sum (the stacked landing of 22 November 2026). Counted from the two
-# sides.
+# 10872 = 10859 (the recap, the finale page and the saves leftovers on the new main) + dialogue rules 3's 13 (10848 -
+# 10835 on this branch): disjoint cases, so the floor is their sum (the stacked landing of 22 November 2026). Counted
+# from the two sides.
 # 10850 = 10835 + the final two deal at minds level 1: FinalTwoDealsTests 15 (all also in the dotnet subset), 2026-11-21.
 # 10857 = 10850 + the review's fixes: FinalTwoDealsReviewTests 7 (all also in the dotnet subset), 2026-11-22.
+# 10894 = 10872 (dialogue rules 3 on top of the three fixes) + the final two deal's 22 (10857 - 10835 on this branch):
+# disjoint cases, so the floor is their sum (the stacked landing of 22 November 2026). Counted from the two sides.
+# 10889 = 10835 + the house talk's slice S2a (overhearing in the rules): OverhearTests 18, OverhearValidationTests 24 and
+# HouseTalkS1FollowUpTests 11 (all also in the dotnet subset), and NpcPairingRoomTests 1 (EditMode only), 2026-11-21.
+# 10948 = 10894 (the new main, with the recap, the finale page, the saves leftovers, the campaign conversations and
+# the final two deal) + overhearing in the rules' 54 (10889 - 10835 on this branch): disjoint cases, so the floor is
+# their sum (the stacked landing of 22 November 2026). Counted from the two sides.
+# 10908 = 10889 + the house talk's slice S2b (overhearing on screen): OverhearingScreenTests 19 (also in the dotnet
+# subset), 2026-11-22.
+# 10967 = 10948 (overhearing in the rules on the new main) + overhearing on screen's 19 (10908 - 10889 on this
+# branch): disjoint cases, so the floor is their sum (the stacked landing of 22 November 2026). Counted from the two
+# sides.
+# 10843 = 10835 + the trivia competition's rules (competition rules 6): CompetitionTriviaTests 8 (all also in the dotnet
+# subset; its season soak is compiled out of the editor), 2026-11-21.
+# 10975 = 10967 (the two overhearing changes on the new main) + the trivia rules' 8 (10843 - 10835 on this branch):
+# disjoint cases, so the floor is their sum (the stacked landing of 22 November 2026). Counted from the two sides.
+# 10854 = 10843 + the trivia's screen: TriviaRoundTests 7 (all also in the dotnet subset) and MiniGameRunTriviaTests 4
+# (3 also in the dotnet subset), 2026-11-22.
+# 10858 = 10854 + the trivia screen's review: TriviaRankedLeaveTests 4 (shared with the subset), 2026-11-22.
+# 10990 = 10975 (the trivia rules on top of the two overhearing changes) + the trivia screen's 15 (10858 - 10843 on
+# this branch): disjoint cases, so the floor is their sum (the stacked landing of 22 November 2026). Counted from the
+# two sides.
+# 10852 = 10835 + competition show edges: CompetitionShowEdgesTests 17 (the walk out waits for its whole field, the course's legs, a late runner), 2026-11-21.
+# 10859 = 10852 + the edges' fix after the built house's run: CompetitionShowEdgesFixTests 7 (nobody left out at any cast size or pace, the player's leg found every way), 2026-11-22.
+# 10864 = 10859 + the edges' second fix: CompetitionCourseMarkPassesTests 5 (the course's marks looked for in passes, a straggler tried again), 2026-11-22.
+# 11019 = 10990 (the role moments' held replay on the new main) + the competition show's edges' 29 (10864 - 10835 on
+# this branch): disjoint cases, so the floor is their sum (the competition landing of 22 November 2026). Counted from
+# the two sides.
+# 10860 = 10852 + competition drop-outs and tower show: CompetitionDropoutsTests 8 (the preview is the commit, the field lets go under the player, the tower show's order and rings), 2026-11-22.
+# 10872 = 10864 (the corrected competition show's edges) + the drop-outs and the tower show's 8 (10860 - 10852 on this
+# 11027 = 11019 (the competition show's edges on the new main) + the drop-outs and the tower show's 8 (10872 - 10864
+# on this branch): disjoint cases, so the floor is their sum (the competition landing of 22 November 2026). Counted
+# from the two sides.
+# 10876 = 10859 (the recap, the finale page and the saves leftovers) + the competition show's edges' 17 (10852 - 10835
+# on this branch): disjoint cases, so the floor is their sum (the stacked landing of 22 November 2026). Counted from
+# 10884 = 10876 (the show's edges on top of the recap, finale and saves fixes) + the drop-outs and tower show's 8
+# (10860 - 10852 on this branch): disjoint cases, so the floor is their sum (the stacked landing of 22 November 2026).
+# 10897 = 10884 (the competition slices on top of the three fixes) + dialogue rules 3's 13 (10848 - 10835 on this
 # 10919 = 10897 (dialogue rules 3 on top of the competition slices and the three fixes) + the final two deal's 22
 # (10857 - 10835 on this branch): disjoint cases, so the floor is their sum (the stacked landing of 22 November 2026).
+# 10958 = 10919 + the main menu's season card: SaveHeaderTests 34 (all also in the dotnet subset) and
+# MainMenuSeasonCardSaveTests 5, 2026-11-22.
+# 11138 = 11027 (the new main, with the competition show's edges and the drop-outs) + the main menu's season card's
+# 111 (10958 - 10847 on this branch): disjoint cases, so the floor is their sum (the second wave's landing of 22
+# November 2026). Counted from the two sides.
+# 11021 = 10958 + the tour offered and docked: TourDockTests 63 (all also in the dotnet subset), 2026-11-22.
+# 11201 = 11138 (the season card on the new main) + the tour's 63 (11021 - 10958 on this branch): disjoint cases, so
+# the floor is their sum (the second wave's landing of 22 November 2026). Counted from the two sides.
+# 10923 = 10919 + the whole-house move lock's 4 WholeHouseMoveLockTests cases, 2026-11-22.
+# 11025 = 11021 (the main menu's season card and the tour) + the whole-house moves' lock's 4 (10923 - 10919 on this
+# branch): disjoint cases, so the floor is their sum (the second wave's landing of 22 November 2026). Counted from the
+# two sides.
+# 11205 = 11201 (the tour on the new main) + the whole-house moves' lock's 4 (11025 - 11021 on this branch): disjoint
+# cases, so the floor is their sum (the second wave's landing of 22 November 2026). Counted from the two sides.
+# 10928 = 10923 + the device hints' 5 InputGlossaryDeviceHintsTests cases, 2026-11-22.
+# 11030 = 11025 (the lock on top of the menu changes) + the device hints' 5 (10928 - 10923 on this branch): disjoint
+# 11210 = 11205 (the lock on the new main) + the device hints' 5 (11030 - 11025 on this branch): disjoint cases, so
+# the floor is their sum (the second wave's landing of 22 November 2026). Counted from the two sides.
+# cases, so the floor is their sum (the second wave's landing of 22 November 2026). Counted from the two sides.
+# 11040 = 11030 (the device hints on top of the lock and the menu changes) + the largest text's 10 (10938 - 10928 on
+# this branch): disjoint cases, so the floor is their sum (the second wave's landing of 22 November 2026). Counted
+# from the two sides.
+# 11220 = 11210 (the device hints on the new main) + the largest text's 10 (11040 - 11030 on this branch): disjoint
+# cases, so the floor is their sum (the second wave's landing of 22 November 2026). Counted from the two sides.
+# 10925 = 10919 + the ceremony cards' press and speed: CeremonyCardPressTests 6 (all also in the dotnet subset), 2026-11-22.
+# 10926 = 10925 + the review's fix: CeremonyCardDeviceTests 1 (also in the dotnet subset), 2026-11-22.
+# 11047 = 11040 (the largest text on top of the hints, the lock and the menu changes) + the ceremony cards' 7 (10926 -
+# 10919 on this branch): disjoint cases, so the floor is their sum (the second wave's landing of 22 November 2026).
 # Counted from the two sides.
+# 11227 = 11220 (the largest text on the new main) + the ceremony cards' 7 (11047 - 11040 on this branch): disjoint
+# cases, so the floor is their sum (the second wave's landing of 22 November 2026). Counted from the two sides.
+# 10933 = 10926 + one card clock and one controls chip: CeremonyCardClockTests 7 (all also in the dotnet subset), 2026-11-22.
+# 11054 = 11047 (the ceremony cards on top of the hints and the menu changes) + the one chip's 7 (10933 - 10926 on
+# this branch): disjoint cases, so the floor is their sum (the second wave's landing of 22 November 2026). Counted
+# from the two sides.
+# 11234 = 11227 (the ceremony cards on the new main) + the one chip's 7 (11054 - 11047 on this branch): disjoint
+# cases, so the floor is their sum (the second wave's landing of 22 November 2026). Counted from the two sides.
+# 11162 = 11027 (the new main) + 135: the cases added by the two menu changes, the three hint changes, the ceremony
+# cards and their one chip. The 11234 above counted 72 cases twice: those of the first wave's changes, which this
+# branch held from an older chain and the new main holds too. Corrected 2026-11-22; the floor is the count the test
+# lists give.
 # 10933 = 10919 + lines that said the wrong thing and a competition result that can be read: TourNamesRailTests 3 and
 # LinesWrongWordsTests 7 (all also in the dotnet subset) and CompetitionAttemptBlockTests 4, 2026-11-22.
 # 10935 = 10933 + the review's LinesWrongWordsReviewTests 2 (also in the dotnet subset), 2026-11-22.
-Gamesim.EditModeTests 10935
+# 11178 = 11162 (the new main, with the menu, hint and ceremony changes) + the wording fixes' 16 (10935 - 10919 on
+# this branch): disjoint cases, so the floor is their sum (the lines landing of 22 November 2026). Counted from the
+# two sides.
+Gamesim.EditModeTests 11178
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and
@@ -716,17 +789,68 @@ Gamesim.EditModeTests 10935
 # 1677 = 1676 + the weekly recap's arrival: EpisodePlayModeTests.RecapArrives 1, 2026-11-21.
 # 1678 = 1677 + the finale page set aside for the cast screen: EpisodePlayModeTests.FinaleNewSeason 1, 2026-11-22.
 # 1680 = 1678 + the settings and saves leftovers: EpisodePlayModeTests.MenuSavesLeftovers 2, 2026-11-22.
+# 1677 = 1676 + the house talk's slice S2b: EpisodePlayModeTests.Overhear_HunchLinesAndTheirChipDrawOnTheWebAtTwelve 1, 2026-11-22.
+# 1681 = 1680 (overhearing in the rules on the new main) + overhearing on screen's 1 (1677 - 1676 on this branch):
+# disjoint cases, so the floor is their sum (the stacked landing of 22 November 2026). Counted from the two sides.
+# 1677 = 1676 + the trivia's screen: EpisodePlayModeTests.TriviaBoard 1, 2026-11-22.
+# 1682 = 1681 (the trivia rules on top of the two overhearing changes) + the trivia screen's 1 (1677 - 1676 on this
+# branch): disjoint cases, so the floor is their sum (the stacked landing of 22 November 2026). Counted from the two
+# sides.
 # 1678 = 1676 + competition show edges: the 2 EpisodePlayModeTests.CompetitionShowEdges cases (the player runs the course leg; sixteen at the quick pace), 2026-11-21.
-# 1682 = 1680 (the recap, the finale page and the saves leftovers) + the competition show's edges' 2 (1678 - 1676 on
-# this branch): disjoint cases, so the floor is their sum (the stacked landing of 22 November 2026). Counted from the
+# 1684 = 1682 (the role moments' held replay on the new main) + the competition show's edges' 2 (1678 - 1676 on this
+# branch): disjoint cases, so the floor is their sum (the competition landing of 22 November 2026). Counted from the
 # two sides.
 # 1680 = 1678 + competition drop-outs and tower show: the 2 EpisodePlayModeTests.CompetitionDropouts cases (the field lets go around you; a simulated ring tower at the stacks), 2026-11-22.
+# 1686 = 1684 (the competition show's edges on the new main) + the drop-outs and the tower show's 2 (1680 - 1678 on
+# this branch): disjoint cases, so the floor is their sum (the competition landing of 22 November 2026). Counted from
+# the two sides.
+# 1682 = 1680 (the recap, the finale page and the saves leftovers) + the competition show's edges' 2 (1678 - 1676 on
 # 1684 = 1682 (the show's edges on top of the recap, finale and saves fixes) + the drop-outs and tower show's 2 (1680
 # - 1678 on this branch): disjoint cases, so the floor is their sum (the stacked landing of 22 November 2026). Counted
-# from the two sides.
+# 1685 = 1684 + the main menu's season card: the 1 EpisodePlayModeTests.MainMenuSeasonCard case, 2026-11-22.
+# 1693 = 1686 (the new main, with the competition show's edges and the drop-outs) + the main menu's season card's 7
+# (1685 - 1678 on this branch): disjoint cases, so the floor is their sum (the second wave's landing of 22 November
+# 2026). Counted from the two sides.
+# 1687 = 1685 + the tour offered and docked: the 2 EpisodePlayModeTests.TourOffer cases, 2026-11-22.
+# 1695 = 1693 (the season card on the new main) + the tour's 2 (1687 - 1685 on this branch): disjoint cases, so the
+# floor is their sum (the second wave's landing of 22 November 2026). Counted from the two sides.
+# 1685 = 1684 + the whole-house move lock's 1 HouseMoveLocks case, 2026-11-22.
+# 1688 = 1687 (the main menu's season card and the tour) + the whole-house moves' lock's 1 (1685 - 1684 on this
+# branch): disjoint cases, so the floor is their sum (the second wave's landing of 22 November 2026). Counted from the
+# two sides.
+# 1696 = 1695 (the tour on the new main) + the whole-house moves' lock's 1 (1688 - 1687 on this branch): disjoint
+# cases, so the floor is their sum (the second wave's landing of 22 November 2026). Counted from the two sides.
+# 1687 = 1685 + the device hints' 2 DeviceHints cases, 2026-11-22.
+# 1690 = 1688 (the lock on top of the menu changes) + the device hints' 2 (1687 - 1685 on this branch): disjoint
+# 1698 = 1696 (the lock on the new main) + the device hints' 2 (1690 - 1688 on this branch): disjoint cases, so the
+# floor is their sum (the second wave's landing of 22 November 2026). Counted from the two sides.
+# cases, so the floor is their sum (the second wave's landing of 22 November 2026). Counted from the two sides.
+# 1691 = 1690 (the device hints on top of the lock and the menu changes) + the largest text's 1 (1688 - 1687 on this
+# branch): disjoint cases, so the floor is their sum (the second wave's landing of 22 November 2026). Counted from the
+# two sides.
+# 1699 = 1698 (the device hints on the new main) + the largest text's 1 (1691 - 1690 on this branch): disjoint cases,
+# so the floor is their sum (the second wave's landing of 22 November 2026). Counted from the two sides.
+# 1686 = 1684 + the ceremony cards' press and speed: CeremonyCardPressPlayModeTests 2, 2026-11-22.
+# 1693 = 1691 (the largest text on top of the hints, the lock and the menu changes) + the ceremony cards' 2 (1686 -
+# 1684 on this branch): disjoint cases, so the floor is their sum (the second wave's landing of 22 November 2026).
+# Counted from the two sides.
+# 1701 = 1699 (the largest text on the new main) + the ceremony cards' 2 (1693 - 1691 on this branch): disjoint cases,
+# so the floor is their sum (the second wave's landing of 22 November 2026). Counted from the two sides.
+# 1687 = 1686 + one card clock and one controls chip: CeremonyControlsChipPlayModeTests 1, 2026-11-22.
+# 1694 = 1693 (the ceremony cards on top of the hints and the menu changes) + the one chip's 1 (1687 - 1686 on this
+# branch): disjoint cases, so the floor is their sum (the second wave's landing of 22 November 2026). Counted from the
+# two sides.
+# 1702 = 1701 (the ceremony cards on the new main) + the one chip's 1 (1694 - 1693 on this branch): disjoint cases, so
+# the floor is their sum (the second wave's landing of 22 November 2026). Counted from the two sides.
+# 1696 = 1686 (the new main) + 10: the cases added by the two menu changes, the three hint changes, the ceremony cards
+# and their one chip. The 1702 above counted 6 cases twice: those of the first wave's changes, which this branch held
+# from an older chain and the new main holds too. Corrected 2026-11-22; the floor is the count the test lists give.
 # 1686 = 1684 + lines that said the wrong thing and a competition result that can be read: the 2
 # CompetitionSurfacePlayModeTests.ResultReads cases (Enter or A skips a practice's count; the card's attempt headline), 2026-11-22.
-Gamesim.PlayModeTests 1686
+# 1698 = 1696 (the new main, with the menu, hint and ceremony changes) + the wording fixes' 2 (1686 - 1684 on this
+# branch): disjoint cases, so the floor is their sum (the lines landing of 22 November 2026). Counted from the two
+# sides.
+Gamesim.PlayModeTests 1698
 # The UMA build of the same assembly, read by a plan built without -WithoutUma. 1281 = the 1241 above + the
 # 40 tests that compile only under GAMESIM_UMA, as run at r1 (2026-10-16): in EpisodePlayModeTests,
 # GroundedFarewell 11, Creator 9, HouseLife 8, Emotes 3, OpeningCaptures 2, and one each in CreatorEntry,
@@ -900,17 +1024,68 @@ Gamesim.PlayModeTests 1686
 # 1722 = 1721 + the weekly recap's arrival: the same 1 EpisodePlayModeTests.RecapArrives case, 2026-11-21.
 # 1723 = 1722 + the finale page set aside for the cast screen: the same 1 EpisodePlayModeTests.FinaleNewSeason case, 2026-11-22.
 # 1725 = 1723 + the settings and saves leftovers: the same 2 EpisodePlayModeTests.MenuSavesLeftovers cases, 2026-11-22.
+# 1722 = 1721 + the house talk's slice S2b: the same EpisodePlayModeTests.Overhear_ case, 2026-11-22.
+# 1726 = 1725 (overhearing in the rules on the new main) + overhearing on screen's 1 (1722 - 1721 on this branch):
+# disjoint cases, so the floor is their sum (the stacked landing of 22 November 2026). Counted from the two sides.
+# 1722 = 1721 + the trivia's screen: the same EpisodePlayModeTests.TriviaBoard case, 2026-11-22.
+# 1727 = 1726 (the trivia rules on top of the two overhearing changes) + the trivia screen's 1 (1722 - 1721 on this
+# branch): disjoint cases, so the floor is their sum (the stacked landing of 22 November 2026). Counted from the two
+# sides.
 # 1723 = 1721 + competition show edges: the 2 EpisodePlayModeTests.CompetitionShowEdges cases (the player runs the course leg; sixteen at the quick pace), 2026-11-21.
-# 1727 = 1725 (the recap, the finale page and the saves leftovers) + the competition show's edges' 2 (1723 - 1721 on
-# this branch): disjoint cases, so the floor is their sum (the stacked landing of 22 November 2026). Counted from the
+# 1729 = 1727 (the role moments' held replay on the new main) + the competition show's edges' 2 (1723 - 1721 on this
+# branch): disjoint cases, so the floor is their sum (the competition landing of 22 November 2026). Counted from the
 # two sides.
 # 1725 = 1723 + competition drop-outs and tower show: the 2 EpisodePlayModeTests.CompetitionDropouts cases (the field lets go around you; a simulated ring tower at the stacks), 2026-11-22.
+# 1731 = 1729 (the competition show's edges on the new main) + the drop-outs and the tower show's 2 (1725 - 1723 on
+# this branch): disjoint cases, so the floor is their sum (the competition landing of 22 November 2026). Counted from
+# the two sides.
+# 1727 = 1725 (the recap, the finale page and the saves leftovers) + the competition show's edges' 2 (1723 - 1721 on
 # 1729 = 1727 (the show's edges on top of the recap, finale and saves fixes) + the drop-outs and tower show's 2 (1725
 # - 1723 on this branch): disjoint cases, so the floor is their sum (the stacked landing of 22 November 2026). Counted
-# from the two sides.
+# 1730 = 1729 + the main menu's season card: the 1 EpisodePlayModeTests.MainMenuSeasonCard case, 2026-11-22.
+# 1738 = 1731 (the new main, with the competition show's edges and the drop-outs) + the main menu's season card's 7
+# (1730 - 1723 on this branch): disjoint cases, so the floor is their sum (the second wave's landing of 22 November
+# 2026). Counted from the two sides.
+# 1732 = 1730 + the tour offered and docked: the 2 EpisodePlayModeTests.TourOffer cases, 2026-11-22.
+# 1740 = 1738 (the season card on the new main) + the tour's 2 (1732 - 1730 on this branch): disjoint cases, so the
+# floor is their sum (the second wave's landing of 22 November 2026). Counted from the two sides.
+# 1730 = 1729 + the whole-house move lock's 1 HouseMoveLocks case, 2026-11-22.
+# 1733 = 1732 (the main menu's season card and the tour) + the whole-house moves' lock's 1 (1730 - 1729 on this
+# branch): disjoint cases, so the floor is their sum (the second wave's landing of 22 November 2026). Counted from the
+# two sides.
+# 1741 = 1740 (the tour on the new main) + the whole-house moves' lock's 1 (1733 - 1732 on this branch): disjoint
+# cases, so the floor is their sum (the second wave's landing of 22 November 2026). Counted from the two sides.
+# 1732 = 1730 + the device hints' 2 DeviceHints cases, 2026-11-22.
+# 1735 = 1733 (the lock on top of the menu changes) + the device hints' 2 (1732 - 1730 on this branch): disjoint
+# 1743 = 1741 (the lock on the new main) + the device hints' 2 (1735 - 1733 on this branch): disjoint cases, so the
+# floor is their sum (the second wave's landing of 22 November 2026). Counted from the two sides.
+# cases, so the floor is their sum (the second wave's landing of 22 November 2026). Counted from the two sides.
+# 1736 = 1735 (the device hints on top of the lock and the menu changes) + the largest text's 1 (1733 - 1732 on this
+# branch): disjoint cases, so the floor is their sum (the second wave's landing of 22 November 2026). Counted from the
+# two sides.
+# 1744 = 1743 (the device hints on the new main) + the largest text's 1 (1736 - 1735 on this branch): disjoint cases,
+# so the floor is their sum (the second wave's landing of 22 November 2026). Counted from the two sides.
+# 1731 = 1729 + the ceremony cards' press and speed: CeremonyCardPressPlayModeTests 2, 2026-11-22.
+# 1738 = 1736 (the largest text on top of the hints, the lock and the menu changes) + the ceremony cards' 2 (1731 -
+# 1729 on this branch): disjoint cases, so the floor is their sum (the second wave's landing of 22 November 2026).
+# Counted from the two sides.
+# 1746 = 1744 (the largest text on the new main) + the ceremony cards' 2 (1738 - 1736 on this branch): disjoint cases,
+# so the floor is their sum (the second wave's landing of 22 November 2026). Counted from the two sides.
+# 1732 = 1731 + one card clock and one controls chip: CeremonyControlsChipPlayModeTests 1, 2026-11-22.
+# 1739 = 1738 (the ceremony cards on top of the hints and the menu changes) + the one chip's 1 (1732 - 1731 on this
+# branch): disjoint cases, so the floor is their sum (the second wave's landing of 22 November 2026). Counted from the
+# two sides.
+# 1747 = 1746 (the ceremony cards on the new main) + the one chip's 1 (1739 - 1738 on this branch): disjoint cases, so
+# the floor is their sum (the second wave's landing of 22 November 2026). Counted from the two sides.
+# 1741 = 1731 (the new main) + 10: the cases added by the two menu changes, the three hint changes, the ceremony cards
+# and their one chip. The 1747 above counted 6 cases twice: those of the first wave's changes, which this branch held
+# from an older chain and the new main holds too. Corrected 2026-11-22; the floor is the count the test lists give.
 # 1731 = 1729 + lines that said the wrong thing and a competition result that can be read: the same 2
 # CompetitionSurfacePlayModeTests.ResultReads cases, 2026-11-22.
-Gamesim.PlayModeTests.UmaBuild 1731
+# 1743 = 1741 (the new main, with the menu, hint and ceremony changes) + the wording fixes' 2 (1731 - 1729 on this
+# branch): disjoint cases, so the floor is their sum (the lines landing of 22 November 2026). Counted from the two
+# sides.
+Gamesim.PlayModeTests.UmaBuild 1743
 # The UMA bodies: runs only where the GAMESIM_UMA define is set (the working tree and the D: copy).
 # 82 = the 89 run on 2026-10-15, less the 7 farewell probes moved to Gamesim.Uma.DiagnosticsPlayModeTests;
 # 85 = 82 + the 3 farewell readiness decision tests (UmaFarewellReadinessDecisionPlayModeTests, 2026-10-16);
@@ -1275,25 +1450,102 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # 22956 = 22946 (the finale page with the recap on the new main) + the settings and saves leftovers' 10 (22954 - 22944
 # on this branch): disjoint cases, so the floor is their sum (the stacked landing of 22 November 2026). Counted from
 # the two sides.
-# 22951 = 22934 + competition show edges: CompetitionShowEdgesTests 17 (the walk out waits for its whole field, the course's legs, a late runner), 2026-11-21.
-# 22973 = 22956 (the recap, the finale page and the saves leftovers) + the competition show's edges' 17 (22951 - 22934
-# on this branch): disjoint cases, so the floor is their sum (the stacked landing of 22 November 2026). Counted from
-# the two sides.
-# 22959 = 22951 + competition drop-outs and tower show: CompetitionDropoutsTests 8 (the preview is the commit, the field lets go under the player, the tower show's order and rings), 2026-11-22.
-# 22981 = 22973 (the show's edges on top of the recap, finale and saves fixes) + the drop-outs and tower show's 8
-# (22959 - 22951 on this branch): disjoint cases, so the floor is their sum (the stacked landing of 22 November 2026).
-# Counted from the two sides.
 # 22947 = 22934 + dialogue D3's 13 DialogueRules3Tests cases, shared (2026-11-21).
-# 22994 = 22981 (the competition slices on top of the three fixes) + dialogue rules 3's 13 (22947 - 22934 on this
-# branch): disjoint cases, so the floor is their sum (the stacked landing of 22 November 2026). Counted from the two
-# sides.
+# 22969 = 22956 (the recap, the finale page and the saves leftovers on the new main) + dialogue rules 3's 13 (22947 -
+# 22934 on this branch): disjoint cases, so the floor is their sum (the stacked landing of 22 November 2026). Counted
+# from the two sides.
 # 22952 = 22934 + the final two deal at minds level 1: the same 15 FinalTwoDealsTests cases and FinalTwoDealsSeasonSoak's
 # 3 lockstep seasons (dotnet only; its soak is explicit and counts nowhere), 2026-11-21.
 # 22959 = 22952 + the review's fixes: the same 7 FinalTwoDealsReviewTests cases, 2026-11-22.
+# 22994 = 22969 (dialogue rules 3 on top of the three fixes) + the final two deal's 25 (22959 - 22934 on this branch):
+# disjoint cases, so the floor is their sum (the stacked landing of 22 November 2026). Counted from the two sides.
+# 22988 = 22934 + the house talk's slice S2a: the same 53 OverhearTests, OverhearValidationTests and
+# HouseTalkS1FollowUpTests cases the EditMode floor counts, and HouseTalkLab's one walker case (compiled out of Unity; its
+# Stack A report is [Explicit], run by name, and not counted), 2026-11-21.
+# 23048 = 22994 (the new main, with the recap, the finale page, the saves leftovers, the campaign conversations and
+# the final two deal) + overhearing in the rules' 54 (22988 - 22934 on this branch): disjoint cases, so the floor is
+# their sum (the stacked landing of 22 November 2026). Counted from the two sides.
+# 23007 = 22988 + the house talk's slice S2b: the same 19 OverhearingScreenTests cases the EditMode floor counts, 2026-11-22.
+# 23067 = 23048 (overhearing in the rules on the new main) + overhearing on screen's 19 (23007 - 22988 on this
+# branch): disjoint cases, so the floor is their sum (the stacked landing of 22 November 2026). Counted from the two
+# sides.
+# 22942 = 22934 + the same 8 CompetitionTriviaTests cases the EditMode floor counts (the two soak cases are [Explicit],
+# run by name only), 2026-11-21.
+# 23075 = 23067 (the two overhearing changes on the new main) + the trivia rules' 8 (22942 - 22934 on this branch):
+# disjoint cases, so the floor is their sum (the stacked landing of 22 November 2026). Counted from the two sides.
+# 22952 = 22942 + the trivia's screen: the same 7 TriviaRoundTests cases the EditMode floor counts and 3 of
+# MiniGameRunTriviaTests' 4 (its attempt-line case reads the board's component and is compiled out here), 2026-11-22.
+# 22956 = 22952 + the same 4 TriviaRankedLeaveTests cases, 2026-11-22.
+# 23089 = 23075 (the trivia rules on top of the two overhearing changes) + the trivia screen's 14 (22956 - 22942 on
+# this branch): disjoint cases, so the floor is their sum (the stacked landing of 22 November 2026). Counted from the
+# two sides.
+# 22941 = 22936 + HeldReplayShapeTests' 5 cases (compiled out of Unity, so the EditMode floor is unchanged): every held
+# replay digests the state below the live schema, through its observer, 2026-11-22.
+# 23094 = 23089 (the new main, with overhearing and the trivia competition) + the role moments' held replay's 5 (22941
+# - 22936 on this branch): disjoint cases, so the floor is their sum (the competition landing of 22 November 2026).
+# Counted from the two sides.
+# 22951 = 22934 + competition show edges: CompetitionShowEdgesTests 17 (the walk out waits for its whole field, the course's legs, a late runner), 2026-11-21.
+# 22958 = 22951 + the edges' fix after the built house's run: the same 7 CompetitionShowEdgesFixTests cases, 2026-11-22.
+# 22963 = 22958 + the edges' second fix: the same 5 CompetitionCourseMarkPassesTests cases, 2026-11-22.
+# 23123 = 23094 (the role moments' held replay on the new main) + the competition show's edges' 29 (22963 - 22934 on
+# this branch): disjoint cases, so the floor is their sum (the competition landing of 22 November 2026). Counted from
+# the two sides.
+# 22959 = 22951 + competition drop-outs and tower show: CompetitionDropoutsTests 8 (the preview is the commit, the field lets go under the player, the tower show's order and rings), 2026-11-22.
+# 22971 = 22963 (the corrected competition show's edges) + the drop-outs and the tower show's 8 (22959 - 22951 on this
+# 23131 = 23123 (the competition show's edges on the new main) + the drop-outs and the tower show's 8 (22971 - 22963
+# on this branch): disjoint cases, so the floor is their sum (the competition landing of 22 November 2026). Counted
+# from the two sides.
+# 22973 = 22956 (the recap, the finale page and the saves leftovers) + the competition show's edges' 17 (22951 - 22934
+# on this branch): disjoint cases, so the floor is their sum (the stacked landing of 22 November 2026). Counted from
+# 22981 = 22973 (the show's edges on top of the recap, finale and saves fixes) + the drop-outs and tower show's 8
+# (22959 - 22951 on this branch): disjoint cases, so the floor is their sum (the stacked landing of 22 November 2026).
+# 22994 = 22981 (the competition slices on top of the three fixes) + dialogue rules 3's 13 (22947 - 22934 on this
 # 23019 = 22994 (dialogue rules 3 on top of the competition slices and the three fixes) + the final two deal's 25
 # (22959 - 22934 on this branch): disjoint cases, so the floor is their sum (the stacked landing of 22 November 2026).
+# 23053 = 23019 + the main menu's season card: SaveHeaderTests 34, 2026-11-22.
+# 23238 = 23131 (the new main, with the competition show's edges and the drop-outs) + the main menu's season card's
+# 107 (23053 - 22946 on this branch): disjoint cases, so the floor is their sum (the second wave's landing of 22
+# November 2026). Counted from the two sides.
+# 23116 = 23053 + the tour offered and docked: TourDockTests 63, 2026-11-22.
+# 23301 = 23238 (the season card on the new main) + the tour's 63 (23116 - 23053 on this branch): disjoint cases, so
+# the floor is their sum (the second wave's landing of 22 November 2026). Counted from the two sides.
+# 23023 = 23019 + the whole-house move lock's 4 WholeHouseMoveLockTests cases, 2026-11-22.
+# 23120 = 23116 (the main menu's season card and the tour) + the whole-house moves' lock's 4 (23023 - 23019 on this
+# branch): disjoint cases, so the floor is their sum (the second wave's landing of 22 November 2026). Counted from the
+# two sides.
+# 23305 = 23301 (the tour on the new main) + the whole-house moves' lock's 4 (23120 - 23116 on this branch): disjoint
+# cases, so the floor is their sum (the second wave's landing of 22 November 2026). Counted from the two sides.
+# 23028 = 23023 + the device hints' 5 InputGlossaryDeviceHintsTests cases, 2026-11-22.
+# 23125 = 23120 (the lock on top of the menu changes) + the device hints' 5 (23028 - 23023 on this branch): disjoint
+# 23310 = 23305 (the lock on the new main) + the device hints' 5 (23125 - 23120 on this branch): disjoint cases, so
+# the floor is their sum (the second wave's landing of 22 November 2026). Counted from the two sides.
+# cases, so the floor is their sum (the second wave's landing of 22 November 2026). Counted from the two sides.
+# 23135 = 23125 (the device hints on top of the lock and the menu changes) + the largest text's 10 (23038 - 23028 on
+# this branch): disjoint cases, so the floor is their sum (the second wave's landing of 22 November 2026). Counted
+# from the two sides.
+# 23320 = 23310 (the device hints on the new main) + the largest text's 10 (23135 - 23125 on this branch): disjoint
+# cases, so the floor is their sum (the second wave's landing of 22 November 2026). Counted from the two sides.
+# 23025 = 23019 + the ceremony cards' press and speed: the same 6 CeremonyCardPressTests cases, 2026-11-22.
+# 23026 = 23025 + the review's fix: the same CeremonyCardDeviceTests case, 2026-11-22.
+# 23142 = 23135 (the largest text on top of the hints, the lock and the menu changes) + the ceremony cards' 7 (23026 -
+# 23019 on this branch): disjoint cases, so the floor is their sum (the second wave's landing of 22 November 2026).
 # Counted from the two sides.
+# 23327 = 23320 (the largest text on the new main) + the ceremony cards' 7 (23142 - 23135 on this branch): disjoint
+# cases, so the floor is their sum (the second wave's landing of 22 November 2026). Counted from the two sides.
+# 23033 = 23026 + one card clock and one controls chip: the same 7 CeremonyCardClockTests cases, 2026-11-22.
+# 23149 = 23142 (the ceremony cards on top of the hints and the menu changes) + the one chip's 7 (23033 - 23026 on
+# this branch): disjoint cases, so the floor is their sum (the second wave's landing of 22 November 2026). Counted
+# from the two sides.
+# 23334 = 23327 (the ceremony cards on the new main) + the one chip's 7 (23149 - 23142 on this branch): disjoint
+# cases, so the floor is their sum (the second wave's landing of 22 November 2026). Counted from the two sides.
+# 23261 = 23131 (the new main) + 130: the cases added by the two menu changes, the three hint changes, the ceremony
+# cards and their one chip. The 23334 above counted 73 cases twice: those of the first wave's changes, which this
+# branch held from an older chain and the new main holds too. Corrected 2026-11-22; the floor is the count the test
+# lists give.
 # 23029 = 23019 + lines that said the wrong thing and a competition result that can be read: TourNamesRailTests 3 and
 # LinesWrongWordsTests 7, 2026-11-22.
 # 23031 = 23029 + the review's LinesWrongWordsReviewTests 2, 2026-11-22.
-Gamesim.SimulationTests 23031
+# 23273 = 23261 (the new main, with the menu, hint and ceremony changes) + the wording fixes' 12 (23031 - 23019 on
+# this branch): disjoint cases, so the floor is their sum (the lines landing of 22 November 2026). Counted from the
+# two sides.
+Gamesim.SimulationTests 23273

@@ -137,9 +137,22 @@ namespace Gamesim.Presentation
 
         // ---------------------------------------------------------------- hints that follow the device (A4)
 
-        /// <summary>The help card's words on the keyboard and mouse, as they have always read.</summary>
+        /// <summary>
+        /// The help card's words on the keyboard and mouse: seven lines (the lead's ruling L14), the
+        /// five it always had and the house's other keys - M the map, J the notebook, G your moves,
+        /// ] and [ the follow - with "Esc: close" kept last. Each line at most
+        /// <see cref="HelpCardLineMost"/> characters, the card box's proven width. The keys a player
+        /// may rebind are swapped in as the card is drawn (KeyBindings.Substitute).
+        /// </summary>
         public const string KeyboardHelpCard =
-            "Click a houseguest: talk\nClick floor: walk  ·  F: recenter\nWASD/arrows: pan  ·  Wheel: zoom\nRight-drag: orbit · Mid-drag: pan\nR: diary · E: interact · Esc: close";
+            "Click a houseguest: talk\nClick floor: walk  ·  F: recenter\nWASD/arrows: pan  ·  Wheel: zoom\nRight-drag: orbit · Mid-drag: pan\n"
+            + "R: diary · E: interact · M: map\nJ: notebook · G: moves\n]/[: follow · Esc: close";
+
+        /// <summary>The longest line the help card's box holds at its narrowest: a forty-character line clipped it.</summary>
+        public const int HelpCardLineMost = 35;
+
+        /// <summary>The most lines either device's help card has: the card's box is sized for it, so a device change never resizes it.</summary>
+        public static int HelpCardLines => Math.Max(KeyboardHelpCard.Split('\n').Length, HelpCard(true).Split('\n').Length);
 
         /// <summary>The tour's controls line on the keyboard and mouse, as it has always read.</summary>
         public const string KeyboardTourLine =
@@ -158,6 +171,37 @@ namespace Gamesim.Presentation
                 + PadOf("Camera", "OrbitRate") + ": orbit · " + PadOf("Camera", "ZoomRate") + ": zoom\n"
                 + PadOf("Camera", "Previous") + "/" + PadOf("Camera", "Next") + ": follow · " + PadOf("Shortcuts", "Overview") + ": map\n"
                 + PadOf("Shortcuts", "Back") + ": close · " + PadOf("Shortcuts", "Menu") + ": pause";
+        }
+
+        /// <summary>A panel's control hint on the keyboard, as it has always read.</summary>
+        public const string KeyboardPanelHint = "Tab / Up / Down select · Enter confirm";
+
+        /// <summary>The same hint on a panel that scrolls.</summary>
+        public const string KeyboardPanelHintScroll = KeyboardPanelHint + " · Scroll for more";
+
+        /// <summary>
+        /// A panel's control hint for the device last used (U7). On the keyboard the hint it always
+        /// was; on a pad the event system's own buttons - the navigation's D-pad and the submit's A,
+        /// neither of which a player may rebind - and, where the panel scrolls, that more lies below:
+        /// moving down to it brings it into view, as the pad has no wheel.
+        /// </summary>
+        public static string PanelHint(bool pad, bool scrolls)
+        {
+            if (!pad) return scrolls ? KeyboardPanelHintScroll : KeyboardPanelHint;
+            string hint = PadKey(KeyBindings.PanelMap, KeyBindings.PanelNavigate) + " select · " + PadKey(KeyBindings.PanelMap, KeyBindings.PanelSubmit) + " confirm";
+            return scrolls ? hint + " · More below" : hint;
+        }
+
+        /// <summary>
+        /// The follow chip's keys after the name it follows (U7): the recentre and the two follow
+        /// keys, "F recenter · ]/[ follow" on the keyboard and "R3 recenter · LB/RB follow" on a
+        /// pad. The recentre is the key or button the player gave it, where they gave it one.
+        /// </summary>
+        public static string FollowHint(bool pad)
+        {
+            if (pad)
+                return PadKey("Camera", "Recenter") + " recenter · " + PadKey("Camera", "Previous") + "/" + PadKey("Camera", "Next") + " follow";
+            return KeyKey("Camera", "Recenter") + " recenter · " + KeyKey("Camera", "Next") + "/" + KeyKey("Camera", "Previous") + " follow";
         }
 
         /// <summary>The tour's controls line for the device last used.</summary>
@@ -321,6 +365,16 @@ namespace Gamesim.Presentation
             string pad = Find(map, action).Pad;
             int slash = pad.IndexOf(" / ", StringComparison.Ordinal);
             return slash > 0 ? pad.Substring(0, slash) : pad;
+        }
+
+        /// <summary>The first of a row's keys: "]" of the follow's "] / Tab" - or the key the player gave it (A5).</summary>
+        private static string KeyKey(string map, string action)
+        {
+            string chosen = KeyBindings.KeyLabel(map, action);
+            if (chosen != null) return chosen;
+            string keys = Find(map, action).Keyboard;
+            int slash = keys.IndexOf(" / ", StringComparison.Ordinal);
+            return slash > 0 ? keys.Substring(0, slash) : keys;
         }
 
         /// <summary>A row's pad words with the slashes closed up, for the help card's narrow box - or the button the player gave it (A5).</summary>

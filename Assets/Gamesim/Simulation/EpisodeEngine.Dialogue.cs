@@ -18,13 +18,17 @@ namespace Gamesim.Simulation
             bool advance = active != null && command.kind == EpisodeCommandKind.Advance && current.phase == DialogueRules.PhaseOf(active);
             bool lobby = active != null && command.kind == EpisodeCommandKind.Lobby && command.targetId == active.npcId
                 && LobbyAsk.TryDecode(command.text, out string ask, out _) && DialogueRules.ClosesOnPlea(active, ask);
-            if (!choice && !advance && !lobby) return null;
+            // Dialogue rules 4: an open veto question lapses at the competition's result, which these commands play (§4.1).
+            bool result = active != null && active.occasionKind == DialogueVetoQuestion.Kind && current.phase == EpisodePhase.Veto
+                && VetoQuestionLapsesOn(command.kind);
+            if (!choice && !advance && !lobby && !result) return null;
             Require(DialogueRules.On(current), "Paid dialogue is not enabled for this season.");
             Require(pendingDialogue == null && ReferenceEquals(candidate, applyingDialogueCandidate)
                 && !ReferenceEquals(candidate, current), "Dialogue requires its own detached command candidate.");
             Require(Valid(current, out string error), error);
             var pending = new PendingDialogueCommand(this, candidate, command);
             pendingDialogue = pending;
+            if (result) pending.LapseVetoQuestion(candidate);
             return pending;
         }
 
@@ -65,6 +69,7 @@ namespace Gamesim.Simulation
                     Require(originalEpisode != null && request.targetId == originalEpisode.id, "That dialogue has already ended.");
                     var cycle = original.storylines.Single(x => x.id == originalEpisode.id);
                     // Rules 2 and later have their own nodes and evidence (EpisodeEngine.Dialogue.Rules2.cs); rules 1 is as merged.
+                    if (original.dialogueRulesVersion >= DialogueRules.Rules4 && DialogueRules.IsRules4Template(cycle.templateId)) { PrepareVetoQuestionChoice(cycle); return; }
                     if (original.dialogueRulesVersion >= DialogueRules.Rules3) { PrepareRules3Choice(cycle, out lieSource); return; }
                     if (original.dialogueRulesVersion >= DialogueRules.Rules2) { PrepareRules2Choice(cycle, out citationSource, out lieSource); return; }
                     var template = DialogueRules.CampaignTemplate(cycle.templateId, originalEpisode.contentVersion);
@@ -91,7 +96,9 @@ namespace Gamesim.Simulation
                         Require(StrategyRules.CanLobby(original, request.targetId, DialogueRules.AskOf(request.text), request.secondTargetId, out string error), error);
                         Require(SocialActionsSpent(original) < SocialActionBudget(original), "You have no conversations left this week.");
                     }
-                    else Require(request.kind == EpisodeCommandKind.Advance && original.phase == DialogueRules.PhaseOf(originalEpisode),
+                    else Require((request.kind == EpisodeCommandKind.Advance || originalEpisode.occasionKind == DialogueVetoQuestion.Kind
+                            && VetoQuestionLapsesOn(request.kind))
+                        && original.phase == DialogueRules.PhaseOf(originalEpisode),
                         "Only the campaign boundary can lapse this conversation.");
                 }
             }

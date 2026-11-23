@@ -80,6 +80,12 @@ namespace Gamesim.Simulation
 
             private void ResolveRules3(EpisodeState state)
             {
+                // Dialogue rules 4's veto question has its own half (EpisodeEngine.Dialogue.Rules4.cs).
+                if (VetoQuestionCommand)
+                {
+                    if (request.kind == EpisodeCommandKind.StartDialogue) StartVetoQuestion(state); else ChooseVetoQuestion(state);
+                    return;
+                }
                 if (request.kind == EpisodeCommandKind.StartDialogue) StartRules3(state);
                 else ChooseRules3(state);
             }

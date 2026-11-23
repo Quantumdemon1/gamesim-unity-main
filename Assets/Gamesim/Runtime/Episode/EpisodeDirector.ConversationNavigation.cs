@@ -243,6 +243,7 @@ namespace Gamesim.Episode
                     else hud.Paragraph("Talk through the game as it stands. A nomination or veto plea is offered here when this houseguest is deciding.");
                     if (lobbyDeciderId == npc.id && lobbyAsk != null
                         && StrategyRules.CanLobby(state, npc.id, lobbyAsk, lobbySubjectId, out _)) break;
+                    VetoQuestionRow(state, npc); // Dialogue rules 4: ask a veto player if they'd use it on you (EpisodeDirector.VetoQuestion.cs).
                     ConversationAction(state, npc, EpisodeHud.StrategicDiscussionCaption, EpisodeCommandKind.StrategicDiscussion);
                     ConversationAction(state, npc, EpisodeHud.DiscussGameCaption, EpisodeCommandKind.DiscussGame);
                     break;

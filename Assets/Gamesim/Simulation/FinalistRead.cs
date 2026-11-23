@@ -504,6 +504,8 @@ namespace Gamesim.Simulation
                     // The commitment rules' own (C9), so always on the record: broken only by a nomination,
                     // in front of the house.
                 case DealKind.VetoHold:
+                // Dialogue's own conditional veto promise (DIALOGUE-PLAN §4.2): settled at the meeting, its breach the holder's.
+                case DealKind.VetoIf:
                     // The role moments' own (ROLE-MOMENTS-PLAN R4), played under the commitment rules, so on the record
                     // too: broken only by the veto used, at the meeting, in front of the house.
                     return deal.settledWeek > 0 ? deal.brokenById : null;

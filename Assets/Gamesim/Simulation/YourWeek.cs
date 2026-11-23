@@ -812,6 +812,8 @@ namespace Gamesim.Simulation
                 case DealKind.FinalThree: return "final three deal";
                 // The role moments' own (ROLE-MOMENTS-PLAN R4).
                 case DealKind.VetoHold: return "keep-the-block deal";
+                // Dialogue's own (DIALOGUE-PLAN §4.2).
+                case DealKind.VetoIf: return "veto promise";
                 default: return "partnership";
             }
         }

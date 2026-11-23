@@ -549,6 +549,8 @@ namespace Gamesim.Simulation
                 // The role moments' own (ROLE-MOMENTS-PLAN R4): a word about this week's veto, which binds nothing at a
                 // vote. The decision settles it first, so a ballot never meets one standing.
                 case DealKind.VetoHold: return 0;
+                // Dialogue rules 4's conditional veto promise (DIALOGUE-PLAN §4.2): the same, settled or lapsed by the meeting.
+                case DealKind.VetoIf: return 0;
                 default: return 10;
             }
         }

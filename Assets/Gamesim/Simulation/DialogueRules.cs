@@ -17,9 +17,10 @@ namespace Gamesim.Simulation
         /// The upper bound of the dialogue rules this build defines (DIALOGUE-PLAN §2): never a gate and never what a
         /// season is started on. Validation accepts the closed set <see cref="IsDefined"/> names, each at the schema
         /// that introduced it (<see cref="Admits"/>); behaviour is keyed to the version that introduced it
-        /// (<see cref="Rules1"/>, <see cref="Rules2"/>, <see cref="Rules3"/>). <see cref="MaximumSteps"/> keeps its meaning, rules 1's.
+        /// (<see cref="Rules1"/>, <see cref="Rules2"/>, <see cref="Rules3"/>, <see cref="Rules4"/>). <see cref="MaximumSteps"/> keeps its
+        /// meaning, rules 1's. Rules 4 (D4's veto question and conditional promise) is defined and not yet offered.
         /// </summary>
-        public const int Version = 3, MaximumEpisodes = 100, MaximumEvents = 400, MaximumSteps = 3;
+        public const int Version = 4, MaximumEpisodes = 100, MaximumEvents = 400, MaximumSteps = 3;
         private const int MaximumAction = EpisodeEngine.LegacySocialActionBudget + WebSocialVocabulary.PurchaseCeiling;
 
         /// <summary>

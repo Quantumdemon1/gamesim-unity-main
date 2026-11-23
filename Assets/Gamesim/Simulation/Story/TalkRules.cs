@@ -10,7 +10,7 @@ namespace Gamesim.Simulation
     /// started on. A level is defined here before its slice reads it, and admitted only from the schema that introduced it
     /// (<see cref="Admits"/>: every level from 31). A fresh season's level is written in
     /// <see cref="ShippedRules.ApplyFresh(EpisodeState)"/> and only there, as <see cref="Shipped"/>; each level is ENROLLED
-    /// (moved into Shipped) only by its slice's integrator, as the slice lands (ruling R16; levels 1 and 2 are enrolled). Load, migration,
+    /// (moved into Shipped) only by its slice's integrator, as the slice lands (ruling R16; levels 1, 2 and 3 are enrolled). Load, migration,
     /// recovery and the importer never infer a level: an old save migrates at 0 and keeps free talk off. Every rule reads
     /// the level that introduced it as a lower bound (<see cref="At"/>), never <see cref="Latest"/>.</para>
     /// </summary>
@@ -29,7 +29,11 @@ namespace Gamesim.Simulation
         /// </summary>
         public const int Chemistry = 2;
 
-        /// <summary>Slice S3: romance, the All-Stars' turn-asides and the house's reaction to a couple.</summary>
+        /// <summary>
+        /// Slice S3: romance with the player (<see cref="TalkRomance"/>: the Flirt answer, interest, spark, the declaration both
+        /// ways, endings, jealousy), the three stances with the All-Stars' turn-asides and hold-backs, and the house's reaction to
+        /// a couple; also the earlier read of the Friends named (T9). Everything romantic also needs <c>story.romanceStorylines</c>.
+        /// </summary>
         public const int Romance = 3;
 
         /// <summary>Slice S4: couples among the housemates.</summary>
@@ -42,13 +46,13 @@ namespace Gamesim.Simulation
         public const int Latest = ComesToTalk;
 
         /// <summary>
-        /// The level a season the game starts plays under (<see cref="ShippedRules.ApplyFresh(EpisodeState)"/>): level 2,
-        /// <see cref="Chemistry"/>, enrolled by slice 2's integrator as the slice lands (ruling R16, which replaces R4's gate: the
+        /// The level a season the game starts plays under (<see cref="ShippedRules.ApplyFresh(EpisodeState)"/>): level 3,
+        /// <see cref="Romance"/>, enrolled by slice 3's integrator as the slice lands (ruling R16, which replaces R4's gate: the
         /// balance arm runs afterwards and tunes the gains). It was <see cref="Off"/> from schema 31, then <see cref="Talk"/>
-        /// from slice 1's enrolment; a season keeps the level it started on. Never <see cref="Latest"/>: each later level is
-        /// enrolled only by its own slice's integrator.
+        /// from slice 1's enrolment and <see cref="Chemistry"/> from slice 2's; a season keeps the level it started on. Never
+        /// <see cref="Latest"/>: each later level is enrolled only by its own slice's integrator.
         /// </summary>
-        public const int Shipped = Chemistry;
+        public const int Shipped = Romance;
 
         /// <summary>The schema that introduced the ladder and every level on it.</summary>
         public const int Schema = 31;

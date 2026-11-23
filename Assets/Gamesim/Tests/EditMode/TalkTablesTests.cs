@@ -17,7 +17,8 @@ namespace Gamesim.Tests.EditMode
     {
         const int MaxSpoken = 140;
 
-        static IEnumerable<TalkRow> Rows => TalkTables.All;
+        // Slice 3: the romance kinds (after Stage) have their own row form; TalkRomanceTablesTests reads them.
+        static IEnumerable<TalkRow> Rows => TalkTables.All.Where(r => r.Kind <= TalkKind.Stage);
 
         /// <summary>Every piece of text a row holds, with a name for the failure message.</summary>
         static IEnumerable<KeyValuePair<string, string>> Lines(TalkRow row)
@@ -53,9 +54,10 @@ namespace Gamesim.Tests.EditMode
         [Test]
         public void TheRegistryJoinsEveryTableAndEveryPoolHasEachKind()
         {
-            Assert.That(TalkTables.Tables.Count, Is.EqualTo(16), "Four pools, three kinds each, and each pool's stage talks (slice 2).");
+            Assert.That(TalkTables.Tables.Count, Is.EqualTo(16 + 15), "Four pools, three kinds each, each pool's stage talks (slice 2), and the three pools' and twelve All-Stars' romance talks (slice 3).");
             Assert.That(TalkTables.All.Count, Is.EqualTo(TalkTables.Tables.Sum(t => t.Length)));
-            Assert.That(TalkTables.All.Count, Is.EqualTo(276 + 48), "The converter read 276 talks from the source and wrote 276 rows; slice 2 adds 48 stage talks.");
+            Assert.That(Rows.Count(), Is.EqualTo(276 + 48), "The converter read 276 talks from the source and wrote 276 rows; slice 2 adds 48 stage talks.");
+            Assert.That(TalkTables.All.Count, Is.EqualTo(276 + 48 + 3 * 48 + 12 * 19), "Slice 3 adds 48 romance talks per class pool and 19 per All-Star.");
             foreach (string pool in TalkPools.All)
                 foreach (TalkKind kind in new[] { TalkKind.Layer, TalkKind.Rhythm, TalkKind.Standing })
                     Assert.That(Rows.Count(r => r.Pool == pool && r.Kind == kind), Is.GreaterThan(0), pool + " " + kind);

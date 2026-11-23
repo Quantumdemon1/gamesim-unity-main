@@ -16,13 +16,13 @@ namespace Gamesim.Tests.EditMode
         // ------------------------------------------------------------------ the ladder
 
         [Test]
-        public void TheLadderIsBoundedAtComesToTalkAndShipsLevelTwo()
+        public void TheLadderIsBoundedAtComesToTalkAndShipsLevelThree()
         {
             Assert.That(TalkRules.Latest, Is.EqualTo(TalkRules.ComesToTalk));
             Assert.That(new[] { TalkRules.Off, TalkRules.Talk, TalkRules.Chemistry, TalkRules.Romance, TalkRules.Couples, TalkRules.ComesToTalk },
                 Is.EqualTo(new[] { 0, 1, 2, 3, 4, 5 }));
-            // Level 2 is enrolled as free talk slice 2 lands (ruling R16); it was Off from schema 31, then level 1 from slice 1.
-            Assert.That(TalkRules.Shipped, Is.EqualTo(TalkRules.Chemistry), "Level 2 is enrolled, and no level past it.");
+            // Level 3 is enrolled as free talk slice 3 lands (ruling R16); it was Off from schema 31, then levels 1 and 2 from slices 1 and 2.
+            Assert.That(TalkRules.Shipped, Is.EqualTo(TalkRules.Romance), "Level 3 is enrolled, and no level past it.");
             Assert.That(TalkRules.Schema, Is.EqualTo(31));
         }
 
@@ -52,7 +52,7 @@ namespace Gamesim.Tests.EditMode
             var fields = ShippedRules.Fields(s);
             // Second to last since the minds' ladder (story.mindRules) joined the list after it in the same schema.
             Assert.That(fields[fields.Count - 2].Key, Is.EqualTo("story.talkRules"));
-            Assert.That(fields[fields.Count - 2].Value, Is.EqualTo(TalkRules.Chemistry), "Level 2 since its enrolment.");
+            Assert.That(fields[fields.Count - 2].Value, Is.EqualTo(TalkRules.Romance), "Level 3 since its enrolment.");
         }
 
         [Test]
@@ -60,7 +60,7 @@ namespace Gamesim.Tests.EditMode
         {
             var s = Fresh();
             ShippedRules.ApplyFresh(s);
-            Assert.That(s.story.talkRules, Is.EqualTo(TalkRules.Chemistry), "The level, enrolled; every other talk field at its default.");
+            Assert.That(s.story.talkRules, Is.EqualTo(TalkRules.Romance), "The level, enrolled; every other talk field at its default.");
             Assert.That(s.story.talkLean, Is.Zero);
             Assert.That(s.story.talkPairs, Is.Empty);
             var c = new ContactState { npcId = Npc(s) };
@@ -77,7 +77,7 @@ namespace Gamesim.Tests.EditMode
 
         /// <summary>
         /// Only the player's free talk writes a talk field: a season played on without one keeps every field at its default and
-        /// the level it started on (level 2 since its enrolment).
+        /// the level it started on (level 3 since its enrolment).
         /// </summary>
         [Test]
         public void PlayingASeasonWritesNoTalkField()
@@ -92,7 +92,7 @@ namespace Gamesim.Tests.EditMode
             }
             var played = engine.Snapshot;
             Assert.That(played.week, Is.GreaterThanOrEqualTo(2), "The walk reached a later week.");
-            Assert.That(played.story.talkRules, Is.EqualTo(TalkRules.Chemistry));
+            Assert.That(played.story.talkRules, Is.EqualTo(TalkRules.Romance));
             Assert.That(played.story.talkLean, Is.Zero);
             Assert.That(played.story.talkPairs, Is.Empty);
             foreach (var c in played.story.contacts)

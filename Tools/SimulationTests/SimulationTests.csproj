@@ -86,6 +86,15 @@
     <Compile Include="$(EditMode)CompetitionRules5Tests.cs" />
     <Compile Include="$(EditMode)RingTowerPuzzleTests.cs" />
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/RingTowerPuzzle.cs" />
+    <!-- The trivia competition: rules 6's selector, eligibility, quiz and result; pure, so they run here too. The soak is
+         compiled here only and run by name. -->
+    <Compile Include="$(EditMode)CompetitionTriviaTests.cs" />
+    <Compile Include="$(EditMode)CompetitionTriviaSeasonSoak.cs" />
+    <!-- The trivia's screen: the round's model (which question, what an answer does, the result card's count); pure. -->
+    <Compile Include="$(EditMode)TriviaRoundTests.cs" />
+    <!-- Its review: a ranked answer names nothing, a left ranked quiz counts as it stands; pure. -->
+    <Compile Include="$(EditMode)TriviaRankedLeaveTests.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/TriviaRound.cs" />
     <!-- Competition show slice 1: the show's plan reads the committed standings and draws nothing; pure, so it runs here too. -->
     <Compile Include="$(EditMode)CompetitionShowPlanTests.cs" />
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/CompetitionShowPlan.cs" />
@@ -93,6 +102,16 @@
     <Compile Include="$(EditMode)CompetitionShowFamiliesTests.cs" />
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/CompetitionShowFamilies.cs" />
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/CompetitionShowTimeline.cs" />
+    <!-- Competition show edges: the walk out waits for its whole field, the course's legs and a late runner; pure, so they run here too. -->
+    <Compile Include="$(EditMode)CompetitionShowEdgesTests.cs" />
+    <Compile Include="$(EditMode)CompetitionShowEdgesFixTests.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/CompetitionCourseLegs.cs" />
+    <!-- Competition drop-outs and the tower show: the field lets go from a preview of the commit, the tower's rings from the beats; pure, so they run here too. -->
+    <Compile Include="$(EditMode)CompetitionDropoutsTests.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/CompetitionHoldDropouts.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/CompetitionTowerShowRings.cs" />
+    <Compile Include="$(EditMode)CompetitionCourseMarkPassesTests.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/CompetitionCourseMarkPasses.cs" />
     <!-- Competition yard slice 2: the list of what stands in the yard when; pure, so it runs here too. -->
     <Compile Include="$(EditMode)CompetitionYardPiecesTests.cs" />
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/CompetitionYardPieces.cs" />
@@ -102,6 +121,22 @@
     <!-- The finale page set aside for the cast screen: when backing out brings it back; pure, so it runs here too. -->
     <Compile Include="$(EditMode)FinaleAsideTests.cs" />
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/FinaleAside.cs" />
+    <!-- The ceremony cards name the press that works, hold a long line and remember Speed up (UI-UX plan U5, D2): pure, so it runs here too. -->
+    <Compile Include="$(EditMode)CeremonyCardPressTests.cs" />
+    <Compile Include="$(EditMode)CeremonyCardDeviceTests.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/CeremonyCardWords.cs" />
+    <!-- One card clock and one controls chip on every ceremony card (UI-UX plan D3a, D3b): pure, so it runs here too. -->
+    <Compile Include="$(EditMode)CeremonyCardClockTests.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/CeremonyCardClock.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/CeremonyChipMetrics.cs" />
+    <!-- The main menu's season card (change 10): a read-only look at a save's header, and its words; System and Newtonsoft only, so it runs here too. -->
+    <Compile Include="$(EditMode)SaveHeaderTests.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Persistence/SaveHeader.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/SeasonCardWords.cs" />
+    <!-- The tour offered, not replayed, and its card docked beside what each step lights: the placement arithmetic and the offer's words; pure, so they run here too. -->
+    <Compile Include="$(EditMode)TourDockTests.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/TourDock.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/TourOfferWords.cs" />
     <!-- Menu slice 2, part d: the decisions' and the cards' one way out, held in the source; pure, so it runs here too. -->
     <Compile Include="$(EditMode)MenuOneWayBackDecisionsScanTests.cs" />
     <!-- No slogan on a screen or a sign (the owner, 2026-11-14 and 2026-11-21), held in the source and the scenes. -->
@@ -174,6 +209,22 @@
     <Compile Include="$(EditMode)FreeTalkS2ReviewTests.cs" />
     <!-- Free talk slice 2: the friendship stage talks' tables (three per stage per pool, the favor's two replies, the star pool's register). -->
     <Compile Include="$(EditMode)TalkStageTablesTests.cs" />
+    <!-- Free talk slice 3 (talk rules 3): romance, the stances and turn-asides, the couple and the house's reaction, the levels below it and T9, on the tests' own tables. -->
+    <Compile Include="$(EditMode)FreeTalkS3Fixture.cs" />
+    <Compile Include="$(EditMode)FreeTalkRomanceTests.cs" />
+    <Compile Include="$(EditMode)FreeTalkStanceTests.cs" />
+    <Compile Include="$(EditMode)FreeTalkCoupleTests.cs" />
+    <Compile Include="$(EditMode)FreeTalkS3LevelTests.cs" />
+    <!-- Free talk slice 3: the romance tables (the class pools' and each All-Star's own: row form, coverage, the twelve alike, the real-people deny-list). -->
+    <Compile Include="$(EditMode)TalkRomanceTablesTests.cs" />
+    <!-- Free talk slice 3's wiring (the shipped tables against the engine, the Flirt button against its offer) and its season soak (Explicit, run by name). -->
+    <Compile Include="$(EditMode)TalkRomanceWiringTests.cs" />
+    <Compile Include="$(EditMode)FreeTalkRomancePaceTests.cs" />
+    <!-- Free talk slice 3's review fixes: one showmance in the house per housemate, the undecided Guarded class, the resumed scene, every refusal saying no plainly and the reactions speaking of the game only. -->
+    <Compile Include="$(EditMode)FreeTalkS3ReviewTests.cs" />
+    <!-- Free talk slice 3's second fixes: a new couple once a partner has left the house, and every choice the screen offers in a level-3 week accepted. -->
+    <Compile Include="$(EditMode)FreeTalkNewCoupleTests.cs" />
+    <Compile Include="$(EditMode)FreeTalkS3SeasonSoak.cs" />
     <Compile Include="$(EditMode)PooledSchema30ShapeTests.cs" />
     <Compile Include="$(EditMode)OldSaveTrace.cs" />
     <Compile Include="$(EditMode)CurrentOldSaveTrace.cs" />
@@ -450,6 +501,7 @@
     <Compile Include="$(EditMode)RelationshipLedgerTests.cs" />
     <Compile Include="$(EditMode)SocialActionParityTests.cs" />
     <Compile Include="$(EditMode)SocialVocabularyTests.cs" />
+    <Compile Include="$(EditMode)WholeHouseMoveLockTests.cs" />
     <Compile Include="$(EditMode)StorylineTests.cs" />
     <Compile Include="$(EditMode)StorySeasonTests.cs" />
     <Compile Include="$(EditMode)StoryCatalogLintTests.cs" />
@@ -481,6 +533,10 @@
     <Compile Include="$(EditMode)HouseTalkRulesTests.cs" />
     <!-- Explicit, and compiled out of Unity: story rules 11's held seasons, the house talk's replay guard, run on demand. -->
     <Compile Include="$(EditMode)RolesSeasonDigests.cs" />
+    <!-- Compiled out of Unity as well: every held replay digests the state below the live schema, through its observer. -->
+    <Compile Include="$(EditMode)HeldReplayShapeTests.cs" />
+    <!-- Compiled out of Unity as well: every held replay plays the free talk and minds levels it was recorded at, by name. -->
+    <Compile Include="$(EditMode)HeldReplayTalkLevelTests.cs" />
     <!-- Plan 32 S1: the story's cooldown table holds the house talk's keys at sixteen seats (compiled out of Unity). -->
     <Compile Include="$(EditMode)HouseTalkCapacityTests.cs" />
     <!-- Plan 32 S1: Regard, Candour and the manners; the vote answer at 12; its bank; the notes and the profile blocks. -->
@@ -490,10 +546,19 @@
     <Compile Include="$(EditMode)LineBankLintTests.cs" />
     <Compile Include="$(EditMode)HouseTalkNotesTests.cs" />
     <Compile Include="$(EditMode)HouseTalkValidationTests.cs" />
+    <!-- Plan 32 S2a: overhearing in the rules - the Notice and the Listen, their records, S1's follow-up cases, and the lab arm (compiled out of Unity). -->
+    <Compile Include="$(EditMode)OverhearTests.cs" />
+    <Compile Include="$(EditMode)OverhearValidationTests.cs" />
+    <Compile Include="$(EditMode)HouseTalkS1FollowUpTests.cs" />
+    <Compile Include="$(EditMode)HouseTalkLab.cs" />
+    <!-- Plan 32 S2b: overhearing on screen - the hunches, the catch risk and the walk-over's reads. -->
+    <Compile Include="$(EditMode)OverhearingScreenTests.cs" />
     <!-- Free talk slice 1, the screen: the words the panel, the tile and the notebook blocks show, and the command a reply sends. -->
     <Compile Include="$(EditMode)TalkScreenLinesTests.cs" />
     <!-- Free talk slice 2, the screen: the "Between you" and "How you come across" lines, the favour's pills and the third beat at talk rules 2. -->
     <Compile Include="$(EditMode)TalkScreenStageLinesTests.cs" />
+    <!-- Free talk slice 3, the screen: the romance choices, the Flirt reply's place, the witness, the scene and the pages at talk rules 3. -->
+    <Compile Include="$(EditMode)TalkScreenRomanceLinesTests.cs" />
     <Compile Include="$(EditMode)NominationStepsTests.cs" />
     <Compile Include="$(EditMode)ThreatAssessmentTests.cs" />
     <Compile Include="$(EditMode)WebDiaryParityTests.cs" />
@@ -550,6 +615,9 @@
     <Compile Include="$(EditMode)TuningCopyTests.cs" />
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/FinalChoiceWords.cs" />
     <Compile Include="$(EditMode)FinalChoiceWordsTests.cs" />
+    <!-- Pick, then commit (UI-UX-PLAN O1): the commit's caption, its command and when a pick holds. -->
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/DecisionPick.cs" />
+    <Compile Include="$(EditMode)DecisionPickTests.cs" />
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/ObjectiveWords.cs" />
     <Compile Include="$(EditMode)ObjectiveWordsTests.cs" />
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/CompetitionMiniGames.cs" />
@@ -557,6 +625,8 @@
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/MiniGameRun.Dice.cs" />
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/MiniGameRun.Words.cs" />
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/MiniGameRun.Tower.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/MiniGameRun.Trivia.cs" />
+    <Compile Include="$(EditMode)MiniGameRunTriviaTests.cs" />
     <Compile Include="$(EditMode)ScrambleDealTests.cs" />
     <!-- The input glossary (PLAN A, A0): every thing the player presses, and the raw-read guard over Runtime's scripts. -->
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/InputGlossary.cs" />
@@ -564,6 +634,7 @@
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/KeyBindings.cs" />
     <Compile Include="$(EditMode)KeyBindingsTests.cs" />
     <Compile Include="$(EditMode)InputGlossaryTests.cs" />
+    <Compile Include="$(EditMode)InputGlossaryDeviceHintsTests.cs" />
     <Compile Include="$(EditMode)InputRawReadScanTests.cs" />
     <!-- The ceremony cards' press guard (A4f), the Back matrix's representative rows rest on it. -->
     <Compile Include="$(EditMode)CeremonyCardInputScanTests.cs" />
@@ -600,6 +671,9 @@
     <!-- The one way out's words and measures (menu slice 2): its plain-C# half, without the builders. -->
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/WayOut.cs" />
     <Compile Include="$(EditMode)WayOutWordsTests.cs" />
+    <!-- Largest text (U9, backlog item 23): the menus, side cards and ways out follow the text size; plain C#, with its source scan. -->
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/TextSizeFit.cs" />
+    <Compile Include="$(EditMode)TextSizeFitTests.cs" />
     <!-- Menu slice 3, part b: the one trust chip's bands and words (plain C#; its builder is EditMode only), and the scan that every reading page draws it. -->
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/TrustChip.cs" />
     <Compile Include="$(EditMode)MenuNotebookBTrustChipTests.cs" />
@@ -618,6 +692,14 @@
     <!-- Menu slice 3, part a: the notebook's tab strip and the rail's Notebook group, in words and order, with their source scans (plain C#). -->
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/NotebookStrip.cs" />
     <Compile Include="$(EditMode)MenuNotebookStripATests.cs" />
+    <!-- Lines that said the wrong thing (backlog 20, 30): the tour names only rail captions and says what a face click opens; the old wordings gone; the notes page's line names its week buttons; the ranking is HOW THEY PLACED (plain C#, with source scans). -->
+    <Compile Include="$(EditMode)TourNamesRailTests.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/StorySoFarWords.cs" />
+    <Compile Include="$(EditMode)LinesWrongWordsTests.cs" />
+    <Compile Include="$(EditMode)LinesWrongWordsReviewTests.cs" />
+    <!-- Notebook rows open profiles (backlog 21): a profile keeps the notes card's alliance-call notes, each once, and leaves out its promises and memories (plain C#). -->
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/ProfileNotes.cs" />
+    <Compile Include="$(EditMode)NotebookProfileNotesTests.cs" />
     <!-- Menu slice 3, held together: every docked panel's layout has a kind, the faces' rims and the links' rest, in the source. -->
     <Compile Include="$(EditMode)MenuNotebookIntegrationTests.cs" />
     <!-- Menu slice 4, the foundation: the Settings frame's sections, the row kit's words and steps, and the shell held in the source. -->

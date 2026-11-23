@@ -17,15 +17,21 @@ namespace Gamesim.Presentation
         private CompetitionStageFootprint(Vector3 center,Vector3 halfSize,Quaternion rotation)
         {Center=center;HalfSize=halfSize;Rotation=rotation;}
 
+        /// <summary>How far ahead of its actor a family's equipment reaches, metres: the grip's counterweight, or a console.</summary>
+        public static float Reach(CompetitionApparatus.Family family)=>family==CompetitionApparatus.Family.GripRig?1.25f:1.05f;
+
+        /// <summary>How far to either side of its actor a station's equipment reaches, metres, before the arrival tolerance.</summary>
+        public const float HalfWidth=.51f;
+
         public static CompetitionStageFootprint Station(CompetitionApparatus.Family family,Vector3 feet,float facing,
             float radius,float height,float arrival=.25f)
         {
             // The farthest grip solid is its counterweight; height/depth include the fitted
             // shoulder/arm range of the supported humanoids, rather than just the default rig.
-            float forward=family==CompetitionApparatus.Family.GripRig?1.25f:1.05f;
+            float forward=Reach(family);
             float back=radius+arrival+Margin;
             float front=forward+arrival+Margin;
-            float width=Mathf.Max(radius,.51f)+arrival+Margin;
+            float width=Mathf.Max(radius,HalfWidth)+arrival+Margin;
             float top=Mathf.Max(3f,height*1.5f);
             var rotation=Quaternion.Euler(0,facing,0);
             return new CompetitionStageFootprint(feet+rotation*new Vector3(0,(top+.001f)*.5f,(front-back)*.5f),

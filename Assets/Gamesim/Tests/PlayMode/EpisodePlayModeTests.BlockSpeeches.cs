@@ -412,6 +412,8 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(voting.votes, Is.Empty, "Hearing both NPC speeches cannot choose the player's ballot.");
             string chosen = before.nominees[1];
             ButtonWithCaption("Vote to evict " + voting.Find(chosen).name).onClick.Invoke();
+            yield return null; yield return null;
+            ButtonWithCaption(director.DecisionPickCommitCaption).onClick.Invoke();
             AssertIntentCommand(voting, EpisodeCommandKind.CastVote, chosen);
             var voted = director.Snapshot;
             Assert.That(voted.votes.Single(vote => vote.voterId == voted.playerId).targetId, Is.EqualTo(chosen));

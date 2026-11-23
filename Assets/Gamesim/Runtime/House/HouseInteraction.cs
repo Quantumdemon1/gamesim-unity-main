@@ -19,6 +19,9 @@ namespace Gamesim.House
         private static readonly Color Mint = UiTheme.Accent;
         private static readonly Color White = UiTheme.Paper;
 
+        /// <summary>The conversation's way out: "Back to the house", where leaving returns, with its key.</summary>
+        public const string LeaveConversationCaption = WayOut.BackPrefix + WayOut.House + "    [Esc]";
+
         [SerializeField] private HousePlayerController player;
         [SerializeField] private HouseNpc npc;
         [SerializeField] private HouseCameraRig rig;
@@ -277,7 +280,7 @@ namespace Gamesim.House
                 choices[index].onClick.AddListener(() => SelectResponse(choice));
             }
 
-            exitButton = MakeButton("Leave conversation", conversationRect, "Back to exploring    [Esc]", -330f,
+            exitButton = MakeButton("Leave conversation", conversationRect, LeaveConversationCaption, -330f,
                 new Color(0.12f, 0.25f, 0.25f, 1f), Mint);
             exitButton.onClick.AddListener(EndDialogue);
             conversation.SetActive(false);

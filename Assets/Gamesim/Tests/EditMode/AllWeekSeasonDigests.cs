@@ -228,6 +228,19 @@ namespace Gamesim.Tests.EditMode
             return s;
         }
 
+        /// <summary>
+        /// <see cref="Fresh"/> held at free talk rules 2 and the minds' rules 0 by name: the levels these seasons were measured
+        /// at. ApplyFresh writes the shipped levels, which free talk slice 3 moves to 3, where a season offers no Late Nights
+        /// opening beat and reads the Friends named earlier.
+        /// </summary>
+        internal static EpisodeState Held(int size, uint seed)
+        {
+            var s = Fresh(size, seed);
+            s.story.talkRules = TalkRules.Chemistry;
+            s.story.mindRules = MindRules.Off;
+            return s;
+        }
+
         /// <summary>The watcher's sighting: the first act the house would stage now, as the director's watch would see it.</summary>
         private static EpisodeCommand Watch(EpisodeState s)
         {
@@ -247,7 +260,7 @@ namespace Gamesim.Tests.EditMode
             for (uint seed = 1; seed <= Seeds; seed++)
             {
                 if (!run.bySize.TryGetValue(size, out var counts)) run.bySize[size] = counts = new Dictionary<string, int>();
-                var start = Fresh(size, seed);
+                var start = Held(size, seed);
                 start.allWeekRulesStartWeek = allWeek ? 1 : 0;
                 // D3's trio player: a pact of three of the player's from week one (PactPlanSeasonDigests).
                 if (player == "trio") TrioOf.Invoke(null, new object[] { start });

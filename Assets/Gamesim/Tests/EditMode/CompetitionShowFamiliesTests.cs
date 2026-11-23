@@ -33,11 +33,15 @@ namespace Gamesim.Tests.EditMode
                 { CompetitionDefinitions.HouseguestScramble, CompetitionShowFamily.Table },
                 { CompetitionDefinitions.SignalSprint, CompetitionShowFamily.Course },
                 { CompetitionDefinitions.SwitchbackSignals, CompetitionShowFamily.Course },
+                // The ring tower has its own show since the tower show (competition drop-outs and tower show).
+                { CompetitionDefinitions.RingTower, CompetitionShowFamily.Tower },
+                // The trivia (rules 6) is a quiz at the memory consoles.
+                { CompetitionDefinitions.Trivia, CompetitionShowFamily.Podium },
             };
-            Assert.That(expected.Keys, Is.EquivalentTo(CompetitionDefinitions.All), "Every game of the catalogue has its family decided here.");
+            Assert.That(expected.Keys, Is.EquivalentTo(CompetitionDefinitions.Catalogue), "Every game of the catalogue has its family decided here.");
             foreach (var pair in expected)
                 Assert.That(CompetitionShowFamilies.For(pair.Key.Id, pair.Key.Category), Is.EqualTo(pair.Value), pair.Key.Title);
-            Assert.That(CompetitionShowFamilies.Games.Keys, Is.EquivalentTo(CompetitionDefinitions.All.Select(game => game.Id)), "The show knows these games and no others.");
+            Assert.That(CompetitionShowFamilies.Games.Keys, Is.EquivalentTo(CompetitionDefinitions.Catalogue.Select(game => game.Id)), "The show knows these games and no others.");
         }
 
         [TestCase("Skill")]
@@ -48,8 +52,9 @@ namespace Gamesim.Tests.EditMode
         public void AGameTheShowDoesNotKnowCommitsToItsCardWhateverItsKind(string kind)
         {
             var state = FieldOf(6);
-            Assert.That(CompetitionShowFamilies.For("ring-tower-v5", kind), Is.Null, "A new game is never given a family by its kind.");
-            Assert.That(CompetitionShowPlan.For(state, EpisodePhase.HoH, kind, "ring-tower-v5"), Is.Null, "No show: the card plays at once.");
+            // A game id no catalogue holds (the ring tower, once the example here, has its own show since the tower show).
+            Assert.That(CompetitionShowFamilies.For("a-game-not-yet-made-v9", kind), Is.Null, "A new game is never given a family by its kind.");
+            Assert.That(CompetitionShowPlan.For(state, EpisodePhase.HoH, kind, "a-game-not-yet-made-v9"), Is.Null, "No show: the card plays at once.");
             Assert.That(CompetitionShowPlan.For(state, EpisodePhase.HoH, kind, ""), Is.Null);
         }
 

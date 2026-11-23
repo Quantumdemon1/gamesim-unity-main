@@ -117,12 +117,14 @@ namespace Gamesim.Simulation
                     ResolveCompetition(s, c.performance); break;
                 case EpisodeCommandKind.Nominate:
                     Require(s.phase == EpisodePhase.Nomination && s.hohId == s.playerId, "Only the reigning HoH chooses nominees.");
+                    // Free talk's rules 3 (T9): the Friends named are read before the closing beats, as the player saw them. A read only.
+                    var friendsSeen = TalkRomance.LevelOn(s) ? TalkFriendship.FriendsNamed(s, new[] { c.targetId, c.secondTargetId }) : null;
                     // The house's last beats before the names are said (D2, §1).
                     Close(s);
                     // A beat that closes at the nominations lapses first, so anything it moved has
                     // moved before the names are said.
                     if (StoryOn(s)) StoryLapse(s, StoryAnchors.NomsSet);
-                    Nominate(s, c.targetId, c.secondTargetId);
+                    NominateSeen(s, c.targetId, c.secondTargetId, friendsSeen);
                     // The player's own backdoor plan, made before the names were said, becomes the
                     // week's backdoor story - unless they put the target straight up after all.
                     if (s.backdoorTargetId != null && !s.nominees.Contains(s.backdoorTargetId))
@@ -139,9 +141,12 @@ namespace Gamesim.Simulation
                     // Under the role moments (R3) the veto board as the player last saw it, before anything below moves
                     // it, and what the decision left of it settled on those tones: silence costs, and the riders.
                     var board = VetoBoardAsSeen(s);
+                    // Free talk's rules 3 (T9): the Friend the player names as the replacement is read before the closing beats. A read only.
+                    var replacementSeen = TalkRomance.LevelOn(s) && c.useVeto && s.hohId == s.playerId
+                        ? TalkFriendship.FriendsNamed(s, new[] { c.secondTargetId }) : null;
                     // The house's last beats before the veto is used (D2, §1).
                     Close(s);
-                    ResolveVeto(s, c.useVeto, c.targetId, c.secondTargetId);
+                    ResolveVetoSeen(s, c.useVeto, c.targetId, c.secondTargetId, replacementSeen);
                     SettleTheVetoBoard(s, board); break;
                 case EpisodeCommandKind.CastVote:
                     if (s.phase == EpisodePhase.Jury)
@@ -958,15 +963,23 @@ namespace Gamesim.Simulation
             return candidates.OrderBy(c => NominationWeight(s, s.hohId, c.id)).First().id;
         }
 
-        private static void Nominate(EpisodeState s, string first, string second)
+        private static void Nominate(EpisodeState s, string first, string second) => NominateSeen(s, first, second, null);
+
+        /// <summary>
+        /// The nomination, with the Friends named as the player saw them (free talk's rules 3, T9: read before the command's
+        /// closing beats), or null to read them here, as below talk rules 3. Its own name so <see cref="Nominate"/> keeps its
+        /// signature (tests reach it by reflection with three arguments).
+        /// </summary>
+        private static void NominateSeen(EpisodeState s, string first, string second, List<string> friendsSeen)
         {
             Require(s.nominees.Count == 0, "Nominations are already committed.");
             var eligible = new HashSet<string>(NominationCandidates(s).Select(c => c.id));
             Require(first != second && eligible.Contains(first ?? "") && eligible.Contains(second ?? ""), "Choose two distinct eligible houseguests.");
             s.replyCards.RemoveAll(card => card.kind == ReplyCards.Pitch);
             s.nominees = new List<string> { first, second };
-            // Free talk's rules 2 (T7): a Friend or closer the player nominates pays a further cost, read before the nomination's effects.
-            var friendsNamed = TalkFriendship.FriendsNamed(s, s.nominees);
+            // Free talk's rules 2 (T7): a Friend or closer the player nominates pays a further cost, read before the nomination's effects;
+            // at talk rules 3 (T9) as the player saw them, before the command's closing beats.
+            var friendsNamed = friendsSeen ?? TalkFriendship.FriendsNamed(s, s.nominees);
             foreach (var nominee in s.nominees) NominationEffects(s, nominee);
             // Under the role moments a nominee the player turned down at their pitch takes the ceremony's grudge easier (R5).
             var honestNos = HonestNos(s, s.nominees);
@@ -982,6 +995,8 @@ namespace Gamesim.Simulation
             SettleThePitchBoard(s);
             // Last, after every draw of the ceremony, so the friends' cost moves no draw of it.
             FriendsBetrayed(s, friendsNamed);
+            // Free talk's rules 3: a partner the player put up ends it.
+            PartnerNamed(s, s.nominees);
         }
 
         private static void NominationEffects(EpisodeState s, string id, bool initial = true)
@@ -1083,7 +1098,14 @@ namespace Gamesim.Simulation
             }
         }
 
-        private static void ResolveVeto(EpisodeState s, bool use, string saved, string replacement)
+        private static void ResolveVeto(EpisodeState s, bool use, string saved, string replacement) =>
+            ResolveVetoSeen(s, use, saved, replacement, null);
+
+        /// <summary>
+        /// The veto meeting, with the Friend named as the replacement as the player saw them (free talk's rules 3, T9), or null
+        /// to read it here, as below talk rules 3. Its own name so <see cref="ResolveVeto"/> keeps its signature (reflection).
+        /// </summary>
+        private static void ResolveVetoSeen(EpisodeState s, bool use, string saved, string replacement, List<string> replacementSeen)
         {
             // The block as it stood before this decision. A veto commitment is kept by lifting the
             // partner off it, and reading the block afterwards would find them already gone.
@@ -1098,7 +1120,8 @@ namespace Gamesim.Simulation
                 if (s.hohId != s.playerId) replacement = NpcReplacement(s);
                 Require(ReplacementCandidates(s).Any(c => c.id == replacement), "Choose an eligible replacement; the HoH and veto holder are immune.");
                 // Free talk's rules 2 (T7): a Friend or closer the player names pays a further cost, read before the nomination's effects.
-                friendsNamed = TalkFriendship.FriendsNamed(s, new[] { replacement });
+                // At talk rules 3 (T9) as the player saw it, before the command's closing beats.
+                friendsNamed = replacementSeen ?? TalkFriendship.FriendsNamed(s, new[] { replacement });
                 s.nominees.Remove(saved); s.nominees.Add(replacement); NominationEffects(s, replacement, false);
                 MoodLift(s, saved);
                 // Under the role moments a replacement the player turned down at their pitch takes it easier (R5).
@@ -1147,6 +1170,8 @@ namespace Gamesim.Simulation
                     offer.status = DealStatus.Expired;
             // Last, after every draw of the meeting, so the friend's cost moves no draw of it.
             FriendsBetrayed(s, friendsNamed);
+            // Free talk's rules 3: a partner the player named as the replacement ends it.
+            if (use) PartnerNamed(s, new[] { replacement });
         }
 
         /// <summary>
@@ -1307,6 +1332,7 @@ namespace Gamesim.Simulation
 
         private static void Social(EpisodeState s, EpisodeCommand c)
         {
+            Require(c.kind != EpisodeCommandKind.Eavesdrop || !StoryAt(s, StoryRules.Manners), WalkOverToListenRefusal); // plan 32 §I5: from 12 the house's free Listen
             RequireConversationWindow(s, c);
             Require(s.Find(s.playerId).status == ContestantStatus.Active, "Evicted players can follow the season but cannot influence it.");
             var target = s.Find(c.targetId);

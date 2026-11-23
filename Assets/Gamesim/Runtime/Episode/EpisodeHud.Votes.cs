@@ -57,6 +57,9 @@ namespace Gamesim.Episode
                 rim.name = "Voter";
                 Anchor(rim, new Vector2(0, 1), new Vector2(0, 1), new Vector2(pad, -y), rim.sizeDelta);
                 float bottom = PlacedCopy(card, ballot.Words, 18, UiTheme.Weight.Medium, Paper, left, y, inner);
+                // A ballot of someone else's opens the voter's profile, from the vote (backlog item 21):
+                // its line is the row's words, the last thing placed on the card.
+                ProfileLink(card.GetChild(card.childCount - 1).GetComponent<TMP_Text>(), ballot.Voter, EpisodeDirector.NotebookSection.Votes);
                 string under = ballot.Reason != null ? "“" + ballot.Reason + "”" : null;
                 if (!string.IsNullOrEmpty(ballot.Tag)) under = under != null ? ballot.Tag + " · " + under : ballot.Tag;
                 if (!string.IsNullOrEmpty(under))

@@ -297,9 +297,23 @@ namespace Gamesim.Tests.PlayMode
             {
                 var replacement = EpisodeEngine.ReplacementCandidates(state).FirstOrDefault();
                 bool use = replacement != null && !EpisodeEngine.VetoIsLockedAtFinalFour(state);
-                if (!use) yield return "Do not use the veto";
-                else if (state.hohId == state.playerId) yield return replacement.name;
-                else yield return EpisodeDirector.VetoSaveCaption(state, state.nominees[0]);
+                // Each pick, then the commit under the screen that names its result (EpisodeDirector.PickThenConfirm.cs).
+                if (!use)
+                {
+                    yield return "Do not use the veto";
+                    yield return DecisionPick.VetoCommitCaption(state, false, null, null);
+                }
+                else if (state.hohId == state.playerId)
+                {
+                    yield return replacement.name;
+                    string saved = state.vetoHolderId == state.playerId ? state.nominees[0] : EpisodeEngine.NpcVetoSave(state);
+                    yield return DecisionPick.VetoCommitCaption(state, true, saved, replacement.id);
+                }
+                else
+                {
+                    yield return EpisodeDirector.VetoSaveCaption(state, state.nominees[0]);
+                    yield return DecisionPick.VetoCommitCaption(state, true, state.nominees[0], null);
+                }
                 yield break;
             }
             if (state.phase == EpisodePhase.Eviction && state.evictionStage == EvictionStage.Speeches
@@ -310,9 +324,18 @@ namespace Gamesim.Tests.PlayMode
                 && (state.evictionStage == EvictionStage.Voting || state.evictionStage == EvictionStage.Tiebreaker)
                 && !state.votes.Any(vote => vote.voterId == state.playerId)
                 && (EpisodeEngine.Voters(state).Any(actor => actor.isPlayer) || EpisodeEngine.NeedsPlayerTieBreak(state)))
-            { yield return "Vote to evict " + state.Find(state.nominees[0]).name; yield break; }
+            {
+                yield return "Vote to evict " + state.Find(state.nominees[0]).name;
+                yield return DecisionPick.BallotCommitCaption(state, state.nominees[0]);
+                yield break;
+            }
             if (state.phase == EpisodePhase.FinalEviction && state.hohId == state.playerId)
-            { yield return FinalChoiceWords.CaptionToEvict(state, state.Active.First(actor => !actor.isPlayer).id); yield break; }
+            {
+                string evicted = state.Active.First(actor => !actor.isPlayer).id;
+                yield return FinalChoiceWords.CaptionToEvict(state, evicted);
+                yield return DecisionPick.FinalCommitCaption(state, evicted);
+                yield break;
+            }
             if (state.phase == EpisodePhase.JuryQuestioning)
             {
                 var exchange = state.juryExchanges[state.juryQuestionIndex];

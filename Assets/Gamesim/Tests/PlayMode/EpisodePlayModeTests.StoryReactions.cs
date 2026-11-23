@@ -192,6 +192,7 @@ namespace Gamesim.Tests.PlayMode
             var kept = state.Active.Single(actor => !actor.isPlayer && actor.id != cut.id);
             ButtonWithCaption(FinalChoiceWords.CaptionToEvict(state, cut.id)).onClick.Invoke();
             yield return Frames(2);
+            yield return CommitThePick();
             Assert.That(director.Snapshot.Find(cut.id).status, Is.EqualTo(ContestantStatus.Jury));
             Assert.That(StoryBody(cut.id).LastReaction, Is.EqualTo(CharacterPresentation.Reaction.Tearful), "The new juror weeps.");
             Assert.That(StoryBody(kept.id).LastReaction, Is.EqualTo(CharacterPresentation.Reaction.Shocked), "The chosen finalist is shocked.");

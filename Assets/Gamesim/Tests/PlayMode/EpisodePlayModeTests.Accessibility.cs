@@ -122,9 +122,16 @@ namespace Gamesim.Tests.PlayMode
             // has positioned the new layout-group children for the frame actually rendered.
             Canvas.ForceUpdateCanvases();
             // The modal and interaction prompt deliberately sit over the scene, unlike chrome.
+            // The live feed is required unless the HUD says it gave way to the open controls card,
+            // which grows with the text (EpisodeHud.LiveFeedGivesWayToTheControls); then it is down.
+            var hud = director.GetComponentInChildren<EpisodeHud>();
+            bool feedGaveWay = hud != null && hud.LiveFeedGivesWayToTheControls;
+            if (feedGaveWay)
+                Assert.That(ActiveChromePanel("Live feed"), Is.Null,
+                    "At " + TextSizes.Name(size) + " text the live feed gave way to the open controls card, and it is down.");
             var names = new[] { "Brand", "Navigation", "Objective", "Exploration controls", "Status",
                 "House pill", "Live feed", EpisodeHud.HouseVibeCardName, EpisodeHud.RecentEventsCardName,
-                CastRail.RootName, IconRail.RootName };
+                CastRail.RootName, IconRail.RootName }.Where(name => !feedGaveWay || name != "Live feed").ToArray();
             var panels = names.Select(ActiveChromePanel).Where(rect => rect != null).ToArray();
             Assert.That(panels, Has.Length.EqualTo(names.Length),
                 "Expected every fixed panel to be present; found " + panels.Length + " of " + names.Length + ".");

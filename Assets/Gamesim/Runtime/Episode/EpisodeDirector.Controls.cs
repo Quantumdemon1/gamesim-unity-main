@@ -251,7 +251,7 @@ namespace Gamesim.Episode
         {
             // The game surface consumes Escape / Start / B itself, including the dismissal frame.
             if (competitionScreen != null && competitionScreen.OwnsMenuInput) return true;
-            if (challengeActive) { CancelChallenge(); return true; }
+            if (challengeActive) { LeaveChallenge(); return true; }
             // The opening before anything: it draws over every screen, and Escape underneath it
             // used to close panels and release the shot it was holding.
             if (OpeningOwnsHouse) { OpeningMenuPressed(); return true; }
@@ -280,6 +280,8 @@ namespace Gamesim.Episode
             {
                 if (TryDeferVisibleNpcInvitation()) return true;
                 if (BackConversationNavigation()) return true;
+                // A choice picked and not committed is cleared before the screen closes (EpisodeDirector.PickThenConfirm.cs).
+                if (ClearDecisionPick()) return true;
                 // A page reached from another page inside the panel goes back a page, as its way
                 // back at the top left does, before anything closes (menu slice 2, the review's change 1).
                 if (BackNestedPage()) return true;

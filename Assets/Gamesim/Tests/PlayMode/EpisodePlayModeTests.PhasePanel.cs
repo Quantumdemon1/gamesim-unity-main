@@ -167,7 +167,7 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(EventSystem.current.currentSelectedGameObject.name, Is.EqualTo("Review competition results"),
                 "The review stays the control the results open on.");
             var words = PanelWords(panel);
-            Assert.That(words, Does.Contain("FINAL STANDINGS"));
+            Assert.That(words, Does.Contain(CompetitionWords.StandingsHeading));
             // The standings as rows (UI-UX-PASS-PLAN C0): the order, a face and a name on each, the
             // winner's badge on the first, and no score anywhere - the words are swept, at both text
             // sizes, in EpisodePlayModeTests.CompetitionNumbers.cs.

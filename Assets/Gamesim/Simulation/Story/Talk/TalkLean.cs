@@ -27,7 +27,7 @@ namespace Gamesim.Simulation
 
         /// <summary>
         /// The step a counted talk answered in a tone moves the lean (T4): the bold and playful tones Tease and Push +1; the careful
-        /// and yielding tones Careful and Let it go -1; Warm, Straight and Call it out 0. Flirt is slice 3's: 0 here.
+        /// and yielding tones Careful and Let it go -1; Warm, Straight and Call it out 0. Flirt +1 (slice 3, U2).
         /// </summary>
         public static int Step(string tone)
         {
@@ -35,6 +35,8 @@ namespace Gamesim.Simulation
             {
                 case TalkRules.Tease:
                 case TalkRules.Push:
+                // A Flirt answer (talk rules 3, ruling U2): never answerable below level 3, so levels 1 and 2 are unchanged.
+                case TalkRules.Flirt:
                     return 1;
                 case TalkRules.Careful:
                 case TalkRules.LetGo:

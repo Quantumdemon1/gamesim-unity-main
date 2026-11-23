@@ -294,9 +294,24 @@ namespace Gamesim.Episode
                         "A locked veto meeting must expose its keep-the-block control before checking its choices.");
                     RequireSeason(!SeasonVetoUseOffered(state),"A veto locked at the final four must offer no way to use it.");
                 }
-                if (replacement == null || locked) { yield return ClickSeasonButton("Do not use the veto"); yield break; }
-                if (state.hohId == state.playerId) yield return ClickSeasonButton(replacement.name,true);
-                else yield return ClickSeasonButton(EpisodeDirector.VetoSaveCaption(state, state.nominees[0]));
+                // A press picks the choice and the commit under the screen makes it (EpisodeDirector.PickThenConfirm.cs).
+                if (replacement == null || locked)
+                {
+                    yield return ClickSeasonButton("Do not use the veto");
+                    yield return ClickSeasonCommit(DecisionPick.VetoCommitCaption(state, false, null, null));
+                    yield break;
+                }
+                if (state.hohId == state.playerId)
+                {
+                    yield return ClickSeasonButton(replacement.name,true);
+                    string saved = state.vetoHolderId == state.playerId ? state.nominees[0] : EpisodeEngine.NpcVetoSave(state);
+                    yield return ClickSeasonCommit(DecisionPick.VetoCommitCaption(state, true, saved, replacement.id));
+                }
+                else
+                {
+                    yield return ClickSeasonButton(EpisodeDirector.VetoSaveCaption(state, state.nominees[0]));
+                    yield return ClickSeasonCommit(DecisionPick.VetoCommitCaption(state, true, state.nominees[0], null));
+                }
                 yield break;
             }
             // The ballot is offered only once the night reaches the vote: the stages before it
@@ -305,10 +320,20 @@ namespace Gamesim.Episode
             if (state.phase == EpisodePhase.Eviction && !state.evictionResolved && !state.votes.Any(vote => vote.voterId == state.playerId)
                 && (state.evictionStage == EvictionStage.Voting || state.evictionStage == EvictionStage.Tiebreaker)
                 && (EpisodeEngine.Voters(state).Any(actor => actor.isPlayer) || EpisodeEngine.NeedsPlayerTieBreak(state)))
-            { yield return ClickSeasonButton("Vote to evict " + state.Find(state.nominees[0]).name); yield break; }
-            // The final choice's control says both halves of it, "Take Maya · evict Taylor" (UI-UX-PASS-PLAN Q0).
+            {
+                yield return ClickSeasonButton("Vote to evict " + state.Find(state.nominees[0]).name);
+                yield return ClickSeasonCommit(DecisionPick.BallotCommitCaption(state, state.nominees[0]));
+                yield break;
+            }
+            // The final choice's control says both halves of it, "Take Maya · evict Taylor" (UI-UX-PASS-PLAN Q0),
+            // and picks it; the commit under the page makes it.
             if (state.phase == EpisodePhase.FinalEviction && state.hohId == state.playerId)
-            { yield return ClickSeasonButton(FinalChoiceWords.CaptionToEvict(state, state.Active.First(actor => !actor.isPlayer).id)); yield break; }
+            {
+                string evicted = state.Active.First(actor => !actor.isPlayer).id;
+                yield return ClickSeasonButton(FinalChoiceWords.CaptionToEvict(state, evicted));
+                yield return ClickSeasonCommit(DecisionPick.FinalCommitCaption(state, evicted));
+                yield break;
+            }
             if (state.phase == EpisodePhase.JuryQuestioning)
             {
                 if (!seasonReport.juryReloadVerified)
@@ -689,6 +714,17 @@ namespace Gamesim.Episode
             return " Phase " + (state != null ? state.phase + ", week " + state.week : "unknown") + "; on offer ("
                 + captions.Count + "): " + string.Join(" | ", captions.Take(24).Select(text => text.Length > 60 ? text.Substring(0, 60) + "..." : text))
                 + (captions.Count > 24 ? " | ..." : "") + ".";
+        }
+
+        /// <summary>
+        /// The commit under a decision screen, after the press that picked the choice: the walk holds
+        /// the screen to naming the result the pick makes, and to the pick having committed nothing.
+        /// </summary>
+        private IEnumerator ClickSeasonCommit(string caption)
+        {
+            RequireSeason(seasonDirector.DecisionPickCommitCaption == caption,
+                "The pick must wait under its commit, " + caption + ", not " + (seasonDirector.DecisionPickCommitCaption ?? "nothing") + "." + SeasonButtonsOnOffer());
+            yield return ClickSeasonButton(caption);
         }
 
         private IEnumerator ClickSeasonButton(string caption,bool allowFirstEquivalent = false)

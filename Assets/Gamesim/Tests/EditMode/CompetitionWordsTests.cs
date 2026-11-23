@@ -159,7 +159,7 @@ namespace Gamesim.Tests.EditMode
                 AssertNoNumber(words);
             }
             Assert.That(CompetitionWords.ResultFooter, Is.EqualTo("Decided on the day. Practice helps; a close race can go either way."));
-            Assert.That(CompetitionWords.StandingsHeading, Is.EqualTo("STANDINGS"));
+            Assert.That(CompetitionWords.StandingsHeading, Is.EqualTo("HOW THEY PLACED"));
         }
 
         [Test]

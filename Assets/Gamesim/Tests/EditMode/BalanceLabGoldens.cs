@@ -55,13 +55,27 @@ namespace Gamesim.Tests.EditMode
         /// (social, schemer, floater, beast, oracle-reader, oracle-skilled at size 12, budget 0), recorded below; its other six
         /// printed their level-1 digests byte for byte. PROVISIONAL: the other seven cases (Budget0Size8 was cut off by a time
         /// limit; the six budget-300 cases were not run) still hold their level-1 digests until they are run by name.
+        /// story.talkRules=3 came with level 3's enrolment (free talk slice 3, ruling R16): every fresh season plays romance with
+        /// the player, the stances and the house's reaction. No lab policy sends JustTalk, so no lab player flirts; but at level 3
+        /// Late Nights' opening beat is not offered and the Friends named are read before a nomination's closing beats (T9), so a
+        /// cell can move. Budget0Size8 and Budget0Size12, run by name at the slice's integration head (cbea5601), printed eleven
+        /// cells moved (size 8: random, social, schemer, loyalist, floater, beast, novice; size 12: random, social, novice,
+        /// oracle-skilled), recorded below; their other thirteen printed the digests below byte for byte. (Budget0Size8 had not
+        /// been run since level 1, so its moves are levels 2 and 3 together.) Budget300Size8First and Budget300Size8Second, run
+        /// by name at 6e485ef6, printed five cells moved (social, schemer, loyalist, floater, beast at size 8, budget 300; levels
+        /// 2 and 3 together), recorded below; their other three printed the digests below byte for byte. Budget300Size8Third and
+        /// Budget300Size12First, run by name at 8d578f65, printed four cells moved (novice and oracle-skilled at size 8, random
+        /// and social at size 12, budget 300), recorded below; their other four printed the digests below byte for byte.
+        /// Budget300Size12Second and Budget300Size12Third, run by name at d687bbed, printed four cells moved (schemer, floater,
+        /// beast and oracle-skilled at size 12, budget 300), recorded below; their other four printed the digests below byte
+        /// for byte. All eight cases have now been run by name at level 3: nothing is provisional.
         /// </summary>
         internal const string Rules = "competitionRulesVersion=5,readRulesStartWeek=1,leverRulesStartWeek=1,weekRulesStartWeek=1,economyRulesVersion=1,"
             + "agencyRulesStartWeek=1,finaleRulesStartWeek=1,commitmentRulesStartWeek=1,unifiedCommitmentRulesVersion=2,unifiedHearingRulesVersion=1,"
             + "blocRulesStartWeek=1,socialBudgetRulesStartWeek=1,dealRulesStartWeek=1,eventRulesStartWeek=1,storyRulesStartWeek=1,haveNotRulesStartWeek=1,"
             + "strategyRulesStartWeek=1,allianceLeakRulesStartWeek=1,pactPlanRulesStartWeek=1,allWeekRulesStartWeek=1,dialogueRulesVersion=0,"
             + "alumniRulesVersion=0,tuningRulesVersion=1,"
-            + "npcSocial.rulesStartWeek=1,story.rulesStartWeek=1,story.rulesVersion=11,story.talkRules=2,story.mindRules=0";
+            + "npcSocial.rulesStartWeek=1,story.rulesStartWeek=1,story.rulesVersion=11,story.talkRules=3,story.mindRules=0";
 
         /// <summary>
         /// Each cell's digest: "policy/roster/size/npcN hash". Recorded with every shipped rule on: the war rooms played,
@@ -88,53 +102,53 @@ namespace Gamesim.Tests.EditMode
         internal static readonly string[] Recorded =
         {
             "passive/Regular/8/npc0 793c75032876d011",
-            "random/Regular/8/npc0 c95a65956048eaf4",
-            "social/Regular/8/npc0 521dd0c48f780b77",
+            "random/Regular/8/npc0 196c3385ac1ed685",
+            "social/Regular/8/npc0 5b54e5cde0d875ae",
             "reader/Regular/8/npc0 d5523fbc06d34ad1",
-            "schemer/Regular/8/npc0 846eec0c91a69671",
-            "loyalist/Regular/8/npc0 18058f456abc0e87",
-            "floater/Regular/8/npc0 217cb344885a7cfd",
-            "beast/Regular/8/npc0 2c267bcf21557934",
-            "novice/Regular/8/npc0 151c7ca67d8cc6ab",
+            "schemer/Regular/8/npc0 e704160495084e89",
+            "loyalist/Regular/8/npc0 0b21feda66ef8b6c",
+            "floater/Regular/8/npc0 7b2e7372bd87d9e3",
+            "beast/Regular/8/npc0 e1c554852da5324a",
+            "novice/Regular/8/npc0 47b204747a6088e6",
             "exploit/Regular/8/npc0 4b4fb65bdbbbac0d",
             "oracle-reader/Regular/8/npc0 f55ad73bce2a0317",
             "oracle-skilled/Regular/8/npc0 c45a31d5b8b014d9",
             "passive/Regular/12/npc0 c2657b1559c01f73",
-            "random/Regular/12/npc0 a5bf441940905c68",
-            "social/Regular/12/npc0 ef779b6d3cc8da95",
+            "random/Regular/12/npc0 6a37d4b1968b62d2",
+            "social/Regular/12/npc0 8899a21be03ce076",
             "reader/Regular/12/npc0 b40129f82d7e4e64",
             "schemer/Regular/12/npc0 45d6b8c3089765c3",
             "loyalist/Regular/12/npc0 1a0bd847f9ec563d",
             "floater/Regular/12/npc0 ef5049109a043fb0",
             "beast/Regular/12/npc0 c6e7db942219b6fa",
-            "novice/Regular/12/npc0 fe438f71319bbffa",
+            "novice/Regular/12/npc0 cdd4bcc6fefad6c5",
             "exploit/Regular/12/npc0 bf864c335b708bd0",
             "oracle-reader/Regular/12/npc0 e0567f9572f2f91f",
-            "oracle-skilled/Regular/12/npc0 d8e0bf4642a4cd04",
+            "oracle-skilled/Regular/12/npc0 ff88a7f5709be2c9",
             "passive/Regular/8/npc300 e19cca6ff3f8a36a",
             "random/Regular/8/npc300 2f32a8f76503bb3b",
-            "social/Regular/8/npc300 72bd344cdeb49ed8",
+            "social/Regular/8/npc300 9e11c0058279a2b7",
             "reader/Regular/8/npc300 a9db58d8b542eb4c",
-            "schemer/Regular/8/npc300 7ffca01fcff340c1",
-            "loyalist/Regular/8/npc300 21ec46dfb3b6770d",
-            "floater/Regular/8/npc300 df45700c5e2d6ee4",
-            "beast/Regular/8/npc300 0f8ece1d383b7e9c",
-            "novice/Regular/8/npc300 1c364d1cee552c8e",
+            "schemer/Regular/8/npc300 ed54dcc576ae8d67",
+            "loyalist/Regular/8/npc300 7d380951159e24c4",
+            "floater/Regular/8/npc300 51d80b025a2f5420",
+            "beast/Regular/8/npc300 5e224d8686bf4e69",
+            "novice/Regular/8/npc300 f84b8a98178c95cb",
             "exploit/Regular/8/npc300 e1eabf3bcf6a2335",
             "oracle-reader/Regular/8/npc300 0268ec9466772d7c",
-            "oracle-skilled/Regular/8/npc300 fc0dbb54de0aa2be",
+            "oracle-skilled/Regular/8/npc300 cf6202418bcf33ca",
             "passive/Regular/12/npc300 6c7700c16a1735be",
-            "random/Regular/12/npc300 6a833161cca2d80a",
-            "social/Regular/12/npc300 abc10a3c12cad1fd",
+            "random/Regular/12/npc300 9fc0c073deab758e",
+            "social/Regular/12/npc300 b4d0f47e7620464e",
             "reader/Regular/12/npc300 5c245a18b2aeae65",
-            "schemer/Regular/12/npc300 ea1dc458dece550f",
+            "schemer/Regular/12/npc300 9cddd1e338a962ea",
             "loyalist/Regular/12/npc300 04d7434313779e51",
-            "floater/Regular/12/npc300 8db1345b8937851c",
-            "beast/Regular/12/npc300 6483b9700ee15954",
+            "floater/Regular/12/npc300 67075c36ac942981",
+            "beast/Regular/12/npc300 bd8fb61a7680ac4a",
             "novice/Regular/12/npc300 3b0a9cd2d1f8b548",
             "exploit/Regular/12/npc300 c3fd3a5a565c4dfa",
             "oracle-reader/Regular/12/npc300 96f800b516274b20",
-            "oracle-skilled/Regular/12/npc300 9dc8e8e9dcaf6a23",
+            "oracle-skilled/Regular/12/npc300 ae886154bfd997e3",
         };
 
         /// <summary>The shipped rules' tuple as a fresh season takes it now.</summary>

@@ -48,7 +48,7 @@ namespace Gamesim.Presentation
             policyMark = Picture("Policy mark", challengeCard, UiTheme.Pack(PackArt.KitIconInfo), UiTheme.Muted);
             policyLabel = Label("Attempt policy", challengeCard, practice
                 ? CompetitionWords.PracticePolicy
-                : "Cancel or reload returns to this same ranked board. Scores commit once, after play ends.",
+                : CompetitionWords.RankedPolicy,
                 12, 0, 0, 10, 10, UiTheme.Muted);
             policyLabel.alignment = TextAlignmentOptions.TopLeft; Fit(policyLabel, 10);
         }
@@ -107,6 +107,8 @@ namespace Gamesim.Presentation
                         + "Typing spells, so P is a letter here: Start or the Pause button pauses.";
                 case CompetitionMiniGames.Kind.Tower:
                     return rules + " Pick a stack to lift its top ring, then the stack to put it on; pick it again to put it back. Click a stack, or arrows / D-pad and Enter / A.";
+                case CompetitionMiniGames.Kind.Trivia:
+                    return rules + " Click an answer, or arrows / D-pad and Enter / A. You see at once whether it was right.";
                 default: return rules;
             }
         }
@@ -316,9 +318,11 @@ namespace Gamesim.Presentation
         private static Color ToneOf(string text)
         {
             if (text.StartsWith("Hit", StringComparison.Ordinal) || text.StartsWith("Pair found", StringComparison.Ordinal)
-                || text.StartsWith("Solved", StringComparison.Ordinal) || text.StartsWith("Tower complete", StringComparison.Ordinal)) return UiTheme.Positive;
+                || text.StartsWith("Solved", StringComparison.Ordinal) || text.StartsWith("Tower complete", StringComparison.Ordinal)
+                || text.StartsWith("Right:", StringComparison.Ordinal)) return UiTheme.Positive;
             if (text.StartsWith("Missed", StringComparison.Ordinal) || text.StartsWith("No match", StringComparison.Ordinal)
-                || text.StartsWith("Not quite", StringComparison.Ordinal) || text.StartsWith("Not allowed", StringComparison.Ordinal)) return UiTheme.Danger;
+                || text.StartsWith("Not quite", StringComparison.Ordinal) || text.StartsWith("Not allowed", StringComparison.Ordinal)
+                || text.StartsWith("Wrong:", StringComparison.Ordinal)) return UiTheme.Danger;
             if (text.StartsWith("Too early", StringComparison.Ordinal)) return UiTheme.Warning;
             return UiTheme.Paper;
         }
@@ -375,6 +379,10 @@ namespace Gamesim.Presentation
                 case CompetitionMiniGames.Kind.Tower:
                     yield return usingPad ? ("D-pad", "Choose stack") : ("Arrows", "Choose stack");
                     yield return usingPad ? ("A", "Lift / put down") : ("Enter", "Lift / put down");
+                    break;
+                case CompetitionMiniGames.Kind.Trivia:
+                    yield return usingPad ? ("D-pad", "Choose answer") : ("Arrows", "Choose answer");
+                    yield return usingPad ? ("A", "Answer") : ("Enter", "Answer");
                     break;
                 case CompetitionMiniGames.Kind.Words:
                     yield return usingPad ? ("A", "Choose letter") : ("A–Z", "Spell");

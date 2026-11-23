@@ -1230,7 +1230,10 @@ namespace Gamesim.Episode
         /// </summary>
         private void NearbyCard(Transform parent, float top)
         {
-            float width = RightColumnWidth, height = 168f;
+            // The button grows only where its words outgrow it, and what is under it moves down by as
+            // much: the card stays no taller than the week card whose place it takes (TextSizeFit).
+            float listenHeight = TextSizeFit.SideButton(FontScale), grown = listenHeight - TextSizeFit.SideButtonHeight;
+            float width = RightColumnWidth, height = TextSizeFit.SideCard(FontScale);
             nearbyCard = Chrome(NearbyCardName, parent);
             Anchor(nearbyCard, new Vector2(1, 1), new Vector2(1, 1), new Vector2(-RightColumnInset, -top), new Vector2(width, height));
             CardHeading(nearbyCard, "Nearby");
@@ -1241,28 +1244,36 @@ namespace Gamesim.Episode
             if (semibold != null) title.font = semibold;
             var line = FixedText(nearbyCard, "Two houseguests are talking within earshot.", 12, UiTheme.Muted, new Vector2(x, -62f), new Vector2(width - x - 12f, 32f));
             AutoSize(line, 10);
-            var listen = FixedButton(nearbyCard, ListenInCaption, new Vector2(14f, -100f), new Vector2(width - 28f, 36f), director.ListenInNearby);
+            var listen = FixedButton(nearbyCard, ListenInCaption, new Vector2(14f, -100f), new Vector2(width - 28f, listenHeight), director.ListenInNearby);
             var ground = listen.GetComponent<Image>();
             ground.color = new Color(UiTheme.Ink.r, UiTheme.Ink.g, UiTheme.Ink.b, .9f);
             UiTheme.AddBorder((RectTransform)listen.transform, UiTheme.ControlRadius, UiTheme.Allied);
             var words = listen.GetComponentInChildren<TMP_Text>();
             if (words != null)
             {
-                words.fontSize = 15; words.fontSizeMax = 15; words.alignment = TextAlignmentOptions.Center;
+                words.fontSize = words.fontSizeMax = TextSizeFit.Font(TextSizeFit.SideButtonFont, FontScale);
+                words.alignment = TextAlignmentOptions.Center;
                 if (semibold != null) words.font = semibold;
             }
-            var odds = FixedText(nearbyCard, "Uses an action \u00b7 works about 7 times in 10", 11, UiTheme.Muted, new Vector2(14f, -140f), new Vector2(width - 28f, 18f));
+            // At story rules 12 listening in is free, and the foot carries the pair's catch risk, set as the card comes up.
+            bool free = director.OverhearFree;
+            var odds = FixedText(nearbyCard, free ? Overhearing.FreeFoot : "Uses an action \u00b7 works about 7 times in 10", 11, UiTheme.Muted, new Vector2(14f, -(140f + grown)), new Vector2(width - 28f, 18f));
             odds.alignment = TextAlignmentOptions.Center;
+            if (free) AutoSize(odds, 9);
+            nearbyOdds = free ? odds : null;
             nearbyCard.gameObject.SetActive(false);
 
             // And mockup-06's bar low in the frame, in the status line's place while it holds.
             var state = director.Snapshot;
             nearbyBar = state != null ? SpeechBar(state.playerId, SelfTitle(state.Find(state.playerId)),
-                "Two houseguests are talking within earshot. Listening in uses an action, and somebody may notice.", false) : null;
+                free ? "Two houseguests are talking within earshot. Listening in is free if you stay close, and one of them may notice."
+                    : "Two houseguests are talking within earshot. Listening in uses an action, and somebody may notice.", false) : null;
             if (nearbyBar != null) nearbyBar.gameObject.SetActive(false);
         }
 
         private RectTransform nearbyBar;
+        /// <summary>At story rules 12, the Nearby card's foot: the catch risk of the pair being witnessed, set as the card comes up.</summary>
+        private TMP_Text nearbyOdds;
         /// <summary>Whether the director last asked for the Nearby card: kept, so a rebuild can put it back as asked.</summary>
         private bool nearbyWanted;
 
@@ -1287,6 +1298,7 @@ namespace Gamesim.Episode
             bool changed = nearbyCard.gameObject.activeSelf != visible;
             if (changed)
             {
+                if (visible && nearbyOdds != null) nearbyOdds.text = director.NearbyListenFoot;
                 nearbyCard.gameObject.SetActive(visible);
                 SyncWeekCard();
             }

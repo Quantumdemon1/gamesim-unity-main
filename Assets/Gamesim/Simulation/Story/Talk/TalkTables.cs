@@ -20,6 +20,29 @@ namespace Gamesim.Simulation
             TalkTableGuardedLayers.Rows, TalkTableGuardedRhythm.Rows, TalkTableGuardedStanding.Rows,
             TalkTableStarLayers.Rows, TalkTableStarRhythm.Rows, TalkTableStarStanding.Rows,
             TalkTableSparkStages.Rows, TalkTableSteadyStages.Rows, TalkTableGuardedStages.Rows, TalkTableStarStages.Rows,
+            // Slice S3 (talk rules 3): the romance talks, the class pools' and each All-Star template's own.
+            TalkTableSparkRomance.Rows, TalkTableSteadyRomance.Rows, TalkTableGuardedRomance.Rows,
+            TalkTableStarDanGheesling.Rows, TalkTableStarDrWillKirby.Rows, TalkTableStarDerrickLevasseur.Rows,
+            TalkTableStarJanellePierzina.Rows, TalkTableStarCodyCalafiore.Rows, TalkTableStarDanielleReyes.Rows,
+            TalkTableStarVanessaRousso.Rows, TalkTableStarTylerCrispen.Rows, TalkTableStarChelsieBaham.Rows,
+            TalkTableStarRachelReilly.Rows, TalkTableStarXavierPrather.Rows, TalkTableStarJunSong.Rows,
+        };
+
+        /// <summary>The All-Star templates' own romance tables by template id (slice S3): every All-Stars template has one.</summary>
+        public static readonly IReadOnlyDictionary<string, TalkRow[]> StarTables = new Dictionary<string, TalkRow[]>
+        {
+            { TalkTableStarDanGheesling.Owner, TalkTableStarDanGheesling.Rows },
+            { TalkTableStarDrWillKirby.Owner, TalkTableStarDrWillKirby.Rows },
+            { TalkTableStarDerrickLevasseur.Owner, TalkTableStarDerrickLevasseur.Rows },
+            { TalkTableStarJanellePierzina.Owner, TalkTableStarJanellePierzina.Rows },
+            { TalkTableStarCodyCalafiore.Owner, TalkTableStarCodyCalafiore.Rows },
+            { TalkTableStarDanielleReyes.Owner, TalkTableStarDanielleReyes.Rows },
+            { TalkTableStarVanessaRousso.Owner, TalkTableStarVanessaRousso.Rows },
+            { TalkTableStarTylerCrispen.Owner, TalkTableStarTylerCrispen.Rows },
+            { TalkTableStarChelsieBaham.Owner, TalkTableStarChelsieBaham.Rows },
+            { TalkTableStarRachelReilly.Owner, TalkTableStarRachelReilly.Rows },
+            { TalkTableStarXavierPrather.Owner, TalkTableStarXavierPrather.Rows },
+            { TalkTableStarJunSong.Owner, TalkTableStarJunSong.Rows },
         };
 
         /// <summary>Every talk, in table order. Read only.</summary>

@@ -168,7 +168,9 @@ namespace Gamesim.Episode
             const int weeks = 3;
             int newest = visible.Max(e => e.week);
             int oldest = Mathf.Max(1, newest - (weeks - 1));
-            if (oldest > 1) hud.Paragraph("Earlier weeks are in the save; the last " + weeks + " are shown here.");
+            // The weeks left out are the recap buttons above, under WEEKS SO FAR: the line names them.
+            if (oldest > 1) hud.Paragraph(StorySoFarWords.EarlierWeeksLine(weeks,
+                WeeklyRecap.Season(state).Where(w => w.evicted != null && w.week < oldest).Select(w => w.week), EpisodeHud.ReviewWeekCaption));
 
             for (int week = oldest; week <= newest; week++)
             {
@@ -356,9 +358,18 @@ namespace Gamesim.Episode
                 case NotebookSection.Word: return DealsAndPromisesName;
                 case NotebookSection.Alliances: return "Alliances";
                 case NotebookSection.Network: return "Relationships";
+                // The vote page's ballots and reads, and the room map's people (backlog item 21).
+                case NotebookSection.Votes: return VotesPlace;
+                case NotebookSection.Rooms: return RoomsPlace;
                 default: return null;
             }
         }
+
+        /// <summary>
+        /// The vote page and the room map as a profile's way back names them: "Back to the vote" (the
+        /// rail's "The vote" in a sentence) and "Back to Who is where" (the page's own name).
+        /// </summary>
+        public const string VotesPlace = "the vote", RoomsPlace = "Who is where";
 
         /// <summary>A profile's way back, for the page it was opened from (the directory's when that is unknown).</summary>
         public static string ProfileBackCaptionFor(string section)
@@ -618,8 +629,10 @@ namespace Gamesim.Episode
                 var voter = state.Find(read.voterId);
                 if (voter == null) continue;
                 bool blank = read.confidence == VoteRead.Unknown && read.saysId == null;
-                hud.RecordCard(EpisodeHud.VoteReadCardPrefix + voter.name, voter.name.ToUpperInvariant(), ReadHeadline(state, read),
+                var card = hud.RecordCard(EpisodeHud.VoteReadCardPrefix + voter.name, voter.name.ToUpperInvariant(), ReadHeadline(state, read),
                     blank ? UiTheme.Muted : UiTheme.Paper, ReadLines(state, read));
+                // The voter's name over their card opens their profile, from the vote (backlog item 21).
+                hud.LinkCardEyebrow(card, voter, NotebookSection.Votes);
             }
             hud.LockNote(EpisodeHud.VotesPrivacyName, "A read is what you have learned, not a ballot. Ask them straight, read them, listen in, or hear it from an ally.");
         }
@@ -772,7 +785,10 @@ namespace Gamesim.Episode
         /// <summary>Opens the notebook on a section as every panel opens: everything else closed, the house paused.</summary>
         private void OpenNotebookAt(string section, bool scroll = true)
         {
+            // A decision screen under the notebook comes back with its picks (EpisodeDirector.PickThenConfirm.cs).
+            var peek = KeepDecisionForNotebook();
             PauseNpcSocialForPanel(); ClosePanels();
+            decisionPeek = peek;
             journalSection = section; journalOpen = true; roomsFilter = HouseMap.Filter.All;
             peopleFilter = PeopleFilter.All; peopleSearch = string.Empty; profileId = null; profileFrom = null; votesTab = VotesTab.Results; notesFilter = NotesFilter.Everyone;
             player.SetInputEnabled(false); cameraRig.ControlsEnabled = false;

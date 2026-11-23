@@ -71,7 +71,7 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(record.Stationed, Is.EquivalentTo(field), "Every competitor of the committed field took a station.");
             Assert.That(holdChecked, Is.True, "The hold began: the winner and the field were at their stations.");
             Assert.That(record.LeftOut, Is.Empty, "Nobody is left out: the whole field reached its stations before the hold.");
-            Assert.That(record.AssembledSeconds, Is.LessThan(CompetitionShowPlan.AssemblySeconds(false)),
+            Assert.That(record.AssembledSeconds, Is.LessThan(record.AssemblyWaitSeconds),
                 "The field assembled inside the wait for it: " + record.AssembledSeconds.ToString("0.00") + " s.");
             Assert.That(record.Hurried, Is.Not.Empty, "The far end of the house was hurried to the yard.");
             Assert.That(record.Hurried.Contains(before.playerId), Is.False, "The player's own walk keeps the gait its route deserves.");

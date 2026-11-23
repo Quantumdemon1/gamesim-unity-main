@@ -99,7 +99,7 @@ namespace Gamesim.Episode
 
         /// <summary>Whether this competitor is competing now: the game in play, or holding on in a show.</summary>
         private bool CompetitionArenaPlaying(string id) => competitionShow!=null ? CompetitionShowGripping(id)
-            : competitionScreen!=null && competitionScreen.IsPlaying;
+            : competitionScreen!=null && competitionScreen.IsPlaying && !CompetitionGameDropped(id);
 
         /// <summary>
         /// The arena refused something it needs. The player's game says so and returns to its
@@ -290,7 +290,10 @@ namespace Gamesim.Episode
                                 anchor=seat;footprint=seatedFootprint;usedSeats.Add(seat);break;
                             }
                     var audiencePreferred=new Vector3(bounds.min.x+2f,bounds.max.y,bounds.center.z);
-                    IEnumerable<Vector3> actorCandidates=contestants.Contains(actor.id) ? RingTowerFieldCandidates(contestantCandidates,bounds)
+                    // A tower show's winner takes the place at the stacks when the player has none (EpisodeDirector.TowerShow.cs).
+                    bool atStacks=CompetitionTowerShowAtTheStacks(show,actor.id);
+                    IEnumerable<Vector3> actorCandidates=atStacks ? RingTowerPlayerCandidates(contestantCandidates)
+                        :contestants.Contains(actor.id) ? RingTowerFieldCandidates(contestantCandidates,bounds)
                         :candidates.OrderBy(p=>(p-audiencePreferred).sqrMagnitude);
                     if(anchor==null)
                         foreach(var wanted in actorCandidates)
@@ -302,7 +305,7 @@ namespace Gamesim.Episode
                             {occupiedMisses++;continue;}
                             float facing=contestants.Contains(actor.id)?CompetitionContestantFacing
                                 :Mathf.Atan2(bounds.center.x-position.x,bounds.center.z-position.z)*Mathf.Rad2Deg;
-                            footprint=contestants.Contains(actor.id)
+                            footprint=contestants.Contains(actor.id) && !atStacks
                                 ?CompetitionStageFootprint.Station(instrumentFamily,position,facing,capsule.radius,capsule.height)
                                 :CompetitionStageFootprint.Actor(position,capsule.radius,capsule.height);
                             if(!FitsCompetitionFootprint(footprint,floor,npc.transform))
@@ -584,7 +587,7 @@ namespace Gamesim.Episode
                     +" blockers="+(reserved?CompetitionStaticBlockers(footprint):"no reservation")+". "+CompetitionStageDiagnostic(),this);
                 // A show's result is committed: one rig it cannot stand goes, and the show goes on.
                 if(competitionShow!=null){instrument.gameObject.SetActive(false);return false;}
-                CompetitionArenaRefused("An instrument's reserved place is obstructed. Return to the briefing and try again.");return false;
+                CompetitionArenaRefused("An instrument's reserved place is obstructed. You are back at the briefing: try again.");return false;
             }
             instrument.gameObject.SetActive(true);return true;
         }
@@ -698,7 +701,8 @@ namespace Gamesim.Episode
             foreach(var pair in competitionInstruments)
             {
                 // A show's released competitor has let go: their rig reads out where they left it.
-                if(CompetitionShowReleased(pair.Key))continue;
+                // So has one who let go around the player in their own game (EpisodeDirector.CompetitionDropouts.cs).
+                if(CompetitionShowReleased(pair.Key) || CompetitionGameDropped(pair.Key))continue;
                 SyncCompetitionInstrument(pair.Key,pair.Value);
             }
         }
@@ -792,7 +796,7 @@ namespace Gamesim.Episode
                 || (competitionPlayerStation.Position-competitionPlayerStationPosition).sqrMagnitude>.0025f
                 || Mathf.Abs(Mathf.DeltaAngle(competitionPlayerStation.Facing,competitionPlayerStationFacing))>.5f
                 || !player.IsActivityMoveValid(competitionPlayerOwner)))
-            { CompetitionArenaRefused("Your competition route changed. Return to the briefing and try again.");return; }
+            { CompetitionArenaRefused("Your competition route changed. You are back at the briefing: try again.");return; }
             if(player==null){CompetitionArenaRefused("The player's body is gone.");return;}
             competitionArenaWasReady|=CompetitionArenaReady;
             bool paused=CompetitionArenaPaused;
@@ -830,6 +834,9 @@ namespace Gamesim.Episode
                     competitionFramed=true;
                 }
             }
+            // At a tower show the player stands at the stacks with no instrument of their own (EpisodeDirector.TowerShow.cs).
+            else if(arenaPlayer!=null && playerStationed && CompetitionTowerShowRunning)
+                CompetitionTowerShowStance(player.GetComponent<CharacterPresentation>(),player.ActivityHasArrived(competitionPlayerOwner),arenaPlayer);
             foreach(var pair in competitionArenaActors)
             {
                 if(!competitionBodies.TryGetValue(pair.Key,out var body) || body.root==null)continue;
@@ -838,8 +845,10 @@ namespace Gamesim.Episode
                 if(visual==null)continue;
                 if(CompetitionShowReleased(pair.Key)){TickCompetitionShowReleased(pair.Key,body);continue;}
                 bool arrived=CompetitionBodyOccupiesStation(pair.Key,body,false);
-                visual.SetTalking(false);visual.SetArguing(false);visual.SetFacing(arrived?pair.Value.Facing:float.NaN);
-                if(competitionInstruments.TryGetValue(pair.Key,out var instrument))CompetitionStance(visual,arrived,instrument);
+                visual.SetTalking(false);visual.SetArguing(false);visual.SetFacing(arrived?CompetitionTowerShowFacing(pair.Key,pair.Value.Position,pair.Value.Facing):float.NaN);
+                // One who let go around the player stands easy by their rig; a tower show's field has no instrument.
+                if(competitionInstruments.TryGetValue(pair.Key,out var instrument)){if(!CompetitionGameDropped(pair.Key))CompetitionStance(visual,arrived,instrument);}
+                else if(CompetitionTowerShowRunning)CompetitionTowerShowStance(visual,arrived,pair.Key);
                 if(arrived && pair.Value.Seated)
                 {
                     // Explicitly: a missing component is Unity's fake null in the editor, which ?? keeps.

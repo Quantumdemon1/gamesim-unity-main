@@ -15,8 +15,8 @@ namespace Gamesim.Presentation
     /// </summary>
     public static class CompetitionWords
     {
-        /// <summary>The standings' heading on the result card.</summary>
-        public const string StandingsHeading = "STANDINGS";
+        /// <summary>The ranking's heading on the result card: it says what the rows are, the order the field placed in.</summary>
+        public const string StandingsHeading = "HOW THEY PLACED";
 
         /// <summary>The one line under the standings.</summary>
         public const string ResultFooter = "Decided on the day. Practice helps; a close race can go either way.";
@@ -29,6 +29,16 @@ namespace Gamesim.Presentation
 
         /// <summary>The practice board's policy line on the game screen.</summary>
         public const string PracticePolicy = "Practice never changes your season. The real attempt plays on a board of its own.";
+
+        /// <summary>The competition's briefing, as the game screen's way back names it ("Back to the briefing").</summary>
+        public const string BriefingPlace = "the briefing";
+
+        /// <summary>
+        /// The ranked board's policy line on the game screen. It names the way back by its caption,
+        /// as every other line about leaving a competition does: "Back to the briefing".
+        /// </summary>
+        public static readonly string RankedPolicy = "Choose " + WayOut.BackTo(BriefingPlace)
+            + " or reload, and this same ranked board waits for you. Scores commit once, after play ends.";
 
         /// <summary>How the order was decided, once the player's own part is said.</summary>
         public const string Close = "The rest was who you are and how the day went: a close race can go either way, and a perfect run does not guarantee the win.";

@@ -185,8 +185,10 @@ namespace Gamesim.Tests.PlayMode
             yield return null;
             ButtonWithCaption("Do not use the veto").onClick.Invoke();
             yield return null; yield return null;
+            Assert.That(director.Snapshot.vetoResolved, Is.False, "The press picks keeping the block,");
+            yield return CommitThePick();
             var after = director.Snapshot;
-            Assert.That(after.vetoResolved, Is.True, "One press keeps the block.");
+            Assert.That(after.vetoResolved, Is.True, "and the commit keeps it.");
             Assert.That(after.nominees, Is.EquivalentTo(before.nominees));
             director.ClosePanels();
             yield return null;
@@ -233,8 +235,10 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(director.Snapshot.vetoResolved, Is.False, "Picking whom to save decides nothing.");
             ButtonWithCaption(candidates[0].name).onClick.Invoke();
             yield return null; yield return null;
+            Assert.That(director.Snapshot.vetoResolved, Is.False, "A name is picked,");
+            yield return CommitThePick();
             var after = director.Snapshot;
-            Assert.That(after.vetoResolved, Is.True, "A name uses the veto,");
+            Assert.That(after.vetoResolved, Is.True, "and the commit uses the veto,");
             Assert.That(after.nominees, Is.EquivalentTo(new[] { first, candidates[0].id }), "on the nominee picked, and puts the name up.");
             director.ClosePanels();
             yield return null;

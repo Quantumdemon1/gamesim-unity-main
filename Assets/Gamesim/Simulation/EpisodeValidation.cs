@@ -328,6 +328,7 @@ namespace Gamesim.Simulation
             // week they did not play in.
             if (s.deals.Any(d => (DealKind.RolesOnly(d.type) || NpcDeals.IsKeepTheBlockId(d.id)) && !EpisodeEngine.RolesOnIn(s, d.week)))
                 return Fail(out error, "A season without the role moments has none of their records.");
+            if (!DialogueRules.TryValidateConditionalVeto(s, out error)) return false; // Nor a conditional veto promise below dialogue rules 4 (D4).
             // Nor a veto holder's offer (R8), by its id, from a week the holder's offer did not play in; and the offer is what
             // the holder files - a veto commitment from a houseguest to the player.
             var holderOffers = s.deals.Where(d => NpcDeals.IsHolderOfferId(d.id)).ToList();

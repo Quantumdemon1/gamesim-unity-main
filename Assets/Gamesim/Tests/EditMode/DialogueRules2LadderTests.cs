@@ -16,8 +16,8 @@ namespace Gamesim.Tests.EditMode
         [Test]
         public void TheVersionIsABoundOverAClosedSetEachAtTheSchemaThatIntroducedIt()
         {
-            Assert.That(DialogueRules.Version, Is.EqualTo(3), "The highest version this build defines: 3 since D3 defined the trees and the holder appeal.");
-            Assert.That(Enumerable.Range(-2, 7).Where(DialogueRules.IsDefined), Is.EqualTo(new[] { 0, 1, 2, 3 }));
+            Assert.That(DialogueRules.Version, Is.EqualTo(4), "The highest version this build defines: 4 since D4 defined the veto question.");
+            Assert.That(Enumerable.Range(-2, 8).Where(DialogueRules.IsDefined), Is.EqualTo(new[] { 0, 1, 2, 3, 4 }));
             Assert.That(DialogueRules.IsDefined(DialogueRules.Version + 1), Is.False);
             Assert.That(DialogueRules.SchemaFor(0), Is.EqualTo(29));
             Assert.That(DialogueRules.SchemaFor(1), Is.EqualTo(29));
@@ -28,24 +28,26 @@ namespace Gamesim.Tests.EditMode
                 Assert.That(DialogueRules.Admits(1, schema), Is.EqualTo(schema >= 29), "Rules 1 is on at 29 and every later schema.");
                 Assert.That(DialogueRules.Admits(2, schema), Is.EqualTo(schema >= 30));
                 Assert.That(DialogueRules.Admits(3, schema), Is.EqualTo(schema >= 30), "Rules 3 is defined from 30, as rules 2 is (D3).");
+                Assert.That(DialogueRules.Admits(4, schema), Is.EqualTo(schema >= 30), "Rules 4 is defined from 30, as rules 2 and 3 are (D4).");
                 Assert.That(DialogueRules.Admits(DialogueRules.Version + 1, schema), Is.False, "An undefined version is never admitted.");
                 Assert.That(DialogueRules.Admits(-1, schema), Is.False);
             }
         }
 
         /// <summary>
-        /// The chip writes the pinned <see cref="DialogueRules.Offered"/>: rules 3 since D3 moved it from rules 2 (which the
-        /// chip-2 stack froze), and that move freezes rules 3 as D3 built it (§2: a version freezes the first time a shipped
+        /// The chip writes the pinned <see cref="DialogueRules.Offered"/>: rules 4 since D5c moved it from rules 3 (which D3
+        /// froze), and that move freezes rules 4 as D4, D5a and D5c built it (§2: a version freezes the first time a shipped
         /// path can write it). It is a defined version a new season's schema admits, never the bound by reference, and the
-        /// shipped default stays on 0 until D7. Re-pinned and renamed from TheChipWritesRules2AndTheDefaultStaysOn0 by D3.
+        /// shipped default stays on 0 until D7. Re-pinned and renamed from TheChipWritesRules2AndTheDefaultStaysOn0 by D3,
+        /// and from TheChipWritesRules3AndTheDefaultStaysOn0 by D5c.
         /// </summary>
         [Test]
-        public void TheChipWritesRules3AndTheDefaultStaysOn0()
+        public void TheChipWritesRules4AndTheDefaultStaysOn0()
         {
-            Assert.That(DialogueRules.Offered, Is.EqualTo(3), "The chip writes rules 3 since D3.");
+            Assert.That(DialogueRules.Offered, Is.EqualTo(4), "The chip writes rules 4 since D5c.");
             var chip = SeasonBuilder.Create(new SeasonBuilder.Choice { HouseSize = 8, CampaignConversations = true }, 7);
             ShippedRules.ApplyFresh(chip, new SeasonBuilder.Choice { HouseSize = 8, CampaignConversations = true });
-            Assert.That(chip.dialogueRulesVersion, Is.EqualTo(3), "The chip's season is on rules 3 since D3.");
+            Assert.That(chip.dialogueRulesVersion, Is.EqualTo(4), "The chip's season is on rules 4 since D5c.");
             Assert.That(DialogueRules.Admits(chip.dialogueRulesVersion, chip.schemaVersion), Is.True, "A new season's schema admits it.");
             Assert.That(DialogueRules.On(chip), Is.True);
             var plain = SeasonBuilder.Create(new SeasonBuilder.Choice { HouseSize = 8 }, 7);
@@ -62,7 +64,7 @@ namespace Gamesim.Tests.EditMode
         /// seasons are written at 30, the whole-state half no longer runs, and
         /// FrozenEpisodeV29IntegrationTests.RulesTwoAtTwentyNineIsRefusedInTheFrozenReadersWordsBeforeAnyLift holds those words.
         /// </summary>
-        [TestCase(2)] [TestCase(3)]
+        [TestCase(2)] [TestCase(3)] [TestCase(4)]
         public void AtSchema29ALaterVersionIsRefusedInTheFrozenReadersWords(int version)
         {
             var s = SeasonBuilder.Create(new SeasonBuilder.Choice { HouseSize = 8 }, 3);
@@ -90,10 +92,10 @@ namespace Gamesim.Tests.EditMode
         {
             Assert.That(DialogueRules.MaximumSteps, Is.EqualTo(3), "Rules 1's bound keeps its meaning.");
             Assert.That(DialogueRules.MaximumEpisodes, Is.EqualTo(100), "Every reader of the storyline ceiling keeps it.");
-            // Rules 3 (D3) keeps rules 2's bounds; 4 is undefined.
-            Assert.That(new[] { 0, 1, 2, 3, 4 }.Select(DialogueRules.StepsFor), Is.EqualTo(new[] { 0, 3, 5, 5, 0 }));
-            Assert.That(new[] { 0, 1, 2, 3, 4 }.Select(DialogueRules.ConversationBudget), Is.EqualTo(new[] { 0, 100, 32, 32, 0 }));
-            Assert.That(new[] { 0, 1, 2, 3, 4 }.Select(DialogueRules.EvidenceRows), Is.EqualTo(new[] { 0, 1, 3, 3, 0 }));
+            // Rules 3 (D3) and rules 4 (D4) keep rules 2's bounds; 5 is undefined.
+            Assert.That(new[] { 0, 1, 2, 3, 4, 5 }.Select(DialogueRules.StepsFor), Is.EqualTo(new[] { 0, 3, 5, 5, 5, 0 }));
+            Assert.That(new[] { 0, 1, 2, 3, 4, 5 }.Select(DialogueRules.ConversationBudget), Is.EqualTo(new[] { 0, 100, 32, 32, 32, 0 }));
+            Assert.That(new[] { 0, 1, 2, 3, 4, 5 }.Select(DialogueRules.EvidenceRows), Is.EqualTo(new[] { 0, 1, 3, 3, 3, 0 }));
             Assert.That(DialogueRules.Rules2StorylineCeiling, Is.EqualTo(92), "Never past the story pool's own stop (§5.5).");
         }
 
@@ -112,7 +114,8 @@ namespace Gamesim.Tests.EditMode
         /// <summary>
         /// The tick an entry spends is keyed by how it was paid (the fix ROLE-MOMENTS-PLAN §6.1 asks of the rules' tick key):
         /// an action entry owns its window tick, a grant entry none, so the two never collide in one window. A grant funds
-        /// nothing below rules 4, which no version defines yet.
+        /// nothing below rules 4, which D4 defines; no conversation is paid by a grant until D5a writes one (the store refuses every
+        /// grant row until then).
         /// </summary>
         [Test]
         public void TheEntryTickIsKeyedByHowTheEntryWasPaid()
@@ -126,8 +129,8 @@ namespace Gamesim.Tests.EditMode
             Assert.That(DialogueRules.EntryTick(null, 3, Windows.AfterVeto), Is.Null);
             for (int version = -1; version <= 5; version++)
             {
-                Assert.That(DialogueRules.AcceptsFunding(version, DialogueRules.ActionEntry), Is.EqualTo(version >= 1 && version <= 3));
-                Assert.That(DialogueRules.AcceptsFunding(version, DialogueRules.GrantEntry), Is.False, "No defined version funds by grant yet.");
+                Assert.That(DialogueRules.AcceptsFunding(version, DialogueRules.ActionEntry), Is.EqualTo(version >= 1 && version <= 4));
+                Assert.That(DialogueRules.AcceptsFunding(version, DialogueRules.GrantEntry), Is.EqualTo(version == 4), "Rules 4 is the first that may fund by grant.");
                 Assert.That(DialogueRules.AcceptsFunding(version, "wallet"), Is.False);
             }
             Assert.That(DialogueRules.GrantFundingFrom, Is.EqualTo(4));

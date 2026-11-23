@@ -191,7 +191,7 @@ namespace Gamesim.Episode
             int left = ActionsLeftCount(state);
             if (left <= 0 || state.evictionResolved) return left;
             int own = EpisodeEngine.WeekRulesOn(state)
-                ? EpisodeEngine.WindowSeats(state, EpisodeEngine.Window(state))
+                ? EpisodeEngine.WindowSeats(state, EpisodeEngine.Window(state)) + DialogueRules.TimeInWindow(state, EpisodeEngine.Window(state))
                 : EpisodeEngine.EarnedSocialActionBudget(state);
             return Mathf.Clamp(own - EpisodeEngine.SocialActionsSpent(state), 0, left);
         }

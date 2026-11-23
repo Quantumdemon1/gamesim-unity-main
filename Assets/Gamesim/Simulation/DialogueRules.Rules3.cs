@@ -47,19 +47,23 @@ namespace Gamesim.Simulation
 
         /// <summary>The occasion kind a conversation started now would have: a holder appeal at the veto meeting from rules 3, otherwise the campaign.</summary>
         internal static string KindNow(EpisodeState s) =>
-            s != null && s.dialogueRulesVersion >= Rules3 && s.phase == EpisodePhase.VetoMeeting ? DialogueHolderAppeal.Kind : DialogueCampaignV1.Kind;
+            s != null && s.dialogueRulesVersion >= Rules4 && s.phase == EpisodePhase.Veto ? DialogueVetoQuestion.Kind
+            : s != null && s.dialogueRulesVersion >= Rules3 && s.phase == EpisodePhase.VetoMeeting ? DialogueHolderAppeal.Kind : DialogueCampaignV1.Kind;
 
         /// <summary>The occasion a conversation with this houseguest started now would have.</summary>
         internal static string OccasionNow(EpisodeState s, string npcId) =>
-            KindNow(s) == DialogueHolderAppeal.Kind ? HolderOccasion(s.week, npcId) : Occasion(s.week, npcId);
+            KindNow(s) == DialogueVetoQuestion.Kind ? VetoQuestionOccasion(s.week, npcId)
+            : KindNow(s) == DialogueHolderAppeal.Kind ? HolderOccasion(s.week, npcId) : Occasion(s.week, npcId);
 
         /// <summary>Whether the phase is one a conversation can be entered or fall back from: the Campaign, and from rules 3 the veto meeting.</summary>
         internal static bool ConversationPhase(EpisodeState s) => s != null
-            && (s.phase == EpisodePhase.Campaign || s.dialogueRulesVersion >= Rules3 && s.phase == EpisodePhase.VetoMeeting);
+            && (s.phase == EpisodePhase.Campaign || s.dialogueRulesVersion >= Rules3 && s.phase == EpisodePhase.VetoMeeting
+                || s.dialogueRulesVersion >= Rules4 && s.phase == EpisodePhase.Veto);
 
         /// <summary>The phase an open conversation of this kind belongs to, and in which it lapses.</summary>
         internal static EpisodePhase PhaseOf(DialogueEpisodeState e) =>
-            e?.occasionKind == DialogueHolderAppeal.Kind ? EpisodePhase.VetoMeeting : EpisodePhase.Campaign;
+            e?.occasionKind == DialogueVetoQuestion.Kind ? EpisodePhase.Veto
+            : e?.occasionKind == DialogueHolderAppeal.Kind ? EpisodePhase.VetoMeeting : EpisodePhase.Campaign;
 
         /// <summary>
         /// Whether a plea to an open conversation's houseguest closes that conversation unmade: a plea for the vote to a
@@ -69,12 +73,14 @@ namespace Gamesim.Simulation
         /// The plea is the ordinary one-shot plea, at its own cost; the conversation lapses with it.
         /// </summary>
         internal static bool ClosesOnPlea(DialogueEpisodeState e, string ask) =>
-            e?.occasionKind == DialogueHolderAppeal.Kind ? LobbyAsk.IsKnown(ask) : ask == LobbyAsk.Vote;
+            e?.occasionKind == DialogueHolderAppeal.Kind ? LobbyAsk.IsKnown(ask)
+            : e?.occasionKind != DialogueVetoQuestion.Kind && ask == LobbyAsk.Vote;
 
         /// <summary>The ask a plea command carries, or null.</summary>
         internal static string AskOf(string text) => LobbyAsk.TryDecode(text, out string ask, out _) ? ask : null;
 
-        private static int WindowOf(string kind) => kind == DialogueHolderAppeal.Kind ? Windows.AfterNominations : Windows.AfterVeto;
+        private static int WindowOf(string kind) =>
+            kind == DialogueHolderAppeal.Kind || kind == DialogueVetoQuestion.Kind ? Windows.AfterNominations : Windows.AfterVeto;
 
         internal static ArcTemplate Rules3Template(string id, int version) =>
             id == DialogueCampaignTrees.TemplateId && version == DialogueCampaignTrees.ContentVersion ? DialogueCampaignTrees.CreateTemplate()
@@ -87,13 +93,16 @@ namespace Gamesim.Simulation
                 || id.StartsWith(DialogueHolderAppeal.TemplateId + ":", StringComparison.Ordinal));
 
         /// <summary>The templates a season on this version may hold: rules 2's one tree, or from rules 3 the trees and the holder appeal.</summary>
-        private static bool IsTemplateFor(int version, string id) => version >= Rules3 ? IsRules3Template(id) : IsRules2Template(id);
+        private static bool IsTemplateFor(int version, string id) =>
+            version >= Rules4 && IsRules4Template(id) || (version >= Rules3 ? IsRules3Template(id) : IsRules2Template(id));
 
-        private static bool IsContentFor(int version, string id) => version >= Rules3 ? IsRules3Content(id) : IsRules2Content(id);
+        private static bool IsContentFor(int version, string id) =>
+            version >= Rules4 && IsRules4Content(id) || (version >= Rules3 ? IsRules3Content(id) : IsRules2Content(id));
 
         /// <summary>The template a rules-3 season opens now: the holder appeal at the veto meeting, the trees otherwise.</summary>
         internal static string Rules3EntryTemplate(EpisodeState s) =>
-            KindNow(s) == DialogueHolderAppeal.Kind ? DialogueHolderAppeal.TemplateId : DialogueCampaignTrees.TemplateId;
+            KindNow(s) == DialogueVetoQuestion.Kind ? DialogueVetoQuestion.TemplateId
+            : KindNow(s) == DialogueHolderAppeal.Kind ? DialogueHolderAppeal.TemplateId : DialogueCampaignTrees.TemplateId;
 
         // ---------------------------------------------------------------- starting a rules-3 conversation
 
@@ -105,13 +114,14 @@ namespace Gamesim.Simulation
             if (!EligibleFor(s, kind, npcId, out error)) return false;
             if (Active(s) != null) return Fail(out error, "Finish the active dialogue first.");
             if (s.dialogue.episodes.Any(e => e.occasionId == OccasionNow(s, npcId)))
-                return Fail(out error, kind == DialogueHolderAppeal.Kind ? "This veto occasion has already been used." : "This campaign occasion has already been used.");
+                return Fail(out error, kind != DialogueCampaignV1.Kind ? "This veto occasion has already been used." : "This campaign occasion has already been used.");
             if (s.dialogue.episodes.Count >= ConversationBudget(s.dialogueRulesVersion)) return Fail(out error, BudgetRefusal);
             if (s.storylines.Count >= Rules2StorylineCeiling || s.houseEvents.Count > MaximumEvents - StepsFor(s.dialogueRulesVersion))
                 return Fail(out error, RoomRefusal);
             if (s.houseEvents.Any(e => !e.resolved && HouseEventKind.Asks(e.kind)))
                 return Fail(out error, "Answer the existing house moment first.");
-            if (EpisodeEngine.SocialActionsSpent(s) >= EpisodeEngine.SocialActionBudget(s))
+            // From rules 4 the nominee's grant pays in place of the action (DialogueRules.Grants.cs); never for the veto question.
+            if (EpisodeEngine.SocialActionsSpent(s) >= EpisodeEngine.SocialActionBudget(s) && GrantFor(s, kind) == null)
                 return Fail(out error, "You have no conversations left this week.");
             return true;
         }
@@ -123,6 +133,7 @@ namespace Gamesim.Simulation
         /// </summary>
         private static bool EligibleFor(EpisodeState s, string kind, string npcId, out string error)
         {
+            if (kind == DialogueVetoQuestion.Kind) return VetoQuestionEligible(s, npcId, out error);
             if (kind != DialogueHolderAppeal.Kind) return Eligible(s, npcId, out error);
             if (s.phase != EpisodePhase.VetoMeeting || s.vetoResolved || s.Find(s.playerId)?.status != ContestantStatus.Active
                 || s.nominees == null || !s.nominees.Contains(s.playerId) || string.IsNullOrEmpty(npcId) || npcId == s.playerId
@@ -236,7 +247,9 @@ namespace Gamesim.Simulation
             if (e.entry == null || !AcceptsFunding(version, e.entry.kind))
                 return Fail(out error, "This version funds a conversation with the window's action only.");
             string tick = EntryTick(e.entry, e.week, e.window);
-            if (tick == null || e.entry.grantId != null
+            // From rules 4 a nominee's grant may pay instead of the action (DialogueRules.Grants.cs); AcceptsFunding refuses it below.
+            if (e.entry.kind == GrantEntry) { if (!GrantEntryRules4(s, e, pending, ticks, out error)) return false; }
+            else if (tick == null || e.entry.grantId != null
                 || e.entry.revision != e.startedRevision || !Revision(s, e.entry.revision, e.entry, DialogueRevisionField.Entry, pending)
                 || e.entry.windowActionBefore < 0 || e.entry.windowActionAfter > MaximumAction
                 || (long)e.entry.windowActionAfter != (long)e.entry.windowActionBefore + 1
@@ -371,8 +384,7 @@ namespace Gamesim.Simulation
             {
                 if (cycle.status != StorylineStatus.Completed || cycle.endedWeek != e.week || cycle.endingId != ending
                     || e.time == null || e.time.reason != (ending == "lapsed" ? "occasion-closed" : ending)
-                    || e.time.window != e.window || e.time.proposedDelta != 0 || e.time.appliedDelta != 0
-                    || e.time.spentRevision != 0 || e.time.spentSequence != 0 || e.time.spentWindowAction != 0
+                    || e.time.window != e.window || !TimeReceiptHolds(s, template, cycle, e, ending == "lapsed")
                     || !Revision(s, e.time.revision, e.time, DialogueRevisionField.Time, pending)
                     || e.time.sequence != cycle.path[cycle.path.Count - 1].logSequence)
                     return Fail(out error, "A closed conversation requires its exact zero-time receipt.");

@@ -275,7 +275,7 @@ namespace Gamesim.Simulation
             int budget = EpisodeEngine.SocialActionBudget(s), spent = EpisodeEngine.SocialActionsSpent(s);
             int left = Math.Max(0, budget - spent);
             if (window == Windows.AfterEviction && !EpisodeEngine.IsFirstNight(s)) return left;
-            int own = EpisodeEngine.WeeklyExtras(s) < 0 ? budget : EpisodeEngine.WindowSeats(s, window);
+            int own = EpisodeEngine.WeeklyExtras(s) < 0 ? budget : EpisodeEngine.WindowSeats(s, window) + DialogueRules.TimeInWindow(s, window);
             return Math.Max(0, Math.Min(left, own - spent));
         }
 

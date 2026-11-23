@@ -59,6 +59,15 @@
     <!-- Dialogue rules 3 (DIALOGUE-PLAN D3): the four campaign trees and the appeal to the veto holder. -->
     <Compile Include="$(EditMode)DialogueRules3Season.cs" />
     <Compile Include="$(EditMode)DialogueRules3Tests.cs" />
+    <!-- Dialogue rules 4 (DIALOGUE-PLAN D4): the veto question and the conditional promise. -->
+    <Compile Include="$(EditMode)DialogueRules4Season.cs" />
+    <Compile Include="$(EditMode)DialogueRules4Tests.cs" />
+    <Compile Include="$(EditMode)DialogueRules4ReviewTests.cs" />
+    <!-- Dialogue rules 4's nominee grant (DIALOGUE-PLAN D5a): one conversation a week on the house. -->
+    <Compile Include="$(EditMode)DialogueRules4GrantTests.cs" />
+    <Compile Include="$(EditMode)DialogueRules4GrantAdmitTests.cs" />
+    <Compile Include="$(EditMode)DialogueRules4TimeTests.cs" />
+    <Compile Include="$(EditMode)DialogueRules4TimeBudgetTests.cs" />
     <!-- The seasons the rules-2 HUD's PlayMode tests replay, proven headlessly (EpisodePlayModeTests.DialogueRules2Hud). -->
     <Compile Include="$(EditMode)DialogueRules2HudWitnessTests.cs" />
     <!-- NpcInvitation.cs is included by the whole Simulation glob above. -->

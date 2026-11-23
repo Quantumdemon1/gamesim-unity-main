@@ -94,7 +94,9 @@ namespace Gamesim.Simulation
         {
             int window = Window(s);
             if (window == Windows.None) return 0;
-            int seats = WindowSeats(s, window);
+            // From dialogue rules 4 the open window's conversation time (DialogueRules.Time.cs) moves its seats: +1s and -1s
+            // of this week, never through the positive-only bank. Zero below rules 4.
+            int seats = WindowSeats(s, window) + DialogueRules.TimeInWindow(s, window);
             int extras = WeeklyExtras(s);
             if (extras < 0) return Math.Max(1, seats + (window == Windows.AfterHoH ? extras : 0));
             // Opening counters reset when the first competition starts, but the extras spent there
@@ -105,7 +107,9 @@ namespace Gamesim.Simulation
             {
                 if (other == window) continue;
                 int spent = s.windowActions != null && other < s.windowActions.Count ? s.windowActions[other] : 0;
-                usedElsewhere += Math.Max(0, spent - WindowSeats(s, other));
+                // A window's seats are moved by both of its receipts: an action a +1 paid for is that window's own, never the
+                // week's extras, and an action spent past seats a -1 took away is an extra used (DIALOGUE-PLAN §4).
+                usedElsewhere += Math.Max(0, spent - WindowSeats(s, other) - DialogueRules.TimeInWindow(s, other));
             }
             return Math.Max(1, seats + Math.Max(0, extras - usedElsewhere));
         }

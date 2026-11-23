@@ -96,16 +96,18 @@ namespace Gamesim.Simulation
         public static ArcTemplate ContentFor(int rulesVersion, string templateId, int contentVersion) =>
             rulesVersion == Rules1 ? CampaignTemplate(templateId, contentVersion)
             : rulesVersion == Rules2 ? Rules2Template(templateId, contentVersion)
-            : rulesVersion >= Rules3 && IsDefined(rulesVersion) ? Rules3Template(templateId, contentVersion) : null;
+            : rulesVersion >= Rules3 && IsDefined(rulesVersion) ? Rules3Template(templateId, contentVersion)
+              ?? (rulesVersion >= Rules4 ? Rules4Template(templateId, contentVersion) : null) : null;
 
         internal static ArcTemplate Rules2Template(string id, int version) =>
             id == DialogueCampaignWord.TemplateId && version == DialogueCampaignWord.ContentVersion ? DialogueCampaignWord.CreateTemplate() : null;
 
         /// <summary>Any dialogue content pair the engine can play: the season's version decides which ones it may start.</summary>
-        internal static ArcTemplate AnyTemplate(string id, int version) => CampaignTemplate(id, version) ?? Rules2Template(id, version) ?? Rules3Template(id, version);
+        internal static ArcTemplate AnyTemplate(string id, int version) => CampaignTemplate(id, version) ?? Rules2Template(id, version) ?? Rules3Template(id, version)
+            ?? Rules4Template(id, version);
 
         /// <summary>Every dialogue template, of any version: never an ambient-pool arc, never answered by ProgressStoryline.</summary>
-        public static bool IsDialogueTemplate(string id) => IsCampaignTemplate(id) || IsRules2Template(id) || IsRules3Template(id);
+        public static bool IsDialogueTemplate(string id) => IsCampaignTemplate(id) || IsRules2Template(id) || IsRules3Template(id) || IsRules4Template(id);
 
         internal static bool IsRules2Template(string id) => id == DialogueCampaignWord.TemplateId;
 
@@ -229,8 +231,11 @@ namespace Gamesim.Simulation
                 || s.memories == null || s.memories.Any(m => m == null))
                 return Fail(out error, "Dialogue requires complete bounded episode owners.");
             if (s.dialogue.episodes.Count > ConversationBudget(version) || s.dialogue.episodes.Any(e => e == null)
-                || s.dialogue.grants.Count != 0 || s.dialogue.vetoOccasions.Count != 0)
+                || version < GrantFundingFrom && s.dialogue.grants.Count != 0 || version < Rules4 && s.dialogue.vetoOccasions.Count != 0)
                 return Fail(out error, "Only action-funded campaign conversations are supported by this version.");
+            if (version >= Rules4 && !VetoOccasionsRules4(s, out error)) return false;
+            if (version >= GrantFundingFrom && !GrantsRules4(s, out error)) return false;
+            if (version >= TimeFrom && !TimeRules4(s, out error)) return false;
             if (s.storylines.Any(c => c.templateId?.StartsWith("dialogue-", StringComparison.Ordinal) == true && !IsTemplateFor(version, c.templateId))
                 || s.houseEvents.Any(e => e.contentId?.StartsWith("dialogue-", StringComparison.Ordinal) == true && !IsContentFor(version, e.contentId)))
                 return Fail(out error, "Unknown dialogue content is not supported by this version.");
@@ -254,7 +259,8 @@ namespace Gamesim.Simulation
                 if (previous != null && (previous.time == null || episode.startedRevision <= previous.time.revision
                     || episode.startedSequence <= previous.time.sequence))
                     return Fail(out error, "Dialogue episodes must retain their nonoverlapping chronology.");
-                if (!(version >= Rules3 ? EpisodeRules3(s, episode, pending, ticks, logs, ids, out error)
+                if (!(version >= Rules4 && IsRules4Template(Cycle(s, episode)?.templateId) ? EpisodeVetoQuestion(s, episode, pending, ticks, logs, ids, out error)
+                    : version >= Rules3 ? EpisodeRules3(s, episode, pending, ticks, logs, ids, out error)
                     : EpisodeRules2(s, episode, pending, ticks, logs, ids, out error))) return false;
                 if (Cycle(s, episode).status == StorylineStatus.Active) activeCount++;
                 previous = episode;

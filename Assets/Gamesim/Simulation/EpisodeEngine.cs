@@ -369,6 +369,7 @@ namespace Gamesim.Simulation
                     // holder's offer a houseguest holding the veto offers to use it on the player, for a price (R8).
                     if (next == EpisodePhase.VetoMeeting)
                     {
+                        RecordVetoOccasion(s); // Dialogue rules 4: the week's veto occasion, and an unmet conditional promise lapses.
                         NpcDeals.AskForTheVeto(s);
                         NpcDeals.AskToKeepTheBlock(s);
                         NpcDeals.OfferTheVeto(s);
@@ -404,6 +405,7 @@ namespace Gamesim.Simulation
                     }
                     // Idempotent: the window closed at the nominations (D2-L1).
                     Close(s);
+                    GrantTheNominee(s, DialogueRules.FromNominations); // Dialogue rules 4 (D5a): a nominated player's conversation on the house.
                     Phase(s, EpisodePhase.VetoSelection); break;
                 case EpisodePhase.VetoSelection:
                     s.vetoPlayers = DrawVetoPlayers(s);
@@ -425,6 +427,7 @@ namespace Gamesim.Simulation
                         Close(s);
                         var replacement = saved == null ? null : NpcReplacement(s);
                         ResolveVeto(s, saved != null, saved, replacement);
+                        AfterTheVetoDecision(s, saved != null, saved, replacement, pending); // Dialogue rules 4: a replacement's grant, then the promises' own step; no draw.
                         SettleTheHolderOffer(s, holderOffer); return;
                     }
                     if (StoryOn(s)) StoryLapse(s, StoryAnchors.BlockSet);

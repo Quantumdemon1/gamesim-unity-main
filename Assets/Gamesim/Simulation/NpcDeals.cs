@@ -516,6 +516,7 @@ namespace Gamesim.Simulation
             if (state.Find(state.playerId)?.status != ContestantStatus.Active || !state.nominees.Contains(state.playerId)) return;
             if (Adjusted(state, holder.id, state.playerId) < DealingFloor) return;
             if (Negotiation.Binding(state, holder.id, state.playerId, DealKind.VetoUse, null)) return;
+            if (DialogueRules.HoldsMetVetoIf(state, holder.id)) return; // Their conditional promise stands (dialogue rules 4, §4.2 point 5).
             if (Hooks.Has(state, state.playerId, holder.id)) return;
             // A Save plea already put to them this week was the player's ask: the plea and the offer substitute for each other.
             // Today none can come first - the holder is pleaded with only at the meeting, which this opens - so this guards it.

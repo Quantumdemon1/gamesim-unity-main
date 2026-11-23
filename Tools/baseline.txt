@@ -559,8 +559,26 @@
 # 11109 = 11105 + free talk slice 3's second fixes: FreeTalkNewCoupleTests 4 (also in the dotnet subset), 2026-11-22.
 # 11269 = 11187 (the new main of 23 November) + free talk slice 3's 82 (11109 - 11027 on this branch): disjoint cases,
 # so the floor is their sum (the romance landing of 23 November 2026). Counted from the two sides.
+# 10917 = 10894 + dialogue D4's 23: DialogueRules4Tests 20, the ladder's rules-4 schema case 1 (both also in the dotnet
+# subset) and DialogueRules4SaveTests 2 (EditMode only), 2026-11-22.
+# 10921 = 10917 + the D4 review's fixes: DialogueRules4ReviewTests 4 (all also in the dotnet subset), 2026-11-22.
+# 11296 = 11269 (the new main, with free talk slice 3) + the veto question's 27 (10921 - 10894 on this branch):
+# disjoint cases, so the floor is their sum (the dialogue landing of 23 November 2026). Counted from the two sides.
+# 10936 = 10921 + dialogue D5a, the nominee's grant: DialogueRules4GrantTests 14 (all also in the dotnet subset) and
+# DialogueRules4GrantSaveTests 1 (EditMode only), 2026-11-22.
+# 11311 = 11296 (the veto question on the new main) + the nominee's free conversation's 15 (10936 - 10921 on this
+# branch): disjoint cases, so the floor is their sum (the dialogue landing of 23 November 2026). Counted from the two
+# sides.
+# 10956 = 10936 + dialogue D5c, conversation time: DialogueRules4TimeTests 19 (all also in the dotnet subset) and
+# DialogueRules4TimeSaveTests 1 (EditMode only), 2026-11-22.
+# 10961 = 10956 + the D5c review's fixes: DialogueRules4TimeBudgetTests 5 (all also in the dotnet subset), 2026-11-22.
+# 11336 = 11311 (the nominee's free conversation on the new main) + conversation time's 25 (10961 - 10936 on this
+# branch): disjoint cases, so the floor is their sum (the dialogue landing of 23 November 2026). Counted from the two
+# sides.
 # 11272 = 11269 + the trivia's switch-on: CompetitionRules6Tests 3 (also in the dotnet subset), 2026-11-23.
-Gamesim.EditModeTests 11272
+# 11339 = 11336 (the new main with dialogue rules 4) + the trivia switch-on's 3 (11272 - 11269 on this branch):
+# disjoint cases, so the floor is their sum (the trivia landing of 23 November 2026). Counted from the two sides.
+Gamesim.EditModeTests 11339
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and
@@ -1610,7 +1628,23 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # (compiled out of Unity: each held replay plays the free talk and minds levels it was recorded at), 2026-11-22.
 # 23366 = 23280 (the new main of 23 November) + free talk slice 3's 86 (23217 - 23131 on this branch): disjoint cases,
 # so the floor is their sum (the romance landing of 23 November 2026). Counted from the two sides.
+# 23015 = 22994 + dialogue D4's 21 shared cases: DialogueRules4Tests 20 and the ladder's rules-4 schema case 1, 2026-11-22.
+# 23019 = 23015 + the D4 review's fixes: the same 4 DialogueRules4ReviewTests cases, 2026-11-22.
+# 23391 = 23366 (the new main, with free talk slice 3) + the veto question's 25 (23019 - 22994 on this branch):
+# disjoint cases, so the floor is their sum (the dialogue landing of 23 November 2026). Counted from the two sides.
+# 23033 = 23019 + dialogue D5a, the nominee's grant: the same 14 DialogueRules4GrantTests cases, 2026-11-22.
+# 23035 = 23033 + the D5a review's fix: 2 DialogueRules4GrantAdmitTests cases, dotnet only (internal), 2026-11-22.
+# 23407 = 23391 (the veto question on the new main) + the nominee's free conversation's 16 (23035 - 23019 on this
+# branch): disjoint cases, so the floor is their sum (the dialogue landing of 23 November 2026). Counted from the two
+# sides.
+# 23054 = 23035 + dialogue D5c, conversation time: 19 DialogueRules4TimeTests cases, 2026-11-22.
+# 23059 = 23054 + the D5c review's fixes: the same 5 DialogueRules4TimeBudgetTests cases, 2026-11-22.
+# 23431 = 23407 (the nominee's free conversation on the new main) + conversation time's 24 (23059 - 23035 on this
+# branch): disjoint cases, so the floor is their sum (the dialogue landing of 23 November 2026). Counted from the two
+# sides.
 # 23373 = 23366 + the trivia's switch-on: the same 3 CompetitionRules6Tests cases the EditMode floor counts, and
 # HeldReplayCompetitionLevelTests' 4 (compiled out of Unity: each held replay plays the competition rules it was recorded
 # at), 2026-11-23.
-Gamesim.SimulationTests 23373
+# 23438 = 23431 (the new main with dialogue rules 4) + the trivia switch-on's 7 (23373 - 23366 on this branch):
+# disjoint cases, so the floor is their sum (the trivia landing of 23 November 2026). Counted from the two sides.
+Gamesim.SimulationTests 23438

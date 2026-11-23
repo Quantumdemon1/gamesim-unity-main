@@ -121,6 +121,10 @@
     <Compile Include="$(EditMode)CeremonyCardPressTests.cs" />
     <Compile Include="$(EditMode)CeremonyCardDeviceTests.cs" />
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/CeremonyCardWords.cs" />
+    <!-- One card clock and one controls chip on every ceremony card (UI-UX plan D3a, D3b): pure, so it runs here too. -->
+    <Compile Include="$(EditMode)CeremonyCardClockTests.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/CeremonyCardClock.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/CeremonyChipMetrics.cs" />
     <!-- The main menu's season card (change 10): a read-only look at a save's header, and its words; System and Newtonsoft only, so it runs here too. -->
     <Compile Include="$(EditMode)SaveHeaderTests.cs" />
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Persistence/SaveHeader.cs" />

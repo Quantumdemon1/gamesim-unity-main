@@ -51,12 +51,6 @@ namespace Gamesim.Presentation
     public sealed class VoteReveal : MonoBehaviour
     {
         /// <summary>
-        /// How long past its fade the card must have been up, in real seconds, before a press moves it
-        /// on - the key ceremony's delay, on the wall clock so a sped-up count does not shorten it.
-        /// </summary>
-        private const float ReadDelay = 0.35f;
-
-        /// <summary>
         /// One committed ballot, as the card needs it: whom it went against, and whether it is the
         /// deciding vote. It carries no voter - no id, no name, no look - because the card never
         /// says who cast a vote (UI-UX-PASS-PLAN B0): the count is read, the ballots are not.
@@ -131,18 +125,15 @@ namespace Gamesim.Presentation
         private Ballot? tieBreak;
         private string evictedId, evictedName, hohName;
         private CeremonyPace pace = CeremonyPace.Suspenseful;
-        private float elapsed, upFor, speed = 1f;
 
         /// <summary>
-        /// The frame the card was played in. Neither it nor the next is the card's own time, as on the
-        /// takeover and the strip: the first update's delta can be the frame before the card was
-        /// played, and the next's is the frame it was played in - the commit, the house's render and
-        /// this card's own build - before anybody had seen it. Counted, a long one spent the fade, the
-        /// block and even votes before the card was drawn, and made a press in flight look read.
+        /// The card's clock, the one every ceremony card runs on (<see cref="CeremonyCardClock"/>): the
+        /// frame it was played in, the key ceremony's read delay on the wall clock so a sped-up count
+        /// does not shorten it, its speed and the device it names.
         /// </summary>
-        private int playedFrame;
+        private CeremonyCardClock clock;
         private int shown = -1;
-        private bool playing, reduced, hohIsPlayer, evictedIsPlayer, lastVotePending, tieCalled, tieBroken, usingPad;
+        private bool playing, reduced, hohIsPlayer, evictedIsPlayer, lastVotePending, tieCalled, tieBroken;
         private Frame frame;
         private ScreenSurface surface;
 
@@ -166,7 +157,7 @@ namespace Gamesim.Presentation
         public CeremonyPace Pace => pace;
 
         /// <summary>How fast the card's clock runs: 1, or <see cref="CeremonyPacing.SpeedUp"/> while the player has sped it up.</summary>
-        public float SpeedMultiplier => speed;
+        public float SpeedMultiplier => clock.Speed;
 
         /// <summary>How many ballots are on the board: the house's so far, and the Head of Household's once it is cast.</summary>
         public int VotesShown => Mathf.Max(0, shown) + (tieBroken ? 1 : 0);
@@ -246,7 +237,7 @@ namespace Gamesim.Presentation
             bool evictedIsPlayer = false, ScreenSurface screen = null, float speed = 1f)
         {
             if (block == null || block.Count != 2 || votes == null || votes.Count == 0) return false;
-            usingPad = CeremonyCardWords.StartsOnPad(PadHints, usingPad);
+            clock.OnPad = CeremonyCardWords.StartsOnPad(PadHints, clock.OnPad);
 
             nominees = new List<Nominee>(block);
             // Reveal in a stable order, and never one that leaks the result: committed order is the
@@ -270,16 +261,14 @@ namespace Gamesim.Presentation
 
             Build();
             reduced = reducedMotion;
-            elapsed = 0f;
-            upFor = 0f;
-            playedFrame = Time.frameCount;
+            // At the speed the player left the last reveal at, this session (UI-UX plan D2): a caller
+            // that gives none starts it at its own pace.
+            clock.Start(Time.frameCount, CeremonyPacing.SessionSpeed(speed), clock.OnPad);
             shown = -1;
             lastVotePending = false;
             tieCalled = false;
             tieBroken = false;
-            // At the speed the player left the last reveal at, this session (UI-UX plan D2): a caller
-            // that gives none starts it at its own pace.
-            SetSpeed(CeremonyPacing.SessionSpeed(speed));
+            MarkSpeed();
             Held = false;
             playing = true;
 
@@ -315,18 +304,11 @@ namespace Gamesim.Presentation
         public void SkipToResult()
         {
             if (!playing || ShowingResult) return;
-            elapsed = Mathf.Max(elapsed, ResultAt);
+            clock.Elapsed = Mathf.Max(clock.Elapsed, ResultAt);
             Tally(house.Count, false, false);
             if (tieBreak.HasValue) { CallTie(); BreakTie(false); }
             Result();
         }
-
-        /// <summary>
-        /// True once the card has been up long enough to have been read; after that a press moves it
-        /// on. A press already in flight when the card appears - the Enter that cast the last ballot -
-        /// must not skip a count nobody has seen.
-        /// </summary>
-        private bool Dismissable => upFor >= CeremonyPacing.FadeIn + ReadDelay;
 
         /// <summary>
         /// Holds the card where it is: its clock stops, so nothing advances, fades or hands over, while
@@ -343,43 +325,34 @@ namespace Gamesim.Presentation
             // never stamped it, so a click on the tally was a click on the floor behind it as well.
             CeremonyOverlays.Showing();
             if (Held) return;
-            // Nothing from before its first frame on screen is the card's time (playedFrame).
-            if (Time.frameCount - playedFrame <= 1) return;
-            upFor += Time.unscaledDeltaTime;
-            FollowDevice();
+            // Nothing from before its first frame on screen is the card's time (the clock's Counts).
+            if (!clock.Counts(Time.frameCount)) return;
 
             // The key ceremony's controls, read off the devices for the same reason: speed the count
             // up or back to its own pace, skip straight to the result - every vote on the board and
             // the result read, giving up the count's order and never the result - and a skip on the
-            // result ends the card.
-            if (Dismissable && CeremonyTakeover.SpeedPressed())
+            // result ends the card. A press already in flight when the card appears - the Enter that
+            // cast the last ballot - must not skip a count nobody has seen (the clock's read delay).
+            var presses = clock.Step(Time.unscaledDeltaTime, CeremonyTakeover.PadUsed(),
+                CeremonyTakeover.SpeedPressed(), CeremonyTakeover.SkipPressed());
+            if (presses.DeviceChanged) SayTheControls();
+            if (presses.SpeedChanged)
             {
-                SetSpeed(speed > 1f ? 1f : CeremonyPacing.SpeedUp);
-                SpeedChanged?.Invoke(speed);
+                MarkSpeed();
+                SpeedChanged?.Invoke(clock.Speed);
             }
-            if (Dismissable && CeremonyTakeover.SkipPressed())
+            if (presses.Skip)
             {
                 if (ShowingResult) { Cancel(); return; }
                 SkipToResult();
                 return;
             }
 
-            elapsed += Time.unscaledDeltaTime * speed;
-            float resultEnd = ResultAt + CeremonyPacing.ResultHold(pace);
-
-            // Fade.
-            if (reduced) group.alpha = 1f;
-            else if (elapsed < CeremonyPacing.FadeIn) group.alpha = Eased(elapsed / CeremonyPacing.FadeIn);
-            else if (elapsed < resultEnd) group.alpha = 1f;
-            else
-            {
-                float exit = (elapsed - resultEnd) / CeremonyPacing.FadeOut;
-                if (exit >= 1f) { Cancel(); return; }
-                group.alpha = 1f - Eased(exit);
-            }
-
-            // Reduced motion keeps the timings: they are reading time, not movement.
-            if (reduced && elapsed >= Duration) { Cancel(); return; }
+            float elapsed = clock.Run(Time.unscaledDeltaTime);
+            // Fade. Reduced motion keeps the timings: they are reading time, not movement.
+            bool up = CeremonyCardClock.Fade(elapsed, ResultAt + CeremonyPacing.ResultHold(pace), reduced, out float alpha);
+            group.alpha = alpha;
+            if (!up) { Cancel(); return; }
 
             // How many of the house's ballots are on the board by now, and whether the last of them
             // is being held back.
@@ -395,13 +368,11 @@ namespace Gamesim.Presentation
             // sped-up count hands over sooner. Reduced motion swapped them at once in Result.
             if (ShowingResult && boardGroup != null && blockGroup != null && !reduced)
             {
-                float swap = Eased(Mathf.Clamp01((elapsed - resultShownAt) / ScreenBoard.ResultFade));
+                float swap = CeremonyCardClock.Eased(Mathf.Clamp01((elapsed - resultShownAt) / ScreenBoard.ResultFade));
                 boardGroup.alpha = 1f - swap;
                 blockGroup.alpha = swap;
             }
         }
-
-        private static float Eased(float t) => 1f - (1f - t) * (1f - t);
 
         /// <summary>How many of the house's ballots are on the board at <paramref name="t"/> on the card's clock.</summary>
         private int VotesDue(float t)
@@ -417,20 +388,16 @@ namespace Gamesim.Presentation
         private bool LastVotePendingAt(float t) =>
             house.Count > 0 && LastVoteWait > 0f && t >= LastVoteCalled && t < LastVoteCalled + LastVoteWait;
 
-        /// <summary>Runs the card's clock at <paramref name="value"/>, and says so in the corner while it is fast.</summary>
-        private void SetSpeed(float value)
+        /// <summary>Says in the corner that the card's clock runs fast, while it does.</summary>
+        private void MarkSpeed()
         {
-            speed = value;
-            if (speedMark != null) speedMark.gameObject.SetActive(speed > 1f);
+            if (speedMark != null) speedMark.gameObject.SetActive(clock.SpedUp);
         }
 
         /// <summary>The key hints follow the device last used on the card, as the key ceremony's do.</summary>
-        private void FollowDevice()
+        private void SayTheControls()
         {
-            var pad = CeremonyTakeover.PadUsed();
-            if (!pad.HasValue || pad.Value == usingPad) return;
-            usingPad = pad.Value;
-            if (controls != null) controls.text = CeremonyTakeover.ControlsFor(usingPad);
+            if (controls != null) controls.text = CeremonyTakeover.ControlsFor(clock.OnPad);
         }
 
         private void Raise(HouseAudio.Cue cue) => CueRequested?.Invoke(cue);
@@ -543,7 +510,7 @@ namespace Gamesim.Presentation
             host.text = Verdict();
             if (resultBlock != null) ReadTheResultOnTheScreen();
             Raise(HouseAudio.Cue.Eviction);
-            Beat(new CeremonyBeat(CeremonyBeatKind.ResultShown, -1, evictedId, elapsed < ResultAt));
+            Beat(new CeremonyBeat(CeremonyBeatKind.ResultShown, -1, evictedId, clock.Elapsed < ResultAt));
         }
 
         /// <summary>
@@ -619,7 +586,7 @@ namespace Gamesim.Presentation
             }
 
             resultBlock.gameObject.SetActive(true);
-            resultShownAt = elapsed;
+            resultShownAt = clock.Elapsed;
             // Reduced motion swaps them at once; otherwise Update crossfades them on the card's clock.
             boardGroup.alpha = reduced ? 0f : 1f;
             blockGroup.alpha = reduced ? 1f : 0f;
@@ -653,64 +620,60 @@ namespace Gamesim.Presentation
         /// <summary>
         /// The card's frame: how big its parts are and where they sit, in canvas units, with the type
         /// sizes that fit their boxes (Inter's line is 1.21 of its size; every box here is at least
-        /// 1.3). The HUD's is the 880-wide card in the middle of the screen, scaled by the large-text
-        /// preference; the screen's is the screen's whole face at 3:2, the faces and their counts
-        /// large enough to read from the sofa.
+        /// 1.3) - a table of named rows, each read by its name (CE-C2: it was a constructor of about
+        /// fifty positional numbers). The HUD's is the 880-wide card in the middle of the screen,
+        /// scaled by the large-text preference; the screen's is the screen's whole face at 3:2, the
+        /// faces and their counts large enough to read from the sofa.
         ///
         /// <para>A nominee's column is <see cref="Slot"/> wide and stands <see cref="ColumnX"/> either
         /// side of the middle. On the HUD the two columns touch, so that is half a slot; on the screen
         /// they stand at the sides with the roster between them.</para>
         /// </summary>
-        private readonly struct Frame
+        private struct Frame
         {
-            public readonly bool Screen;
-            public readonly float Width, Height, Portrait, Slot, ColumnX;
-            public readonly float EyebrowY, EyebrowH, EyebrowPt, TitleY, TitleH, TitlePt, RimY, NameY, NameH, NamePt,
+            public bool Screen;
+            public float Width, Height, Portrait, Slot, ColumnX;
+            public float EyebrowY, EyebrowH, EyebrowPt, TitleY, TitleH, TitlePt, RimY, NameY, NameH, NamePt,
                 CountY, CountH, CountPt, CaptionY, CaptionH, CaptionPt, VersusSize, VersusY, VersusPt, DotsY, DotsH, Pip, Step,
                 TieMarkY, TieMarkW, TieMarkH, TieMarkDx, TiePt, ProgressY, ProgressH, ProgressPt, HostY, HostH, HostPt,
-                BannerY, BannerW, BannerH, BannerPt, ControlsY, ControlsH, ControlsPt, GlassX, GlassY, Ring;
-            /// <summary>The host's line's box, and the smallest type it may shrink to on one line: the card's width and two thirds of its type unless the frame says otherwise.</summary>
-            public readonly float HostW, HostMinPt;
-
-            private Frame(bool screen, float width, float height, float portrait, float slot, float eyebrowY, float eyebrowH,
-                float eyebrowPt, float titleY, float titleH, float titlePt, float rimY, float nameY, float nameH, float namePt,
-                float countY, float countH, float countPt, float captionY, float captionH, float captionPt, float versusSize,
-                float versusY, float versusPt, float dotsY, float dotsH, float pip, float step, float tieMarkY, float tieMarkW,
-                float tieMarkH, float tieMarkDx, float tiePt, float progressY, float progressH, float progressPt, float hostY,
-                float hostH, float hostPt, float bannerY, float bannerW, float bannerH, float bannerPt, float controlsY,
-                float controlsH, float controlsPt, float glassX, float glassY, float ring, float columnX = float.NaN,
-                float hostW = float.NaN, float hostMinPt = float.NaN)
-            {
-                Screen = screen; Width = width; Height = height; Portrait = portrait; Slot = slot;
-                ColumnX = float.IsNaN(columnX) ? slot * 0.5f : columnX;
-                HostW = float.IsNaN(hostW) ? width : hostW;
-                HostMinPt = float.IsNaN(hostMinPt) ? hostPt * 0.66f : hostMinPt;
-                EyebrowY = eyebrowY; EyebrowH = eyebrowH; EyebrowPt = eyebrowPt; TitleY = titleY; TitleH = titleH; TitlePt = titlePt;
-                RimY = rimY; NameY = nameY; NameH = nameH; NamePt = namePt; CountY = countY; CountH = countH; CountPt = countPt;
-                CaptionY = captionY; CaptionH = captionH; CaptionPt = captionPt; VersusSize = versusSize; VersusY = versusY; VersusPt = versusPt;
-                DotsY = dotsY; DotsH = dotsH; Pip = pip; Step = step; TieMarkY = tieMarkY; TieMarkW = tieMarkW; TieMarkH = tieMarkH;
-                TieMarkDx = tieMarkDx; TiePt = tiePt; ProgressY = progressY; ProgressH = progressH; ProgressPt = progressPt;
-                HostY = hostY; HostH = hostH; HostPt = hostPt; BannerY = bannerY; BannerW = bannerW; BannerH = bannerH; BannerPt = bannerPt;
-                ControlsY = controlsY; ControlsH = controlsH; ControlsPt = controlsPt; GlassX = glassX; GlassY = glassY; Ring = ring;
-            }
+                BannerY, BannerW, BannerH, BannerPt, GlassX, GlassY, Ring;
+            /// <summary>The host's line's box, and the smallest type it may shrink to on one line.</summary>
+            public float HostW, HostMinPt;
+            /// <summary>The controls chip's top (<see cref="CeremonyControlsChip"/>).</summary>
+            public float ChipY;
 
             /// <summary>
             /// The HUD's card: 880 wide, the two faces 104 across at the standard text size. The
             /// title's, the names' and the figures' boxes are 1.3 of their type and a little over
             /// (63 for 48, 25 for 19, 76 for 58): they were 1.24 to 1.26, which Inter's 1.21 line
-            /// drew only because caps and digits have no descenders (UI-UX-PASS-PLAN N0).
+            /// drew only because caps and digits have no descenders (UI-UX-PASS-PLAN N0). The host's
+            /// line is the card's width and shrinks to two thirds of its type. The controls chip (26
+            /// tall at the standard size) closes it, six units clear of its foot: 504 high, where the
+            /// controls line at 12 points in an 18 box made it 500.
             /// </summary>
             public static Frame Hud(float s)
             {
                 const float portrait = 104f;
                 float top = 100f + portrait;
-                return new Frame(false, 880f * s, (top + 296f) * s, portrait * s, 300f * s,
-                    0f, 22f * s, 15f * s, -26f * s, 63f * s, 48f * s, -100f * s,
-                    -(top + 14f) * s, 25f * s, 19f * s, -(top + 36f) * s, 76f * s, 58f * s, -(top + 104f) * s, 18f * s, 12f * s,
-                    62f * s, -(100f + portrait * 0.4f) * s, 22f * s, -(top + 130f) * s, 20f * s, 11f * s, 20f * s,
-                    -(top + 60f) * s, 56f * s, 24f * s, 70f * s, 12f * s, -(top + 156f) * s, 22f * s, 16f * s,
-                    -(top + 184f) * s, 26f * s, 18f * s, -(top + 218f) * s, 560f * s, 44f * s, 22f * s,
-                    -(top + 272f) * s, 18f * s, 12f * s, 34f * s, 26f * s, 4f * s);
+                return new Frame
+                {
+                    Screen = false,
+                    Width = 880f * s, Height = (top + 304f) * s, Portrait = portrait * s, Slot = 300f * s, ColumnX = 300f * s * 0.5f,
+                    EyebrowY = 0f, EyebrowH = 22f * s, EyebrowPt = 15f * s,
+                    TitleY = -26f * s, TitleH = 63f * s, TitlePt = 48f * s,
+                    RimY = -100f * s,
+                    NameY = -(top + 14f) * s, NameH = 25f * s, NamePt = 19f * s,
+                    CountY = -(top + 36f) * s, CountH = 76f * s, CountPt = 58f * s,
+                    CaptionY = -(top + 104f) * s, CaptionH = 18f * s, CaptionPt = 12f * s,
+                    VersusSize = 62f * s, VersusY = -(100f + portrait * 0.4f) * s, VersusPt = 22f * s,
+                    DotsY = -(top + 130f) * s, DotsH = 20f * s, Pip = 11f * s, Step = 20f * s,
+                    TieMarkY = -(top + 60f) * s, TieMarkW = 56f * s, TieMarkH = 24f * s, TieMarkDx = 70f * s, TiePt = 12f * s,
+                    ProgressY = -(top + 156f) * s, ProgressH = 22f * s, ProgressPt = 16f * s,
+                    HostY = -(top + 184f) * s, HostH = 26f * s, HostPt = 18f * s, HostW = 880f * s, HostMinPt = 18f * s * 0.66f,
+                    BannerY = -(top + 218f) * s, BannerW = 560f * s, BannerH = 44f * s, BannerPt = 22f * s,
+                    ChipY = -(top + 272f) * s,
+                    GlassX = 34f * s, GlassY = 26f * s, Ring = 4f * s,
+                };
             }
 
             /// <summary>
@@ -718,10 +681,10 @@ namespace Gamesim.Presentation
             /// their counts 84 high under them, the roster between them (<see cref="ScreenBoard"/>),
             /// and a small VS disc over the roster. The HOH chip goes under the figure it marks,
             /// since beside it would run off the face. The foot has the HUD's margin (UI-UX-PASS-PLAN
-            /// N0): the controls line at the key ceremony's 26 points in a 36 box, −740 to −776, where
+            /// N0): the controls chip at the key ceremony's 26 points in a 36 box, -740 to -776, where
             /// it was 13 points in an 18 box ending on the edge; above it the banner at 34 points in
-            /// 46 (−692 to −738), the host's line (−650 to −690), the progress line (−612 to −648) and
-            /// the pips' row at its own height (−582 to −610), two units under the roster's seventh
+            /// 46 (-692 to -738), the host's line (-650 to -690), the progress line (-612 to -648) and
+            /// the pips' row at its own height (-582 to -610), two units under the roster's seventh
             /// row at a full house. The eyebrow (21 points in 28) starts 3 % of the face's height
             /// inside its top and ends where the title (63 points in 82) starts, and the title ends
             /// where THE VOTE starts: no two rows' boxes cross. The host's line is boxed
@@ -729,14 +692,26 @@ namespace Gamesim.Presentation
             /// to twenty points at the least, so its longest wording - the tie-break's, which at thirty
             /// points spans the whole face - ends inside the face's 3 % margin.
             /// </summary>
-            public static Frame OnScreen() => new Frame(true, ScreenSurface.ReferenceWidth, ScreenSurface.ReferenceHeight, 160f, 220f,
-                -24f, 28f, 21f, -52f, 82f, 63f, -176f,
-                -354f, 40f, 28f, -394f, 110f, 84f, float.NaN, 0f, 0f,
-                56f, -174f, 22f, -582f, 28f, 24f, 40f,
-                -508f, 96f, 40f, 0f, 26f, -612f, 36f, 26f,
-                -650f, 40f, 30f, -692f, 720f, 46f, 34f,
-                -740f, 36f, 26f, 0f, 0f, 6f, 470f,
-                ScreenSurface.ReferenceWidth - 2f * ScreenBoard.HostInset, ScreenBoard.HostMinPt);
+            public static Frame OnScreen() => new Frame
+            {
+                Screen = true,
+                Width = ScreenSurface.ReferenceWidth, Height = ScreenSurface.ReferenceHeight, Portrait = 160f, Slot = 220f, ColumnX = 470f,
+                EyebrowY = -24f, EyebrowH = 28f, EyebrowPt = 21f,
+                TitleY = -52f, TitleH = 82f, TitlePt = 63f,
+                RimY = -176f,
+                NameY = -354f, NameH = 40f, NamePt = 28f,
+                CountY = -394f, CountH = 110f, CountPt = 84f,
+                CaptionY = float.NaN, CaptionH = 0f, CaptionPt = 0f,
+                VersusSize = 56f, VersusY = -174f, VersusPt = 22f,
+                DotsY = -582f, DotsH = 28f, Pip = 24f, Step = 40f,
+                TieMarkY = -508f, TieMarkW = 96f, TieMarkH = 40f, TieMarkDx = 0f, TiePt = 26f,
+                ProgressY = -612f, ProgressH = 36f, ProgressPt = 26f,
+                HostY = -650f, HostH = 40f, HostPt = 30f,
+                HostW = ScreenSurface.ReferenceWidth - 2f * ScreenBoard.HostInset, HostMinPt = ScreenBoard.HostMinPt,
+                BannerY = -692f, BannerW = 720f, BannerH = 46f, BannerPt = 34f,
+                ChipY = -740f,
+                GlassX = 0f, GlassY = 0f, Ring = 6f,
+            };
         }
 
         /// <summary>
@@ -1023,11 +998,14 @@ namespace Gamesim.Presentation
             bannerText.rectTransform.offsetMax = Vector2.zero;
             banner.gameObject.SetActive(false);
 
-            // What the card answers to: the count can be sped up, or skipped to the result. The keys
-            // named follow the device last used on the card.
-            controls = HudPrimitives.Label("Controls", column, f.ControlsPt, UiTheme.Muted, TextAlignmentOptions.Center);
-            controls.text = CeremonyTakeover.ControlsFor(usingPad);
-            Place(controls.rectTransform, width, f.ControlsH, f.ControlsY);
+            // What the card answers to, in the controls chip every ceremony card closes with: the count
+            // can be sped up, or skipped to the result. The keys named follow the device last used on
+            // the card.
+            var controlsChip = CeremonyControlsChip.Build(column, "Controls");
+            if (f.Screen) controlsChip.SizeForScreen(); else controlsChip.SizeForHud(f.Width / 880f);
+            controlsChip.PlaceAt(f.ChipY);
+            controls = controlsChip.Label;
+            controlsChip.Say(CeremonyTakeover.ControlsFor(clock.OnPad));
         }
 
         /// <summary>

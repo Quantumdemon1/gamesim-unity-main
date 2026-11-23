@@ -506,10 +506,14 @@
 # two sides.
 # 11205 = 11201 (the tour on the new main) + the whole-house moves' lock's 4 (11025 - 11021 on this branch): disjoint
 # cases, so the floor is their sum (the second wave's landing of 22 November 2026). Counted from the two sides.
-# 11133 = 11027 (the new main) + 106: the cases added by the season card, the tour and the whole-house moves' lock.
-# The 11205 above counted 72 cases twice: those of the first wave's changes, which this branch held from an older
-# chain and the new main holds too. Corrected 2026-11-22; the floor is the count the test lists give.
-Gamesim.EditModeTests 11133
+# 10928 = 10923 + the device hints' 5 InputGlossaryDeviceHintsTests cases, 2026-11-22.
+# 11030 = 11025 (the lock on top of the menu changes) + the device hints' 5 (10928 - 10923 on this branch): disjoint
+# 11210 = 11205 (the lock on the new main) + the device hints' 5 (11030 - 11025 on this branch): disjoint cases, so
+# the floor is their sum (the second wave's landing of 22 November 2026). Counted from the two sides.
+# 11138 = 11027 (the new main) + 111: the cases added by the season card, the tour, the lock and the device hints. The
+# 11210 above counted 72 cases twice: those of the first wave's changes, which this branch held from an older chain
+# and the new main holds too. Corrected 2026-11-22; the floor is the count the test lists give.
+Gamesim.EditModeTests 11138
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and
@@ -790,10 +794,14 @@ Gamesim.EditModeTests 11133
 # two sides.
 # 1696 = 1695 (the tour on the new main) + the whole-house moves' lock's 1 (1688 - 1687 on this branch): disjoint
 # cases, so the floor is their sum (the second wave's landing of 22 November 2026). Counted from the two sides.
-# 1690 = 1686 (the new main) + 4: the cases added by the season card, the tour and the whole-house moves' lock. The
-# 1696 above counted 6 cases twice: those of the first wave's changes, which this branch held from an older chain and
+# 1687 = 1685 + the device hints' 2 DeviceHints cases, 2026-11-22.
+# 1690 = 1688 (the lock on top of the menu changes) + the device hints' 2 (1687 - 1685 on this branch): disjoint
+# 1698 = 1696 (the lock on the new main) + the device hints' 2 (1690 - 1688 on this branch): disjoint cases, so the
+# floor is their sum (the second wave's landing of 22 November 2026). Counted from the two sides.
+# 1692 = 1686 (the new main) + 6: the cases added by the season card, the tour, the lock and the device hints. The
+# 1698 above counted 6 cases twice: those of the first wave's changes, which this branch held from an older chain and
 # the new main holds too. Corrected 2026-11-22; the floor is the count the test lists give.
-Gamesim.PlayModeTests 1690
+Gamesim.PlayModeTests 1692
 # The UMA build of the same assembly, read by a plan built without -WithoutUma. 1281 = the 1241 above + the
 # 40 tests that compile only under GAMESIM_UMA, as run at r1 (2026-10-16): in EpisodePlayModeTests,
 # GroundedFarewell 11, Creator 9, HouseLife 8, Emotes 3, OpeningCaptures 2, and one each in CreatorEntry,
@@ -998,10 +1006,14 @@ Gamesim.PlayModeTests 1690
 # two sides.
 # 1741 = 1740 (the tour on the new main) + the whole-house moves' lock's 1 (1733 - 1732 on this branch): disjoint
 # cases, so the floor is their sum (the second wave's landing of 22 November 2026). Counted from the two sides.
-# 1735 = 1731 (the new main) + 4: the cases added by the season card, the tour and the whole-house moves' lock. The
-# 1741 above counted 6 cases twice: those of the first wave's changes, which this branch held from an older chain and
+# 1732 = 1730 + the device hints' 2 DeviceHints cases, 2026-11-22.
+# 1735 = 1733 (the lock on top of the menu changes) + the device hints' 2 (1732 - 1730 on this branch): disjoint
+# 1743 = 1741 (the lock on the new main) + the device hints' 2 (1735 - 1733 on this branch): disjoint cases, so the
+# floor is their sum (the second wave's landing of 22 November 2026). Counted from the two sides.
+# 1737 = 1731 (the new main) + 6: the cases added by the season card, the tour, the lock and the device hints. The
+# 1743 above counted 6 cases twice: those of the first wave's changes, which this branch held from an older chain and
 # the new main holds too. Corrected 2026-11-22; the floor is the count the test lists give.
-Gamesim.PlayModeTests.UmaBuild 1735
+Gamesim.PlayModeTests.UmaBuild 1737
 # The UMA bodies: runs only where the GAMESIM_UMA define is set (the working tree and the D: copy).
 # 82 = the 89 run on 2026-10-15, less the 7 farewell probes moved to Gamesim.Uma.DiagnosticsPlayModeTests;
 # 85 = 82 + the 3 farewell readiness decision tests (UmaFarewellReadinessDecisionPlayModeTests, 2026-10-16);
@@ -1431,7 +1443,11 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # two sides.
 # 23305 = 23301 (the tour on the new main) + the whole-house moves' lock's 4 (23120 - 23116 on this branch): disjoint
 # cases, so the floor is their sum (the second wave's landing of 22 November 2026). Counted from the two sides.
-# 23232 = 23131 (the new main) + 101: the cases added by the season card, the tour and the whole-house moves' lock.
-# The 23305 above counted 73 cases twice: those of the first wave's changes, which this branch held from an older
-# chain and the new main holds too. Corrected 2026-11-22; the floor is the count the test lists give.
-Gamesim.SimulationTests 23232
+# 23028 = 23023 + the device hints' 5 InputGlossaryDeviceHintsTests cases, 2026-11-22.
+# 23125 = 23120 (the lock on top of the menu changes) + the device hints' 5 (23028 - 23023 on this branch): disjoint
+# 23310 = 23305 (the lock on the new main) + the device hints' 5 (23125 - 23120 on this branch): disjoint cases, so
+# the floor is their sum (the second wave's landing of 22 November 2026). Counted from the two sides.
+# 23237 = 23131 (the new main) + 106: the cases added by the season card, the tour, the lock and the device hints. The
+# 23310 above counted 73 cases twice: those of the first wave's changes, which this branch held from an older chain
+# and the new main holds too. Corrected 2026-11-22; the floor is the count the test lists give.
+Gamesim.SimulationTests 23237

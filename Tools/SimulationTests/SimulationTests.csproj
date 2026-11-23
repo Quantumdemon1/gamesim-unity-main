@@ -599,6 +599,7 @@
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/KeyBindings.cs" />
     <Compile Include="$(EditMode)KeyBindingsTests.cs" />
     <Compile Include="$(EditMode)InputGlossaryTests.cs" />
+    <Compile Include="$(EditMode)InputGlossaryDeviceHintsTests.cs" />
     <Compile Include="$(EditMode)InputRawReadScanTests.cs" />
     <!-- The ceremony cards' press guard (A4f), the Back matrix's representative rows rest on it. -->
     <Compile Include="$(EditMode)CeremonyCardInputScanTests.cs" />

@@ -706,7 +706,7 @@ namespace Gamesim.Tests.EditMode
             Assert.That((state.dialogueRulesVersion, state.tuningRulesVersion), Is.EqualTo((2, TuningRules.Shipped)),
                 "Played as it starts: rules 2 by the literal, tuning 1.");
             if (tuningHeld) state.tuningRulesVersion = TuningRules.Off;
-            if (tuningHeld && state.competitionRulesVersion == CompetitionRules.RingTower) state.competitionRulesVersion = CompetitionRules.Widened; // Held at competition rules 4: rules 5 (the ring tower) is newer than every older schema's reader.
+            if (tuningHeld && (state.competitionRulesVersion == CompetitionRules.RingTower || state.competitionRulesVersion == CompetitionRules.Trivia)) state.competitionRulesVersion = CompetitionRules.Widened; // Held at competition rules 4: rules 5 (the ring tower) and 6 (the trivia) are newer than every older schema's reader.
             Assert.That(EpisodeValidation.TryValidate(state, out string reason), Is.True, reason);
             return state;
         }

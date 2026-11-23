@@ -59,7 +59,7 @@ namespace Gamesim.Tests.EditMode
             Assert.That((CompetitionTrivia.EarliestWeek, CompetitionTrivia.EvictionsFirst, CompetitionTrivia.Questions, CompetitionTrivia.FactsNeeded),
                 Is.EqualTo((4, 3, 5, 10)));
             Assert.That(CompetitionRules.Trivia, Is.EqualTo(6));
-            Assert.That(CompetitionRules.Current, Is.EqualTo(CompetitionRules.RingTower), "Defined, not enrolled: new seasons still start on rules 5.");
+            Assert.That(CompetitionRules.Current, Is.EqualTo(CompetitionRules.Trivia), "Enrolled since the trivia's switch-on: new seasons start on rules 6.");
             Assert.That(CompetitionRules.Newest, Is.EqualTo(CompetitionRules.Trivia));
 
             var ready = Built(4);
@@ -265,9 +265,9 @@ namespace Gamesim.Tests.EditMode
             uint seed = SeedWithALateBoard(out int boardWeek, out EpisodePhase boardPhase);
             var fresh = SeasonBuilder.Create(new SeasonBuilder.Choice { HouseSize = 10 }, seed);
             ShippedRules.ApplyFresh(fresh);
-            Assert.That(fresh.competitionRulesVersion, Is.EqualTo(CompetitionRules.RingTower), "Not enrolled: a season the game starts plays rules 5.");
+            Assert.That(fresh.competitionRulesVersion, Is.EqualTo(CompetitionRules.Trivia), "Enrolled: a season the game starts plays rules 6.");
             var held = fresh.Clone();
-            fresh.competitionRulesVersion = CompetitionRules.Trivia;
+            held.competitionRulesVersion = CompetitionRules.RingTower; // The same season held at rules 5 by name.
             var six = new EpisodeEngine(fresh);
             var five = new EpisodeEngine(held);
             bool dealt = false;

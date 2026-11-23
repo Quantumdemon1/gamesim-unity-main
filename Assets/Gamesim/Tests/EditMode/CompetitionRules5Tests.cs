@@ -141,7 +141,8 @@ namespace Gamesim.Tests.EditMode
             var fresh = SeasonBuilder.Create(new SeasonBuilder.Choice { HouseSize = 8 }, seed);
             Assert.That(fresh.competitionRulesVersion, Is.EqualTo(CompetitionRules.Widened), "A built season starts on rules 4.");
             ShippedRules.ApplyFresh(fresh);
-            Assert.That(fresh.competitionRulesVersion, Is.EqualTo(CompetitionRules.RingTower), "A season the game starts plays rules 5.");
+            Assert.That(fresh.competitionRulesVersion, Is.EqualTo(CompetitionRules.Trivia), "A season the game starts plays rules 6 since the trivia's switch-on.");
+            fresh.competitionRulesVersion = CompetitionRules.RingTower; // Held at rules 5 by name: this case is rules 5's against rules 4.
             var held = fresh.Clone();
             held.competitionRulesVersion = CompetitionRules.Widened;
             Assert.That(EpisodeValidation.TryValidate(fresh, out string reason), Is.True, reason);

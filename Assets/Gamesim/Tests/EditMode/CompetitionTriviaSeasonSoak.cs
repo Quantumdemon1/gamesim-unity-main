@@ -9,7 +9,7 @@ using NUnit.Framework;
 namespace Gamesim.Tests.EditMode
 {
     /// <summary>
-    /// The trivia competition's soak: fresh seasons the game starts, moved to competition rules 6 (which nothing enrols), each
+    /// The trivia competition's soak: fresh seasons the game starts, at competition rules 6 (written again by name), each
     /// played to its end by the engine tests' walker. It says in which weeks the trivia is dealt (never before week 4, never
     /// before three evictions), in how many seasons, and how its wins spread: the player (who plays every competition at
     /// half marks), and the winner's rank by the mental statistic in the field. Every quiz it deals has five questions.

@@ -740,7 +740,7 @@ namespace Gamesim.Tests.EditMode
             Assert.That(s.ledger.plans.Any(p => p.stance == PactPlanStance.Countered), Is.False, "No counter settled.");
             var held = s.Clone();
             held.tuningRulesVersion = TuningRules.Off;
-            if (held.competitionRulesVersion == CompetitionRules.RingTower) held.competitionRulesVersion = CompetitionRules.Widened; // Held at competition rules 4: rules 5 (the ring tower) is newer than every older schema's reader.
+            if (held.competitionRulesVersion == CompetitionRules.RingTower || held.competitionRulesVersion == CompetitionRules.Trivia) held.competitionRulesVersion = CompetitionRules.Widened; // Held at competition rules 4: rules 5 (the ring tower) and 6 (the trivia) are newer than every older schema's reader.
             if (held.story.talkRules == TalkRules.Talk || held.story.talkRules == TalkRules.Chemistry || held.story.talkRules == TalkRules.Romance) held.story.talkRules = TalkRules.Off; // Held at talk rules 0: levels 1, 2 and 3 (free talk slices 1, 2 and 3's enrolments) are newer than every older schema's reader; the walk had no free talk.
             return held;
         }

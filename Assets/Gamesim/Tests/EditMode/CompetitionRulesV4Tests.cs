@@ -304,9 +304,10 @@ namespace Gamesim.Tests.EditMode
         [Test]
         public void NewSeasonsPlayRulesFourAndTheSaveAcceptsThem()
         {
-            // Rules 4 is still what it was; since competition slice 4 a new season plays rules 5, the ring tower's, and the save takes both.
+            // Rules 4 is still what it was; a new season played rules 5, the ring tower's, from competition slice 4 and plays
+            // rules 6, the trivia's, since its switch-on, and the save takes each of them.
             Assert.That(CompetitionRules.Widened, Is.EqualTo(4));
-            Assert.That(CompetitionRules.Current, Is.EqualTo(CompetitionRules.RingTower).And.EqualTo(5));
+            Assert.That(CompetitionRules.Current, Is.EqualTo(CompetitionRules.Trivia).And.EqualTo(6));
             var state = ContentCatalog.Create(9);
             state.competitionRulesVersion = 4;
             Assert.That(EpisodeValidation.TryValidate(state, out var reason), Is.True, reason);

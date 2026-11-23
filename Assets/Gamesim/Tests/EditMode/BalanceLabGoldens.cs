@@ -69,8 +69,12 @@ namespace Gamesim.Tests.EditMode
         /// Budget300Size12Second and Budget300Size12Third, run by name at d687bbed, printed four cells moved (schemer, floater,
         /// beast and oracle-skilled at size 12, budget 300), recorded below; their other four printed the digests below byte
         /// for byte. All eight cases have now been run by name at level 3: nothing is provisional.
+        /// competitionRulesVersion=6 came with the trivia's switch-on (competition rules 6): from week 4, after three evictions,
+        /// a memory board a fresh season deals can be the trivia instead. A row names a competition's category, which the trivia
+        /// shares with the board it replaces, and a season commits the same results under rules 5 and 6 (CompetitionRules6Tests),
+        /// so only this number moves and no cell should.
         /// </summary>
-        internal const string Rules = "competitionRulesVersion=5,readRulesStartWeek=1,leverRulesStartWeek=1,weekRulesStartWeek=1,economyRulesVersion=1,"
+        internal const string Rules = "competitionRulesVersion=6,readRulesStartWeek=1,leverRulesStartWeek=1,weekRulesStartWeek=1,economyRulesVersion=1,"
             + "agencyRulesStartWeek=1,finaleRulesStartWeek=1,commitmentRulesStartWeek=1,unifiedCommitmentRulesVersion=2,unifiedHearingRulesVersion=1,"
             + "blocRulesStartWeek=1,socialBudgetRulesStartWeek=1,dealRulesStartWeek=1,eventRulesStartWeek=1,storyRulesStartWeek=1,haveNotRulesStartWeek=1,"
             + "strategyRulesStartWeek=1,allianceLeakRulesStartWeek=1,pactPlanRulesStartWeek=1,allWeekRulesStartWeek=1,dialogueRulesVersion=0,"

@@ -118,7 +118,7 @@ namespace Gamesim.Tests.PlayMode
         {
             director.StartSeason(new SeasonBuilder.Choice());
             yield return null;
-            Assert.That(director.Snapshot.competitionRulesVersion, Is.EqualTo(CompetitionRules.Current), "A season started now plays the current rules (5, the ring tower, since competition slice 4).");
+            Assert.That(director.Snapshot.competitionRulesVersion, Is.EqualTo(CompetitionRules.Current), "A season started now plays the current rules (6, the trivia, since its switch-on; 5, the ring tower, before it).");
             Assert.That(director.Snapshot.haveNotRulesStartWeek, Is.EqualTo(1), "and names Have-Nots from its first week.");
             Assert.That(director.Snapshot.strategyRulesStartWeek, Is.EqualTo(1), "and opens the strategy windows.");
             // Started without a roster choice - the default cast - it plays the same.

@@ -69,6 +69,19 @@ namespace Gamesim.Episode
             public IReadOnlyList<string> RanOut { get; internal set; }
             /// <summary>Seconds from the show's start to its hold - the field assembled, or the wait for it up; NaN when no hold began.</summary>
             public float AssembledSeconds { get; internal set; } = float.NaN;
+            /// <summary>
+            /// Seconds from the show's start to when the walk out meant the field to stand at its stations:
+            /// <see cref="CompetitionShowPlan.WalkOutSeconds"/>, or later when a route was longer than that
+            /// (<see cref="CompetitionShowPlan.ExtendWalkOut"/>).
+            /// </summary>
+            public float WalkOutSeconds { get; internal set; } = float.NaN;
+            /// <summary>Seconds from the show's start to when the wait for the field was up (<see cref="CompetitionShowPlan.AssemblyBy"/>).</summary>
+            public float AssemblyWaitSeconds { get; internal set; } = float.NaN;
+            /// <summary>
+            /// Who was still on the way when the walk out's last moment came and was put on their station
+            /// so the show started with them (<see cref="CompetitionShowPlan.PlaceBy"/>), in the order put there.
+            /// </summary>
+            public IReadOnlyList<string> Placed { get; internal set; } = Array.Empty<string>();
         }
 
         private sealed partial class CompetitionShowRun
@@ -100,6 +113,11 @@ namespace Gamesim.Episode
             /// <summary>When the walk out next reads the walkers' routes; whether it is over.</summary>
             public float NextPaceAt;
             public bool WalkOutOver;
+            /// <summary>When the walk out means the field to stand at its stations: later than its wait when a route is long.</summary>
+            public float WalkOutBy = float.NaN;
+            /// <summary>Who was put on their station at the walk out's last moment, and whether that moment has come.</summary>
+            public readonly List<string> Placed = new List<string>();
+            public bool StragglersPlaced;
         }
 
         private CompetitionShowRun competitionShow;
@@ -173,6 +191,7 @@ namespace Gamesim.Episode
                 StartedAt = now, PressGuardUntil = now + CompetitionShowPressGuard,
             };
             run.HardBy = now + plan.HardSeconds(run.Quick, run.Reduced);
+            run.WalkOutBy = now + CompetitionShowPlan.WalkOutSeconds(run.Quick);
             if (!BeginCompetitionArena(committed, run) || competitionShow != run)
             {
                 // The arena refused on its first tick and the show already played its card: not twice.
@@ -258,14 +277,20 @@ namespace Gamesim.Episode
                 // The hold waits for the field at its stations. Once the walk out is up it starts with those
                 // there, provided the winner and a stationed player are; past the wait for those two the card
                 // plays without a show, so nobody lets go or cheers away from their rig.
-                float waited = now - run.StartedAt;
+                // Both waits run from when the walk out means the field to be there: later than its
+                // own wait when a route is long - a quick ceremony, the far end of the house, a big cast.
+                // At the walk out's last moment whoever is still on the way is put on their station
+                // (competition show edges), so the hold starts with the whole field and nobody is left
+                // out; only a body that cannot be put there still waits, as before.
                 PaceCompetitionShowWalkOut(run, now);
                 if (!CompetitionShowFieldArrived(run))
                 {
-                    if (waited < CompetitionShowPlan.AssemblySeconds(run.Quick)) return;
-                    if (!CompetitionShowPrincipalsArrived(run))
+                    if (now < CompetitionShowPlan.PlaceBy(run.WalkOutBy, run.Quick)) return;
+                    if (!run.StragglersPlaced) PlaceCompetitionShowStragglers(run, now); else PlaceCompetitionShowStragglersAgain(run);
+                    if (!CompetitionShowFieldReady(run) && now < CompetitionShowPlan.AssemblyBy(run.WalkOutBy, run.Quick)) return;
+                    if (!CompetitionShowFieldReady(run) && !CompetitionShowPrincipalsArrived(run))
                     {
-                        if (waited < CompetitionShowPlan.PrincipalSeconds(run.Quick)) return;
+                        if (now < CompetitionShowPlan.PrincipalBy(run.WalkOutBy, run.Quick)) return;
                         Debug.Log("[Gamesim competition show] the winner did not reach their station in time; the card plays. " + CompetitionStageDiagnostic(), this);
                         FinishCompetitionShow(); return;
                     }
@@ -310,15 +335,72 @@ namespace Gamesim.Episode
             run.HoldFrom = now;
             // The walk out is over: everybody walks at the house's pace again, a latecomer to the side included.
             EndCompetitionShowWalkOut(run);
+            // Those put on their station at the walk out's last moment hold on with those who walked there.
             var holding = new HashSet<string>();
-            foreach (var id in run.Stationed)
-            {
-                if (CompetitionShowArrived(run, id)) holding.Add(id);
-                else { run.LeftOut.Add(id); run.Out.Add(id); run.SideAt[id] = now; }
-            }
+            CompetitionShowPlan.SplitAtHold(run.Stationed, id => CompetitionShowArrived(run, id), run.Placed, holding, run.LeftOut);
+            foreach (var id in run.LeftOut) { run.Out.Add(id); run.SideAt[id] = now; }
             run.DropOrder = run.Plan.DropOrderAmong(holding);
             if (run.LeftOut.Count > 0)
-                Debug.Log("[Gamesim competition show] left out, still walking when the hold began: " + string.Join(", ", run.LeftOut), this);
+                Debug.Log("[Gamesim competition show] left out, still walking when the hold began and could not be put on their station: "
+                    + string.Join(", ", run.LeftOut), this);
+        }
+
+        /// <summary>
+        /// The walk out's last moment (<see cref="CompetitionShowPlan.PlaceBy"/>): every stationed
+        /// competitor still on their way is put on their station by the walking map's own warp, a
+        /// houseguest at their stage place and the player at theirs, so the show starts with its whole
+        /// field. Once per show; the log says who, how far each still had to go and why they were not
+        /// counted as there, so a built house that runs late says where.
+        /// </summary>
+        private void PlaceCompetitionShowStragglers(CompetitionShowRun run, float now)
+        {
+            run.StragglersPlaced = true;
+            var why = new List<string>();
+            CompetitionShowPlan.PlaceStragglers(run.Stationed, id => CompetitionShowArrived(run, id), id =>
+            {
+                if (id == run.Plan.PlayerId)
+                {
+                    bool put = player != null && player.TryPlaceAtActivityDestination(competitionPlayerOwner);
+                    why.Add(id + (put ? " put" : " not put") + " (the player)");
+                    return put;
+                }
+                if (npcMeetings == null) return false;
+                float left = npcMeetings.CompetitionActorRemaining(id);
+                string failure = npcMeetings.CompetitionActorArrivalFailure(id);
+                bool placed = npcMeetings.PlaceCompetitionActor(id);
+                why.Add(id + (placed ? " put" : " not put") + " (" + left.ToString("0.0") + " m to go; " + (failure ?? "on the mark") + ")");
+                return placed;
+            }, run.Placed);
+            if (why.Count == 0) return;
+            float walkOut = run.WalkOutBy - run.StartedAt;
+            Debug.Log("[Gamesim competition show] still on the way at the walk out's last moment, " + (now - run.StartedAt).ToString("0.00")
+                + " s in (walk out " + walkOut.ToString("0.00") + " s, its cap " + CompetitionShowPlan.MostWalkOutSeconds(run.Quick).ToString("0") + " s"
+                + (walkOut >= CompetitionShowPlan.MostWalkOutSeconds(run.Quick) - .001f ? ", reached" : "") + "): " + string.Join(", ", why), this);
+        }
+
+        /// <summary>
+        /// Each frame after the walk out's last moment until the hold begins: anybody whose body could not
+        /// be put on their station then (paused, parked or off the walking map for a moment) is tried
+        /// again, so a body that can be put there a frame later still starts the show with the field.
+        /// </summary>
+        private void PlaceCompetitionShowStragglersAgain(CompetitionShowRun run)
+        {
+            int before = run.Placed.Count;
+            CompetitionShowPlan.PlaceStragglers(run.Stationed, id => CompetitionShowArrived(run, id), id =>
+                id == run.Plan.PlayerId ? player != null && player.TryPlaceAtActivityDestination(competitionPlayerOwner)
+                    : npcMeetings != null && npcMeetings.PlaceCompetitionActor(id), run.Placed);
+            if (run.Placed.Count > before)
+                Debug.Log("[Gamesim competition show] put on their station on a later try: " + string.Join(", ", run.Placed.Skip(before)), this);
+        }
+
+        /// <summary>Whether this stationed competitor stands at their station or was put there.</summary>
+        private bool CompetitionShowReady(CompetitionShowRun run, string id) => run.Placed.Contains(id) || CompetitionShowArrived(run, id);
+
+        /// <summary>Whether every stationed competitor stands at their station or was put there.</summary>
+        private bool CompetitionShowFieldReady(CompetitionShowRun run)
+        {
+            foreach (var id in run.Stationed) if (!CompetitionShowReady(run, id)) return false;
+            return true;
         }
 
         /// <summary>Whether this stationed competitor stands at their station.</summary>
@@ -338,8 +420,8 @@ namespace Gamesim.Episode
         /// <summary>Whether the winner, and the player when they have a station, stand at their stations.</summary>
         private bool CompetitionShowPrincipalsArrived(CompetitionShowRun run)
         {
-            if (!CompetitionShowArrived(run, run.Plan.WinnerId)) return false;
-            return !run.Stationed.Contains(run.Plan.PlayerId) || CompetitionShowArrived(run, run.Plan.PlayerId);
+            if (!CompetitionShowReady(run, run.Plan.WinnerId)) return false;
+            return !run.Stationed.Contains(run.Plan.PlayerId) || CompetitionShowReady(run, run.Plan.PlayerId);
         }
 
         // ------------------------------------------------------------ the walk out keeps pace with the wait
@@ -368,7 +450,8 @@ namespace Gamesim.Episode
                 if (npcMeetings.CompetitionActorArrived(id)) { npcMeetings.PaceCompetitionActor(id, 0f); PutBackCompetitionShowWalker(run, id); }
             if (now < run.NextPaceAt) return;
             run.NextPaceAt = now + CompetitionShowPlan.WalkOutRereadSeconds;
-            float secondsLeft = run.StartedAt + CompetitionShowPlan.WalkOutSeconds(run.Quick) - now;
+            ExtendCompetitionShowWalkOut(run, now);
+            float secondsLeft = run.WalkOutBy - now;
             foreach (var id in run.Stationed)
             {
                 if (id == run.Plan.PlayerId) continue;
@@ -392,6 +475,33 @@ namespace Gamesim.Episode
                 run.Running[id] = visual;
                 if (!run.RanOut.Contains(id)) run.RanOut.Add(id);
             }
+        }
+
+        /// <summary>
+        /// The walk out's own time, read again from the routes still to go (competition show edges): a
+        /// houseguest who cannot reach their station by it at the planned pace, or the player at their
+        /// own gait, moves it later - up to <see cref="CompetitionShowPlan.MostWalkOutSeconds"/> - and the
+        /// waits for the field and the winner, and the show's bound, move with it. So at a quick ceremony
+        /// and in a cast of sixteen the far end of the house still reaches the field before the show starts.
+        /// </summary>
+        private void ExtendCompetitionShowWalkOut(CompetitionShowRun run, float now)
+        {
+            float was = run.WalkOutBy;
+            foreach (var id in run.Stationed)
+            {
+                if (id == run.Plan.PlayerId)
+                {
+                    if (player == null || player.Agent == null || !player.Agent.enabled || !player.Agent.isOnNavMesh
+                        || player.ActivityHasArrived(competitionPlayerOwner)) continue;
+                    float left = player.Agent.pathPending || !player.Agent.hasPath || float.IsInfinity(player.Agent.remainingDistance)
+                        ? Flat(player.transform.position - competitionPlayerStationPosition) : player.Agent.remainingDistance;
+                    run.WalkOutBy = CompetitionShowPlan.ExtendWalkOut(run.WalkOutBy, now, run.StartedAt, run.Quick, left, player.Agent.speed * .9f);
+                    continue;
+                }
+                if (npcMeetings.CompetitionActorArrived(id)) continue;
+                run.WalkOutBy = CompetitionShowPlan.ExtendWalkOut(run.WalkOutBy, now, run.StartedAt, run.Quick, npcMeetings.CompetitionActorRemaining(id));
+            }
+            if (run.WalkOutBy > was) run.HardBy += run.WalkOutBy - was;
         }
 
         /// <summary>One walker out of the walk out's run gait (their pace is the caller's, or went with their route).</summary>
@@ -588,6 +698,9 @@ namespace Gamesim.Episode
                 Skipped = run.Skipped, Reduced = run.Reduced, PutAway = run.PutAway,
                 Hurried = run.Hurried.ToArray(), RanOut = run.RanOut.ToArray(),
                 AssembledSeconds = run.HoldBegun ? run.HoldFrom - run.StartedAt : float.NaN,
+                WalkOutSeconds = run.WalkOutBy - run.StartedAt,
+                AssemblyWaitSeconds = CompetitionShowPlan.AssemblyBy(run.WalkOutBy, run.Quick) - run.StartedAt,
+                Placed = run.Placed.ToArray(),
             };
             if (skipChip != null) skipChip.Show(false);
             if (!run.CardPlayed)

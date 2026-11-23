@@ -35,6 +35,11 @@ namespace Gamesim.Presentation
         public const string CardPrefix = "Room card · ";
         /// <summary>The card for houseguests the house has no body to place.</summary>
         public const string UnplacedName = "Location unavailable card";
+        /// <summary>
+        /// The name a person's name label carries on the map, then their id: the notebook's HUD makes
+        /// each one a link to that houseguest's profile (backlog item 21). The player's own is not marked.
+        /// </summary>
+        public const string OccupantNamePrefix = "Occupant name · ";
 
         /// <summary>Which rooms the directory shows. View state only: nothing about it is saved.</summary>
         public enum Filter { All, Occupied, Unplaced }
@@ -228,6 +233,7 @@ namespace Gamesim.Presentation
             {
                 var who = Label(card, HudPrimitives.WithYou(CharacterNames.FirstName(occupant.Name), occupant.IsPlayer), 15, UiTheme.Paper, scale, font);
                 if (semibold != null) who.font = semibold;
+                MarkName(who, occupant);
                 float words = Mathf.Min(Mathf.Ceil(who.GetPreferredValues(who.text).x) + 2f, 150f * scale);
                 float token = (Face + 10f) * scale + words;
                 if (x > Pad * scale && x - Pad * scale + token > span) { x = Pad * scale; y += TokenRow * scale; }
@@ -283,6 +289,7 @@ namespace Gamesim.Presentation
                 rim.anchoredPosition = new Vector2(Pad * scale, -y);
                 var who = Label(card, HudPrimitives.WithYou(occupant.Name, occupant.IsPlayer), 15, UiTheme.Paper, scale, font);
                 if (semibold != null) who.font = semibold;
+                MarkName(who, occupant);
                 Place(who.rectTransform, new Vector2((Pad + Face + 10f) * scale, -y - (Face * .5f - 11f) * scale),
                     new Vector2(width - (2f * Pad + Face + 10f) * scale, 22f * scale));
                 y += TokenRow * scale;
@@ -290,6 +297,12 @@ namespace Gamesim.Presentation
             float height = y + (Pad - 8f) * scale;
             card.sizeDelta = new Vector2(width, height);
             return height;
+        }
+
+        /// <summary>Names a person's label for their profile link (<see cref="OccupantNamePrefix"/>); the player's and an unknown id's stay plain.</summary>
+        private static void MarkName(TMP_Text who, Occupant occupant)
+        {
+            if (who != null && !occupant.IsPlayer && !string.IsNullOrEmpty(occupant.Id)) who.name = OccupantNamePrefix + occupant.Id;
         }
 
         private static void Place(RectTransform rect, Vector2 at, Vector2 size)

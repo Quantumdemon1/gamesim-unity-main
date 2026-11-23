@@ -71,6 +71,12 @@ namespace Gamesim.Presentation
         /// <summary>The table's first finish - the winner's - after this long at work.</summary>
         public static float WorkSeconds(bool quick) => quick ? 1.5f : 2.5f;
 
+        /// <summary>
+        /// Ring tower: the first finish - the winner's - after this long at the stacks: long enough for the
+        /// tower's fifteen moves to be seen (competition drop-outs and tower show).
+        /// </summary>
+        public static float TowerWorkSeconds(bool quick) => quick ? 5f : 8f;
+
         /// <summary>Course: from the start to the run out, while the pads are slapped.</summary>
         public static float GoSeconds(bool quick) => quick ? .35f : .5f;
 
@@ -143,8 +149,67 @@ namespace Gamesim.Presentation
         /// </summary>
         public IReadOnlyList<string> Order { get; private set; }
 
-        /// <summary>Course: the latest a runner may reach their post and finish; NaN for anyone not running.</summary>
+        /// <summary>Course: the latest a runner is meant to reach their post and finish; NaN for anyone not running.</summary>
         public float FinishBy(string id) => id != null && finishBy.TryGetValue(id, out var at) ? at : float.NaN;
+
+        /// <summary>
+        /// Course: how long past <see cref="FinishBy"/> a runner still out on their leg is waited for.
+        /// A late runner finishes their leg and slaps the pad in their place; those below them wait at
+        /// their posts, so the order stays the committed one.
+        /// </summary>
+        public const float LateGraceSeconds = 2.5f;
+
+        /// <summary>Course: past this a runner not home does not finish (stuck, or with no route home); NaN for anyone not running.</summary>
+        public float LateBy(string id) => FinishBy(id) + LateGraceSeconds;
+
+        /// <summary>The latest the card plays: a course waits out its late runners' grace; the other families' card is <see cref="CardAt"/>.</summary>
+        public float LatestCardAt => Family == CompetitionShowFamily.Course ? CardAt + LateGraceSeconds : CardAt;
+
+        /// <summary>Course: when <paramref name="id"/> turns for home; NaN for anyone not running.</summary>
+        public float TurnAt(string id)
+        {
+            foreach (var beat in beats)
+                if (beat.Kind == CompetitionShowBeatKind.Turn && beat.Ids.Count > 0 && beat.Ids[0] == id) return beat.At;
+            return float.NaN;
+        }
+
+        /// <summary>What the course does with the next runner in the standings, read each frame.</summary>
+        public enum CourseCall
+        {
+            /// <summary>Not yet: still on their leg, or home before their turn would read in time.</summary>
+            Wait,
+            /// <summary>They finish now: home at their post, in their place.</summary>
+            Finish,
+            /// <summary>Past their grace and still not home: they do not finish, and the next is looked at.</summary>
+            DidNotFinish,
+        }
+
+        /// <summary>
+        /// Course: the call on <paramref name="id"/>, the next in the standings to finish, at
+        /// <paramref name="t"/> seconds into the hold. <paramref name="home"/>: they stand at their post
+        /// (they never left it, or ran their leg and are back); <paramref name="homeward"/>: they turned
+        /// for home. One who never left their post finishes no sooner than a second after their turn, so
+        /// the order still reads in time; one home from their leg finishes at once. One not home is
+        /// waited for until <see cref="LateBy"/>, then does not finish.
+        /// </summary>
+        public CourseCall CallFor(string id, float t, bool home, bool homeward)
+        {
+            if (home)
+            {
+                float turn = TurnAt(id);
+                float earliest = homeward || float.IsNaN(turn) ? 0f : turn + 1f;
+                if (t >= earliest) return CourseCall.Finish;
+                return CourseCall.Wait;
+            }
+            return t > LateBy(id) ? CourseCall.DidNotFinish : CourseCall.Wait;
+        }
+
+        /// <summary>
+        /// Course: whether the field's turn to the winner and the card wait, with <paramref name="nextHome"/>
+        /// of the standings settled (finished or not finishing): while anyone is still to come home in
+        /// their grace. The other families never wait.
+        /// </summary>
+        public bool CardWaits(int nextHome) => Family == CompetitionShowFamily.Course && nextHome < Standings.Count;
 
         /// <summary>
         /// The timeline of a <paramref name="family"/> show for those staged, best first (at least
@@ -160,6 +225,9 @@ namespace Gamesim.Presentation
             {
                 case CompetitionShowFamily.Podium: timeline.BuildPodium(); break;
                 case CompetitionShowFamily.Table: timeline.BuildTable(); break;
+                // The ring tower plays the table's beats - all at work, finishes in the standings' order, time
+                // called on the last - with longer at work, for the tower's moves to be seen.
+                case CompetitionShowFamily.Tower: timeline.BuildTable(); break;
                 case CompetitionShowFamily.Course: timeline.BuildCourse(); break;
             }
             return timeline;
@@ -196,7 +264,8 @@ namespace Gamesim.Presentation
         private void BuildTable()
         {
             int last = Standings.Count - 1;
-            float work = WorkSeconds(Quick), spacing = Spacing(CompetitionShowFamily.Table, last, Quick);
+            float work = Family == CompetitionShowFamily.Tower ? TowerWorkSeconds(Quick) : WorkSeconds(Quick);
+            float spacing = Spacing(CompetitionShowFamily.Table, last, Quick);
             Add(0f, CompetitionShowBeatKind.Work, -1, Standings.ToArray());
             for (int i = 0; i < last; i++)
             {

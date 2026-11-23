@@ -11,6 +11,8 @@ namespace Gamesim.Episode
     /// their reaction with one plain line of what changed - and the notebook page's two blocks. Everything it says comes from
     /// the engine's pure reads through <see cref="TalkScreenLines"/>; the one command is <see cref="EpisodeCommandKind.JustTalk"/>,
     /// free and once per housemate per window. At talk rules 0 nothing here is drawn and no command is sent. Nothing animates.
+    /// At talk rules 3 (slice 3) the panel also offers the Flirt reply and a romance talk's choices, plays a scene and its
+    /// choices as buttons (each a continuation), and says what changed in the romance; below it none of that is read or drawn.
     /// </summary>
     public sealed partial class EpisodeDirector
     {
@@ -61,7 +63,8 @@ namespace Gamesim.Episode
             if (!TalkScreenLines.Shown(state, npc.id)) return;
             var offer = FreeTalk.Offer(state, npc.id);
             string id = npc.id;
-            if (offer.Available)
+            // Open too while a scene is left open with them this window (talk rules 3), so its choices can be answered.
+            if (offer.Available || TalkScreenLines.PendingScene(state, id) != null)
             {
                 hud.Tag(hud.Action(EpisodeHud.JustTalkCaption, () => OpenJustTalk(token, state, id)), TalkScreenLines.CostTag);
                 return;
@@ -108,34 +111,83 @@ namespace Gamesim.Episode
             if (cameraRig != null) cameraRig.ConversationWindowOffset = hud.ConversationWindowOffset;
 
             var shown = justTalkResult;
+            string id = npc.id;
             if (shown != null && shown.NpcId == npc.id)
             {
                 if (!string.IsNullOrEmpty(shown.Reply)) hud.Paragraph("You: “" + TalkText.Spoken(shown.Reply) + "”");
                 if (!string.IsNullOrEmpty(shown.Reaction)) hud.Paragraph(first + ": " + shown.Reaction);
+                // Talk rules 3: a scene's lines (their reaction, then "I'm here to play" in their voice), and the choices it
+                // leaves open as buttons, each a continuation on the scene's row. Empty below the level.
+                foreach (string line in TalkScreenLines.SceneLines(shown, first)) hud.Paragraph(line);
+                if (!string.IsNullOrEmpty(shown.SceneTalkId) && shown.Choices != null && shown.Choices.Count > 0)
+                    ChoiceButtons(token, state, id, shown.SceneTalkId, TalkScreenLines.ChoiceButtons(shown.Choices));
                 hud.Heading(TalkScreenLines.ChangedHeading);
-                // At talk rules 2 also the favour given or turned down, the chemistry once it first shows, and a stage reached.
-                foreach (string line in TalkScreenLines.Aftermath(shown, first)) hud.Paragraph(line);
+                // At talk rules 2 also the favour given or turned down, the chemistry once it first shows, and a stage reached;
+                // at talk rules 3 the romance's after-lines ("There's a spark between you and Dana.").
+                foreach (string line in TalkScreenLines.Aftermath(shown, first, TalkScreenLines.RomanceLines(shown, first))) hud.Paragraph(line);
+                if (!string.IsNullOrEmpty(justTalkRefused) && TalkScreenLines.HasRomance(shown)) hud.Paragraph(justTalkRefused);
                 return true;
             }
 
             var offer = FreeTalk.Offer(state, npc.id);
             if (!offer.Available)
             {
+                // Talk rules 3: a scene left open this window (after a way back, or a save loaded mid-scene) is finished here.
+                var open = TalkScreenLines.PendingScene(state, npc.id);
+                if (open != null)
+                {
+                    string opener = TalkScreenLines.SceneOpener(state, npc.id, open.Row, first);
+                    if (opener != null) hud.Paragraph(opener);
+                    if (!string.IsNullOrEmpty(open.Row.Second)) hud.Paragraph(first + ": " + TalkText.Fill(state, npc.id, open.Row.Second));
+                    ChoiceButtons(token, state, id, open.Row.Id, open.Choices);
+                    if (!string.IsNullOrEmpty(justTalkRefused)) hud.Paragraph(justTalkRefused);
+                    return true;
+                }
                 hud.Paragraph(TalkScreenLines.TileLine(offer, first));
                 return true;
             }
             hud.Paragraph(first + ": " + TalkScreenLines.Opener(state, npc.id, offer.Talk));
             hud.Heading(TalkScreenLines.ReplyHeading);
-            string talkId = offer.Talk.Id, id = npc.id;
-            foreach (var reply in TalkScreenLines.Replies(state, npc.id, offer.Talk))
+            string talkId = offer.Talk.Id;
+            var replies = TalkScreenLines.Replies(state, npc.id, offer.Talk);
+            foreach (var reply in replies)
             {
                 string tone = reply.Tone;
                 hud.Tag(hud.Action(reply.Words, () => AnswerJustTalk(token, state, id, talkId, tone)),
                     // The pill: the tone's caption, or on a Close friend's favour the favour's words (talk rules 2).
                     reply.Pill + " · " + FreeTag);
             }
+            // Talk rules 3: a romance talk's choices (Accept, Not yet, Just friends ...), then the Flirt reply last when the
+            // engine opens it. Neither is drawn below the level.
+            ChoiceButtons(token, state, id, talkId, TalkScreenLines.OfferChoices(state, npc.id, offer.Talk));
+            if (TalkScreenLines.FlirtShown(state, npc.id, offer.Talk, replies))
+                hud.Tag(hud.Action(TalkScreenLines.FlirtCaption, () => AnswerJustTalk(token, state, id, talkId, TalkRules.Flirt)), FreeTag);
             if (!string.IsNullOrEmpty(justTalkRefused)) hud.Paragraph(justTalkRefused);
             return true;
+        }
+
+        /// <summary>The romance choices as the panel's buttons (talk rules 3), by their caption constants, each answering on <paramref name="talkId"/>.</summary>
+        private void ChoiceButtons(object token, EpisodeState state, string npcId, string talkId, List<TalkScreenLines.ChoiceButton> choices)
+        {
+            foreach (var choice in choices)
+            {
+                string answer = choice.Answer;
+                hud.Tag(hud.Action(choice.Caption, () => AnswerJustTalk(token, state, npcId, talkId, answer)), FreeTag);
+            }
+        }
+
+        /// <summary>
+        /// The housemate the house sees in the player's room besides the one talked to (talk rules 3): the witness a command
+        /// carries so a couple seen together is noticed at once. The first by id, for a stable command; null when nobody is there.
+        /// </summary>
+        private string TalkWitness(EpisodeState state, string npcId)
+        {
+            if (!TalkScreenLines.RomanceShown(state)) return null;
+            string room = PlayerRoom;
+            if (room == null) return null;
+            foreach (string other in PeopleIn(state, room))
+                if (other != npcId) return other;
+            return null;
         }
 
         /// <summary>
@@ -145,8 +197,10 @@ namespace Gamesim.Episode
         private void AnswerJustTalk(object token, EpisodeState state, string npcId, string talkId, string tone)
         {
             if (!ConversationNavigationCurrent(token, state, npcId) || !IsCurrentDiaryRevision(state)) return;
-            var command = TalkScreenLines.Command(state, npcId, talkId, tone, Guid.NewGuid().ToString("N"));
-            justTalkPending = FreeTalk.Result(state, npcId, talkId, tone);
+            // The answer is a tone or, at talk rules 3, a choice (choice:<id>); the witness is sent only at talk rules 3.
+            string witness = TalkWitness(state, npcId);
+            var command = TalkScreenLines.AnswerCommand(state, npcId, talkId, tone, witness, Guid.NewGuid().ToString("N"));
+            justTalkPending = TalkScreenLines.Preview(state, npcId, talkId, tone, witness);
             justTalkPendingCommand = command.id;
             justTalkRefused = null;
             var result = Submit(command);
@@ -187,15 +241,20 @@ namespace Gamesim.Episode
                 Caption = EpisodeHud.JustTalkCaption,
                 Description = TalkScreenLines.TileLine(offer, CharacterNames.FirstName(who.name ?? "")),
                 Corner = TalkScreenLines.TileCorner, CornerTint = UiTheme.Allied, Glyph = "chat", Foot = TalkScreenLines.TileFoot,
-                Choose = () => { if (FreeTalk.Offer(projected, id).Available) TalkWithIntent(id, IntentJustTalk); },
+                Choose = () =>
+                {
+                    if (FreeTalk.Offer(projected, id).Available || TalkScreenLines.PendingScene(projected, id) != null)
+                        TalkWithIntent(id, IntentJustTalk);
+                },
             });
             return tiles;
         }
 
-        /// <summary>After the tiles are drawn: the free tile locked when no talk is on offer (the reason is its line).</summary>
+        /// <summary>After the tiles are drawn: the free tile locked when no talk is on offer and no scene is left open (the reason is its line).</summary>
         private void LockJustTalkTile(EpisodeState state, ContestantState who)
         {
-            if (!TalkScreenLines.Shown(state, who.id) || FreeTalk.Offer(state, who.id).Available) return;
+            if (!TalkScreenLines.Shown(state, who.id) || FreeTalk.Offer(state, who.id).Available
+                || TalkScreenLines.PendingScene(state, who.id) != null) return;
             hud.LockTile(InteractionTilesName, EpisodeHud.JustTalkCaption);
         }
 

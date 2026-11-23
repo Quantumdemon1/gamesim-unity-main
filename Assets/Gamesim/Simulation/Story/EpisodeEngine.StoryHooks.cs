@@ -423,6 +423,8 @@ namespace Gamesim.Simulation
                     // of the player's other pact holds it against them, and the player hears who.
                     else if (AllianceLeaks.On(s)) CaughtDoubleDealing(s, fact, listener);
                 }
+            // Free talk's romance (talk rules 3): open scenes lapse, jealousy's coin, a couple's anchors and its going public.
+            RomanceAtAnchor(s, anchor);
         }
 
         /// <summary>What the player hears when a fact reaches them through the house.</summary>

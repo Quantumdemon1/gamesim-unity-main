@@ -57,7 +57,8 @@ namespace Gamesim.Tests.EditMode
             {
                 var source = HouseguestNotes.For(s, actor.id);
                 var lines = EpisodeDirector.ProfileNotesLines(s, actor.id, out int more);
-                var expected = source.Where(n => n.kind != HouseguestNotes.Kinds.Word && n.kind != HouseguestNotes.Kinds.Memory)
+                // Less the promises and memories its other blocks say; the alliance-call notes stay (backlog item 21).
+                var expected = source.Where(n => n.kind != HouseguestNotes.Kinds.Memory && !ProfileNotes.IsPromise(n))
                     .Select(n => n.ToString()).ToList();
                 Assert.That(lines, Is.EqualTo(expected.Take(EpisodeDirector.ProfileLinesShown).ToList()), actor.name + ": the notes card's lines, as it prints them.");
                 Assert.That(more, Is.EqualTo(System.Math.Max(0, expected.Count - EpisodeDirector.ProfileLinesShown)));
@@ -165,10 +166,11 @@ namespace Gamesim.Tests.EditMode
             Assert.That(EpisodeDirector.ProfileBackCaptionFor(EpisodeDirector.NotebookSection.Word), Is.EqualTo("Back to Deals & promises"));
             Assert.That(EpisodeDirector.ProfileBackCaptionFor(EpisodeDirector.NotebookSection.Alliances), Is.EqualTo("Back to Alliances"));
             Assert.That(EpisodeDirector.ProfileBackCaptionFor(EpisodeDirector.NotebookSection.Network), Is.EqualTo("Back to Relationships"));
-            Assert.That(EpisodeDirector.ProfileBackCaptionFor(EpisodeDirector.NotebookSection.Votes), Is.EqualTo(EpisodeHud.ProfileBackCaption),
+            // The vote page and the room map open profiles since backlog item 21 (NotebookRowsProfilesTests); the story page does not.
+            Assert.That(EpisodeDirector.ProfileBackCaptionFor(EpisodeDirector.NotebookSection.Story), Is.EqualTo(EpisodeHud.ProfileBackCaption),
                 "A page that opens no profile is no place to go back to.");
             foreach (var section in new[] { EpisodeDirector.NotebookSection.People, EpisodeDirector.NotebookSection.Notes, EpisodeDirector.NotebookSection.Word,
-                         EpisodeDirector.NotebookSection.Alliances, EpisodeDirector.NotebookSection.Network })
+                         EpisodeDirector.NotebookSection.Alliances, EpisodeDirector.NotebookSection.Network, EpisodeDirector.NotebookSection.Votes, EpisodeDirector.NotebookSection.Rooms })
                 Assert.That(WayOut.IsWayBack(EpisodeDirector.ProfileBackCaptionFor(section)), Is.True, section);
         }
     }

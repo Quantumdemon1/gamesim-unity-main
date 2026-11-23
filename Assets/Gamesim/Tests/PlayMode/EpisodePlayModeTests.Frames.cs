@@ -122,9 +122,22 @@ namespace Gamesim.Tests.PlayMode
                 ButtonWithCaption(ExpandControlsCaption).onClick.Invoke();
                 yield return null;
                 yield return OnFrames("frames-help" + size, "The house's chrome with the controls open at " + text + " text",
-                    where => AssertFixedChromeDoesNotOverlap(textSize));
+                    where =>
+                    {
+                        AssertFixedChromeDoesNotOverlap(textSize);
+                        // The card grows with the text: on a 900-tall canvas it opens at 572 at the
+                        // Standard text, where the column folds and keeps the feed, but at 524 at the
+                        // Larger and 476 at the Largest, above the feed-keeping column's 538 - so the
+                        // feed gives way there, and only there.
+                        var hudCanvas = director.GetComponentsInChildren<Canvas>(true).First(item => item.name == "Gamesim Episode HUD");
+                        if (Mathf.Abs(((RectTransform)hudCanvas.transform).rect.height - EpisodeHud.ReferenceHeight) < 1f)
+                            Assert.That(director.GetComponentInChildren<EpisodeHud>().LiveFeedGivesWayToTheControls, Is.EqualTo(textSize != TextSize.Standard),
+                                where + ": on a 900-tall canvas the live feed gives way to the open controls card at the Larger and the Largest text only.");
+                    });
                 ButtonWithCaption(CollapseControlsCaption).onClick.Invoke();
                 yield return null;
+                Assert.That(director.GetComponentInChildren<EpisodeHud>().LiveFeedGivesWayToTheControls, Is.False, "The live feed comes back as the controls close.");
+                Assert.That(ActiveChromePanel("Live feed"), Is.Not.Null, "and it is up again.");
                 yield return OpenNotebook();
                 yield return OnFrames("frames-notebook" + size, "The notebook at " + text + " text",
                     where =>
@@ -283,9 +296,9 @@ namespace Gamesim.Tests.PlayMode
         /// the relationships card is seven rows and 400 tall, and it ended at 668 against the open
         /// card's 596 on 16:9; now it gives way a row at a time, the one in focus last. The Final 3:
         /// with its tagline gone (the owner, 2026-11-21: no slogan on the season's screens) a
-        /// finalist's objectives are 206 tall, so at the Larger text on 16:9 Recent Events' heading
-        /// alone ends at 568, clear of the open card at 577, and the live feed stays; at the Largest
-        /// text the card begins at 558 and the feed gives way.
+        /// finalist's objectives are 206 tall, so on 16:9 Recent Events' heading alone ends at 568.
+        /// The card grows with the text and begins at 524 at the Larger text and 476 at the Largest,
+        /// so at both the feed gives way.
         /// </summary>
         [UnityTest, Timeout(600000)]
         public IEnumerator Accessibility_TheColumnGivesWayToTheControlsWithSomeoneInFocusAndAtTheFinalThree()
@@ -311,18 +324,13 @@ namespace Gamesim.Tests.PlayMode
                     where =>
                     {
                         AssertColumnClear(where, EpisodeHud.ObjectivesCardName, EpisodeHud.RecentEventsCardName, "Exploration controls");
-                        // On a 900-tall canvas the fold alone clears the card at the Larger text, so the
-                        // feed stays; at the Largest only the feed's room clears it, so the feed gives way.
+                        // On a 900-tall canvas the card, which grows with the text, opens at 524 at the
+                        // Larger text and 476 at the Largest: Recent Events' heading alone with the feed
+                        // ends at 568, so only the feed's room clears it and the feed gives way at both.
                         var canvas = director.GetComponentsInChildren<Canvas>(true).First(item => item.name == "Gamesim Episode HUD");
                         if (feedUp && larger && Mathf.Abs(((RectTransform)canvas.transform).rect.height - EpisodeHud.ReferenceHeight) < 1f)
-                        {
-                            if (textSize == TextSize.Largest)
-                                Assert.That(ActiveChromePanel(EpisodeDirector.LiveFeedCardName), Is.Null,
-                                    where + ": the live feed gives way on a 900-tall canvas at the Largest text.");
-                            else
-                                Assert.That(ActiveChromePanel(EpisodeDirector.LiveFeedCardName), Is.Not.Null,
-                                    where + ": the live feed stays on a 900-tall canvas at the Larger text, the folded column clear of the card.");
-                        }
+                            Assert.That(ActiveChromePanel(EpisodeDirector.LiveFeedCardName), Is.Null,
+                                where + ": the live feed gives way on a 900-tall canvas at the " + text + " text.");
                     });
                 ButtonWithCaption(CollapseControlsCaption).onClick.Invoke();
                 yield return null;

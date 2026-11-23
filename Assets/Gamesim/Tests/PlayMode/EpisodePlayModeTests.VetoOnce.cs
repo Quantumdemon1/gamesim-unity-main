@@ -288,9 +288,14 @@ namespace Gamesim.Tests.PlayMode
             yield return null;
             var before = director.Snapshot;
             Assert.That(director.IsPhasePanelOpen, Is.True, "The episode screen is open on the holder's decision.");
+            // The save is picked, and the commit under the screen uses the veto (EpisodeDirector.PickThenConfirm.cs);
+            // the commit is pressed with no frame after it, as the one press was.
             ButtonWithCaption(EpisodeDirector.VetoSaveCaption(before, before.nominees[0])).onClick.Invoke();
+            yield return null; yield return null;
+            Assert.That(director.Snapshot.revision, Is.EqualTo(before.revision), "The press picks the save.");
+            ButtonWithCaption(director.DecisionPickCommitCaption).onClick.Invoke();
             var after = director.Snapshot;
-            Assert.That(after.vetoResolved && after.revision == before.revision + 1, Is.True, "One press uses the veto.");
+            Assert.That(after.vetoResolved && after.revision == before.revision + 1, Is.True, "The commit uses the veto.");
             string sentence = after.events.Last(entry => entry.kind == CeremonySting.VetoKind).text;
             Assert.That(director.IsPhasePanelOpen, Is.True, "The episode screen stays open under the card,");
             Assert.That(ActiveRect(EpisodeHud.CeremonyTitleName).GetComponent<TMP_Text>().text, Is.EqualTo("The Veto Meeting Is Over"),

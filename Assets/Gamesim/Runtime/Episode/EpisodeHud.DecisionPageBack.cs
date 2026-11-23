@@ -64,6 +64,8 @@ namespace Gamesim.Episode
                 action?.Invoke();
                 if (preferredSelection == WayOut.BackObjectName) preferredSelection = null;
             }, FontScale, DecisionBackKey);
+            decisionPageBack = back;
+            KeepWayOutsAboveTheHeader();
             var rect = (RectTransform)back.transform;
             float scale = FontScale, inset = WayOut.Inset(scale);
             float right = inset + rect.sizeDelta.x + DecisionBackGap * scale;

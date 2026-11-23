@@ -742,7 +742,7 @@ namespace Gamesim.Tests.EditMode
             var held = s.Clone();
             held.tuningRulesVersion = TuningRules.Off;
             if (held.competitionRulesVersion == CompetitionRules.RingTower) held.competitionRulesVersion = CompetitionRules.Widened; // Held at competition rules 4: rules 5 (the ring tower) is newer than every older schema's reader.
-            if (held.story.talkRules == TalkRules.Talk || held.story.talkRules == TalkRules.Chemistry) held.story.talkRules = TalkRules.Off; // Held at talk rules 0: levels 1 and 2 (free talk slices 1 and 2's enrolments) are newer than every older schema's reader; the walk had no free talk.
+            if (held.story.talkRules == TalkRules.Talk || held.story.talkRules == TalkRules.Chemistry || held.story.talkRules == TalkRules.Romance) held.story.talkRules = TalkRules.Off; // Held at talk rules 0: levels 1, 2 and 3 (free talk slices 1, 2 and 3's enrolments) are newer than every older schema's reader; the walk had no free talk.
             return held;
         }
 

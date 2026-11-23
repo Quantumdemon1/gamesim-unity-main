@@ -25,6 +25,36 @@ namespace Gamesim.House
             ApplyPauseState();return true;
         }
 
+        /// <summary>
+        /// Sets the gait of the activity move <paramref name="owner"/> holds: a competition course's leg
+        /// is run whatever its length, where a trip of a few metres would be walked. A run is only set
+        /// for the owner of the move; the walk is put back for the owner, or once nobody owns the move
+        /// (the show let the player go before its runners were stood down). False when it was refused.
+        /// </summary>
+        public bool SetActivityGait(object owner,bool run)
+        {
+            if(owner==null)return false;
+            if(run ? !ReferenceEquals(owner,activityOwner) : activityOwner!=null && !ReferenceEquals(owner,activityOwner))return false;
+            ApplyGait(run);return true;
+        }
+
+        /// <summary>
+        /// Puts the player on the destination of the activity move <paramref name="owner"/> holds, now,
+        /// through the agent's own warp onto the walking map: a competition show's walk out at its last
+        /// moment, so the player starts the show at their station (competition show edges). The move
+        /// stays the owner's and counts as arrived (<see cref="ActivityHasArrived"/>); the gait goes back
+        /// to the walk. False, and nothing moved, for another owner or an agent off the walking map.
+        /// </summary>
+        public bool TryPlaceAtActivityDestination(object owner)
+        {
+            if(owner==null || !ReferenceEquals(owner,activityOwner) || !isActiveAndEnabled || Agent==null || !Agent.enabled || !Agent.isOnNavMesh)return false;
+            if(!Agent.Warp(activityDestination))return false;
+            Agent.ResetPath();Agent.velocity=Vector3.zero;
+            RouteMetres=0f;ApplyGait(false);
+            Physics.SyncTransforms();
+            return true;
+        }
+
         /// <summary>Whether something - an activity, the diary chair, a competition station - owns the player's movement now.</summary>
         public bool HasActivityOwner => activityOwner!=null;
 

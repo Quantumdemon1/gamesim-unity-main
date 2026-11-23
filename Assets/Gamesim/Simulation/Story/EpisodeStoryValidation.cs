@@ -54,6 +54,13 @@ namespace Gamesim.Simulation
             && c.flirts == 0 && c.notYets == 0 && c.turnAsides == 0 && c.coupleAnchors == 0
             && c.walkUpWindow == 0 && c.notNows == 0 && c.walkUpsOffUntil == 0 && c.talkFlags != null && c.talkFlags.Count == 0;
 
+        /// <summary>Whether every field slice 3 writes (FIELDS.md, S3) is at its default on a contact.</summary>
+        private static bool RomanceAtDefaults(ContactState c) =>
+            c.talkPending == "" && c.cool == 0 && c.spark == 0 && c.romance == "" && c.romanceWeek == 0 && c.romanceClosedUntil == 0
+            && c.flirts == 0 && c.notYets == 0 && c.turnAsides == 0 && c.coupleAnchors == 0 && c.talkFlags != null
+            && !c.talkFlags.Any(f => f == TalkRules.RunningJoke || f == TalkRules.Pushy || f == TalkRules.TookTheNoWell || f == TalkRules.FlirtRemoved
+                || f == TalkRules.Ex || f == TalkRules.Jealous || f == TalkRules.MayHear || f == TalkRules.CoupleTalk);
+
         private static bool TryValidateStory(EpisodeState s, out string error)
         {
             error = null;
@@ -83,6 +90,9 @@ namespace Gamesim.Simulation
             if (w.talkRules == TalkRules.Off && (w.talkLean != 0 || w.talkPairs.Count != 0
                     || w.contacts != null && w.contacts.Any(c => c != null && !TalkContactAtDefaults(c))))
                 return Fail(out error, "A season without free talk has none of its records.");
+            // Slice 3's fields (talk rules 3): below it nothing writes them.
+            if (w.talkRules < TalkRules.Romance && w.contacts != null && w.contacts.Any(c => c != null && !RomanceAtDefaults(c)))
+                return Fail(out error, "A season without free talk's romance has none of its records.");
             // Schema 31's minds ladder (MindRules): a level this build defines at this schema. No other saved field hangs on it.
             if (!MindRules.Admits(w.mindRules, s.schemaVersion))
                 return Fail(out error, "Unsupported mind rules version.");

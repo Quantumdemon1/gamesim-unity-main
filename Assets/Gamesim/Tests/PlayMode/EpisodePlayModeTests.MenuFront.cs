@@ -65,7 +65,9 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(offline, Has.Length.EqualTo(1), section + ": that the game is offline is said once, in one place.");
                 Assert.That(offline[0], Is.EqualTo(EpisodeDirector.SettingsEyebrowCopy).Or.EqualTo(EpisodeDirector.PausedEyebrow),
                     "The one place is the eyebrow over the title.");
-                if (section == SettingsSection.Advanced) Assert.That(ButtonWithCaption(EpisodeDirector.RecoverBackupCaption), Is.Not.Null);
+                // The plain finder: with no backup yet the row is on screen but greyed with its reason (the settings and
+                // saves leftovers), and ButtonWithCaption refuses a control that cannot be pressed.
+                if (section == SettingsSection.Advanced) Assert.That(FindButton(EpisodeDirector.RecoverBackupCaption), Is.Not.Null);
                 if (section == SettingsSection.Saves) Assert.That(ButtonWithCaption(EpisodeDirector.NewSeasonInNewSlotCaption), Is.Not.Null);
             }
             director.ClosePanels();

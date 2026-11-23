@@ -18,12 +18,17 @@ namespace Gamesim.Presentation
         Table,
         /// <summary>The skill games on the course: a leg run from a post and back, home in the standings' order.</summary>
         Course,
+        /// <summary>
+        /// The Ring Tower at the yard's three stacks (competition drop-outs and tower show): the field works the
+        /// puzzle, the tower's rings move at the stacks, and they finish in the standings' order, the winner first.
+        /// </summary>
+        Tower,
     }
 
     /// <summary>
     /// The family of each game the show knows, by the game's published id (never by its kind: a new
     /// game of a known kind - the ring tower being built beside this slice - is not given a family by
-    /// accident). A game the show does not know commits straight to its standings card, as every
+    /// accident; it has its own family since the tower show). A game the show does not know commits straight to its standings card, as every
     /// game did before. Pure: names no Unity type, reads nothing of the season.
     /// </summary>
     public static class CompetitionShowFamilies
@@ -36,6 +41,8 @@ namespace Gamesim.Presentation
             // Memory consoles: a quiz at a console, answers locked in and revealed on the display.
             { CompetitionDefinitions.HouseMemory.Id, CompetitionShowFamily.Podium },
             { CompetitionDefinitions.FirstImpressions.Id, CompetitionShowFamily.Podium },
+            // The trivia (rules 6) is a quiz at the same consoles: its show is the memory games' own.
+            { CompetitionDefinitions.Trivia.Id, CompetitionShowFamily.Podium },
             // A dice tray (throw) and letter consoles (spell): work with the hands at a table.
             { CompetitionDefinitions.RollTheDice.Id, CompetitionShowFamily.Table },
             { CompetitionDefinitions.WordScramble.Id, CompetitionShowFamily.Table },
@@ -43,6 +50,8 @@ namespace Gamesim.Presentation
             // Reaction pads: the skill games, run on the course.
             { CompetitionDefinitions.SignalSprint.Id, CompetitionShowFamily.Course },
             { CompetitionDefinitions.SwitchbackSignals.Id, CompetitionShowFamily.Course },
+            // The yard's stacks: the ring tower (competition rules 5), shown when it is not played.
+            { CompetitionDefinitions.RingTower.Id, CompetitionShowFamily.Tower },
         };
 
         /// <summary>Every game the show knows, by id, with its family.</summary>

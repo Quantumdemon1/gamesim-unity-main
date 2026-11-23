@@ -79,7 +79,7 @@ namespace Gamesim.Tests.EditMode
             Assert.That(CompetitionDefinitions.All.Contains(CompetitionDefinitions.RingTower), Is.False, "The console games' list stays rules 4's.");
             var ids = CompetitionDefinitions.Catalogue.Select(definition => definition.Id).ToList();
             Assert.That(ids.Distinct().Count(), Is.EqualTo(ids.Count), "Every published id is its own.");
-            Assert.That(ids.Last(), Is.EqualTo("ring-tower-v5"));
+            Assert.That(ids.IndexOf("ring-tower-v5"), Is.EqualTo(9), "The ring tower is published after the console games; rules 6 adds the trivia after it.");
             Assert.That(CompetitionDefinitions.RingTower.Category, Is.EqualTo(CompetitionRules.Mental));
             Assert.That(CompetitionDefinitions.RingTower.Pattern, Is.EqualTo(CompetitionPattern.RingTower));
             Assert.That(CompetitionDefinitions.RingTower.Duration, Is.EqualTo(90));

@@ -41,8 +41,8 @@ namespace Gamesim.Tests.EditMode
         /// <summary>What a season the game starts today plays under, every boundary by name.</summary>
         private static readonly Dictionary<string, int> Shipped = new Dictionary<string, int>(StringComparer.Ordinal)
         {
-            // Rules 5, the ring tower (competition slice 4); rules 4 before it.
-            { "competitionRulesVersion", 5 },
+            // Rules 6, the trivia (its switch-on); rules 5, the ring tower (competition slice 4), and rules 4 before it.
+            { "competitionRulesVersion", 6 },
             { "readRulesStartWeek", 1 },
             { "leverRulesStartWeek", 1 },
             { "weekRulesStartWeek", 1 },

@@ -231,13 +231,15 @@ namespace Gamesim.Tests.EditMode
         /// <summary>
         /// <see cref="Fresh"/> held at free talk rules 2 and the minds' rules 0 by name: the levels these seasons were measured
         /// at. ApplyFresh writes the shipped levels, which free talk slice 3 moves to 3, where a season offers no Late Nights
-        /// opening beat and reads the Friends named earlier.
+        /// opening beat and reads the Friends named earlier. Held at competition rules 5, the ring tower's, by name as well: the
+        /// rules these seasons played when they were last replayed; ApplyFresh writes rules 6 since the trivia's switch-on.
         /// </summary>
         internal static EpisodeState Held(int size, uint seed)
         {
             var s = Fresh(size, seed);
             s.story.talkRules = TalkRules.Chemistry;
             s.story.mindRules = MindRules.Off;
+            s.competitionRulesVersion = CompetitionRules.RingTower;
             return s;
         }
 

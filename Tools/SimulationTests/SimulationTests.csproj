@@ -95,6 +95,10 @@
          compiled here only and run by name. -->
     <Compile Include="$(EditMode)CompetitionTriviaTests.cs" />
     <Compile Include="$(EditMode)CompetitionTriviaSeasonSoak.cs" />
+    <!-- The trivia's switch-on: new seasons start on competition rules 6, rules 5's games and results unchanged; and the
+         held replays' competition rules, compiled here only. -->
+    <Compile Include="$(EditMode)CompetitionRules6Tests.cs" />
+    <Compile Include="$(EditMode)HeldReplayCompetitionLevelTests.cs" />
     <!-- The trivia's screen: the round's model (which question, what an answer does, the result card's count); pure. -->
     <Compile Include="$(EditMode)TriviaRoundTests.cs" />
     <!-- Its review: a ranked answer names nothing, a left ranked quiz counts as it stands; pure. -->

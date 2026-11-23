@@ -575,7 +575,10 @@
 # 11336 = 11311 (the nominee's free conversation on the new main) + conversation time's 25 (10961 - 10936 on this
 # branch): disjoint cases, so the floor is their sum (the dialogue landing of 23 November 2026). Counted from the two
 # sides.
-Gamesim.EditModeTests 11336
+# 11272 = 11269 + the trivia's switch-on: CompetitionRules6Tests 3 (also in the dotnet subset), 2026-11-23.
+# 11339 = 11336 (the new main with dialogue rules 4) + the trivia switch-on's 3 (11272 - 11269 on this branch):
+# disjoint cases, so the floor is their sum (the trivia landing of 23 November 2026). Counted from the two sides.
+Gamesim.EditModeTests 11339
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and
@@ -1639,4 +1642,9 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # 23431 = 23407 (the nominee's free conversation on the new main) + conversation time's 24 (23059 - 23035 on this
 # branch): disjoint cases, so the floor is their sum (the dialogue landing of 23 November 2026). Counted from the two
 # sides.
-Gamesim.SimulationTests 23431
+# 23373 = 23366 + the trivia's switch-on: the same 3 CompetitionRules6Tests cases the EditMode floor counts, and
+# HeldReplayCompetitionLevelTests' 4 (compiled out of Unity: each held replay plays the competition rules it was recorded
+# at), 2026-11-23.
+# 23438 = 23431 (the new main with dialogue rules 4) + the trivia switch-on's 7 (23373 - 23366 on this branch):
+# disjoint cases, so the floor is their sum (the trivia landing of 23 November 2026). Counted from the two sides.
+Gamesim.SimulationTests 23438

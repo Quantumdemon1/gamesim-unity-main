@@ -196,6 +196,9 @@ namespace Gamesim.Tests.EditMode
             // and the exact schema-31 inverse never erases a level that is on.
             Assert.That(s.story.talkRules, Is.EqualTo(TalkRules.Romance), "Level 3 since free talk slice 3's enrolment.");
             s.story.talkRules = TalkRules.Off;
+            // Held at competition rules 5 by name too: rules 6 (the trivia's switch-on) is newer than the schema-30 reader.
+            Assert.That(s.competitionRulesVersion, Is.EqualTo(CompetitionRules.Trivia), "Rules 6 since the trivia's switch-on.");
+            s.competitionRulesVersion = CompetitionRules.RingTower;
             var payload = Payload(s);
             Assert.That((int)payload["schemaVersion"], Is.EqualTo(31));
             PersistenceMigrationTests.StripSchema31(payload); // The retained 30: talk rules 0, every talk field at its default.

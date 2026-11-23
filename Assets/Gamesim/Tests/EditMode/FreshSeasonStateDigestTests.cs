@@ -116,10 +116,11 @@ namespace Gamesim.Tests.EditMode
             // mints and logs nothing before a competition is played. Held at rules 4 by name, as B9's tuning is, the season must
             // hash to its schema-29 record, so the int is rules 5's only change to a fresh season. The default scene's season
             // never passes through ApplyFresh and keeps the competition rules its catalogue writes: nothing is asserted or
-            // held for it, and its record pins the value.
+            // held for it, and its record pins the value. Competition rules 6 (the trivia's switch-on) is held the same way: a
+            // fresh season starts on rules 6, the same plain int, and nothing of the trivia is dealt before week 4.
             if (applyFresh)
             {
-                Assert.That(s.competitionRulesVersion, Is.EqualTo(CompetitionRules.RingTower), "Rules 5: new seasons start on the ring tower's rules.");
+                Assert.That(s.competitionRulesVersion, Is.EqualTo(CompetitionRules.Trivia), "Rules 6: new seasons start on the trivia's rules.");
                 s.competitionRulesVersion = CompetitionRules.Widened;
             }
             // Free talk's level 1 (talk rules 1, free talk slice 1's enrolment): a fresh season starts on it, a plain int that

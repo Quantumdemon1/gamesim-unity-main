@@ -54,6 +54,8 @@ namespace Gamesim.Simulation
         internal static void ApplyFresh(EpisodeState fresh, SeasonBuilder.Choice options, bool alumniHistories)
         {
             if (fresh == null) throw new ArgumentNullException(nameof(fresh));
+            // Competition rules 6 since the trivia's switch-on (5, the ring tower, before it): a plain int that draws nothing.
+            // From week 4, after three evictions, a memory board can be dealt as the trivia; a built season stays on rules 4.
             fresh.competitionRulesVersion = CompetitionRules.Current;
             // B9's balance bands (B9-BALANCE-PLAN §4.3): a plain int, drawing nothing; every save, migration, import and
             // test-built season stays at 0 and plays as it always did.

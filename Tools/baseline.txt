@@ -546,7 +546,20 @@
 # 10944 = 10940 + pick, then commit (backlog 29): DecisionPickTests 4 (also in the dotnet subset), 2026-11-22.
 # 11187 = 11183 (the notebook rows on the new main) + pick then confirm's 4 (10944 - 10940 on this branch): disjoint
 # cases, so the floor is their sum (the lines landing of 22 November 2026). Counted from the two sides.
-Gamesim.EditModeTests 11187
+# 10875 = 10835 + free talk slice 3's engine: FreeTalkRomanceTests 15, FreeTalkStanceTests 9, FreeTalkCoupleTests 8 and
+# FreeTalkS3LevelTests 8 (40 cases, all also in the dotnet subset), 2026-11-21.
+# 10895 = 10875 + free talk slice 3's tables: TalkRomanceTablesTests 20 (12 tests and 8 deny-list TestCase rows; all
+# also in the dotnet subset), 2026-11-21.
+# 10900 = 10895 + free talk slice 3's screen: TalkScreenRomanceLinesTests 5 (all also in the dotnet subset), 2026-11-21.
+# 10903 = 10900 + free talk slice 3's integration: TalkRomanceWiringTests 3 (also in the dotnet subset), 2026-11-21.
+# 10909 = 10903 + free talk slice 3's pace: FreeTalkRomancePaceTests 6 (also in the dotnet subset), 2026-11-22.
+# 10913 = 10909 + free talk slice 3's review fixes: FreeTalkS3ReviewTests 4 (also in the dotnet subset), 2026-11-22.
+# 11105 = 11027 (the new main of 22 November) + free talk slice 3's 78 (10913 - 10835 on this branch): disjoint cases,
+# so the floor is their sum (the romance landing of 22 November 2026). Counted from the two sides.
+# 11109 = 11105 + free talk slice 3's second fixes: FreeTalkNewCoupleTests 4 (also in the dotnet subset), 2026-11-22.
+# 11269 = 11187 (the new main of 23 November) + free talk slice 3's 82 (11109 - 11027 on this branch): disjoint cases,
+# so the floor is their sum (the romance landing of 23 November 2026). Counted from the two sides.
+Gamesim.EditModeTests 11269
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and
@@ -863,7 +876,12 @@ Gamesim.EditModeTests 11187
 # 1690 = 1688 + pick, then commit (backlog 29): EpisodePlayModeTests.PickThenConfirm 2, 2026-11-22.
 # 1702 = 1700 (the notebook rows on the new main) + pick then confirm's 2 (1690 - 1688 on this branch): disjoint
 # cases, so the floor is their sum (the lines landing of 22 November 2026). Counted from the two sides.
-Gamesim.PlayModeTests 1702
+# 1678 = 1676 + free talk slice 3's screen: EpisodePlayModeTests.JustTalkRomance 2, 2026-11-21.
+# 1688 = 1686 (the new main of 22 November) + free talk slice 3's 2 (1678 - 1676 on this branch): disjoint cases, so
+# the floor is their sum (the romance landing of 22 November 2026). Counted from the two sides.
+# 1704 = 1702 (the new main of 23 November) + free talk slice 3's 2 (1688 - 1686 on this branch): disjoint cases, so
+# the floor is their sum (the romance landing of 23 November 2026). Counted from the two sides.
+Gamesim.PlayModeTests 1704
 # The UMA build of the same assembly, read by a plan built without -WithoutUma. 1281 = the 1241 above + the
 # 40 tests that compile only under GAMESIM_UMA, as run at r1 (2026-10-16): in EpisodePlayModeTests,
 # GroundedFarewell 11, Creator 9, HouseLife 8, Emotes 3, OpeningCaptures 2, and one each in CreatorEntry,
@@ -1104,7 +1122,12 @@ Gamesim.PlayModeTests 1702
 # 1735 = 1733 + pick, then commit (backlog 29): the same 2 EpisodePlayModeTests.PickThenConfirm, 2026-11-22.
 # 1747 = 1745 (the notebook rows on the new main) + pick then confirm's 2 (1735 - 1733 on this branch): disjoint
 # cases, so the floor is their sum (the lines landing of 22 November 2026). Counted from the two sides.
-Gamesim.PlayModeTests.UmaBuild 1747
+# 1723 = 1721 + free talk slice 3's screen: the same 2 EpisodePlayModeTests.JustTalkRomance cases, 2026-11-21.
+# 1733 = 1731 (the new main of 22 November) + free talk slice 3's 2 (1723 - 1721 on this branch): disjoint cases, so
+# the floor is their sum (the romance landing of 22 November 2026). Counted from the two sides.
+# 1749 = 1747 (the new main of 23 November) + free talk slice 3's 2 (1733 - 1731 on this branch): disjoint cases, so
+# the floor is their sum (the romance landing of 23 November 2026). Counted from the two sides.
+Gamesim.PlayModeTests.UmaBuild 1749
 # The UMA bodies: runs only where the GAMESIM_UMA define is set (the working tree and the D: copy).
 # 82 = the 89 run on 2026-10-15, less the 7 farewell probes moved to Gamesim.Uma.DiagnosticsPlayModeTests;
 # 85 = 82 + the 3 farewell readiness decision tests (UmaFarewellReadinessDecisionPlayModeTests, 2026-10-16);
@@ -1573,4 +1596,17 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # 23038 = 23034 + pick, then commit (backlog 29): DecisionPickTests 4, 2026-11-22.
 # 23280 = 23276 (the notebook rows on the new main) + pick then confirm's 4 (23038 - 23034 on this branch): disjoint
 # cases, so the floor is their sum (the lines landing of 22 November 2026). Counted from the two sides.
-Gamesim.SimulationTests 23280
+# 22974 = 22934 + free talk slice 3's engine: the same 40 cases the EditMode floor counts, 2026-11-21.
+# 22994 = 22974 + free talk slice 3's tables: the same 20 TalkRomanceTablesTests cases the EditMode floor counts,
+# 2026-11-21.
+# 22999 = 22994 + the same 5 TalkScreenRomanceLinesTests cases the EditMode floor counts, 2026-11-21.
+# 23002 = 22999 + the same 3 TalkRomanceWiringTests cases the EditMode floor counts, 2026-11-21.
+# 23008 = 23002 + the same 6 FreeTalkRomancePaceTests cases the EditMode floor counts, 2026-11-22.
+# 23012 = 23008 + the same 4 FreeTalkS3ReviewTests cases the EditMode floor counts, 2026-11-22.
+# 23209 = 23131 (the new main of 22 November) + free talk slice 3's 78 (23012 - 22934 on this branch): disjoint cases,
+# so the floor is their sum (the romance landing of 22 November 2026). Counted from the two sides.
+# 23217 = 23209 + the same 4 FreeTalkNewCoupleTests cases the EditMode floor counts, and HeldReplayTalkLevelTests' 4
+# (compiled out of Unity: each held replay plays the free talk and minds levels it was recorded at), 2026-11-22.
+# 23366 = 23280 (the new main of 23 November) + free talk slice 3's 86 (23217 - 23131 on this branch): disjoint cases,
+# so the floor is their sum (the romance landing of 23 November 2026). Counted from the two sides.
+Gamesim.SimulationTests 23366

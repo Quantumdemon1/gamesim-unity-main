@@ -205,6 +205,22 @@
     <Compile Include="$(EditMode)FreeTalkS2ReviewTests.cs" />
     <!-- Free talk slice 2: the friendship stage talks' tables (three per stage per pool, the favor's two replies, the star pool's register). -->
     <Compile Include="$(EditMode)TalkStageTablesTests.cs" />
+    <!-- Free talk slice 3 (talk rules 3): romance, the stances and turn-asides, the couple and the house's reaction, the levels below it and T9, on the tests' own tables. -->
+    <Compile Include="$(EditMode)FreeTalkS3Fixture.cs" />
+    <Compile Include="$(EditMode)FreeTalkRomanceTests.cs" />
+    <Compile Include="$(EditMode)FreeTalkStanceTests.cs" />
+    <Compile Include="$(EditMode)FreeTalkCoupleTests.cs" />
+    <Compile Include="$(EditMode)FreeTalkS3LevelTests.cs" />
+    <!-- Free talk slice 3: the romance tables (the class pools' and each All-Star's own: row form, coverage, the twelve alike, the real-people deny-list). -->
+    <Compile Include="$(EditMode)TalkRomanceTablesTests.cs" />
+    <!-- Free talk slice 3's wiring (the shipped tables against the engine, the Flirt button against its offer) and its season soak (Explicit, run by name). -->
+    <Compile Include="$(EditMode)TalkRomanceWiringTests.cs" />
+    <Compile Include="$(EditMode)FreeTalkRomancePaceTests.cs" />
+    <!-- Free talk slice 3's review fixes: one showmance in the house per housemate, the undecided Guarded class, the resumed scene, every refusal saying no plainly and the reactions speaking of the game only. -->
+    <Compile Include="$(EditMode)FreeTalkS3ReviewTests.cs" />
+    <!-- Free talk slice 3's second fixes: a new couple once a partner has left the house, and every choice the screen offers in a level-3 week accepted. -->
+    <Compile Include="$(EditMode)FreeTalkNewCoupleTests.cs" />
+    <Compile Include="$(EditMode)FreeTalkS3SeasonSoak.cs" />
     <Compile Include="$(EditMode)PooledSchema30ShapeTests.cs" />
     <Compile Include="$(EditMode)OldSaveTrace.cs" />
     <Compile Include="$(EditMode)CurrentOldSaveTrace.cs" />
@@ -515,6 +531,8 @@
     <Compile Include="$(EditMode)RolesSeasonDigests.cs" />
     <!-- Compiled out of Unity as well: every held replay digests the state below the live schema, through its observer. -->
     <Compile Include="$(EditMode)HeldReplayShapeTests.cs" />
+    <!-- Compiled out of Unity as well: every held replay plays the free talk and minds levels it was recorded at, by name. -->
+    <Compile Include="$(EditMode)HeldReplayTalkLevelTests.cs" />
     <!-- Plan 32 S1: the story's cooldown table holds the house talk's keys at sixteen seats (compiled out of Unity). -->
     <Compile Include="$(EditMode)HouseTalkCapacityTests.cs" />
     <!-- Plan 32 S1: Regard, Candour and the manners; the vote answer at 12; its bank; the notes and the profile blocks. -->
@@ -535,6 +553,8 @@
     <Compile Include="$(EditMode)TalkScreenLinesTests.cs" />
     <!-- Free talk slice 2, the screen: the "Between you" and "How you come across" lines, the favour's pills and the third beat at talk rules 2. -->
     <Compile Include="$(EditMode)TalkScreenStageLinesTests.cs" />
+    <!-- Free talk slice 3, the screen: the romance choices, the Flirt reply's place, the witness, the scene and the pages at talk rules 3. -->
+    <Compile Include="$(EditMode)TalkScreenRomanceLinesTests.cs" />
     <Compile Include="$(EditMode)NominationStepsTests.cs" />
     <Compile Include="$(EditMode)ThreatAssessmentTests.cs" />
     <Compile Include="$(EditMode)WebDiaryParityTests.cs" />

@@ -194,7 +194,7 @@ namespace Gamesim.Tests.EditMode
             ShippedRules.ApplyFresh(s);
             // Held at talk rules 0 by name: level 1 (enrolled with free talk slice 1) is newer than every older schema's reader,
             // and the exact schema-31 inverse never erases a level that is on.
-            Assert.That(s.story.talkRules, Is.EqualTo(TalkRules.Chemistry), "Level 2 since free talk slice 2's enrolment.");
+            Assert.That(s.story.talkRules, Is.EqualTo(TalkRules.Romance), "Level 3 since free talk slice 3's enrolment.");
             s.story.talkRules = TalkRules.Off;
             var payload = Payload(s);
             Assert.That((int)payload["schemaVersion"], Is.EqualTo(31));

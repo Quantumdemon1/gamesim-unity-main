@@ -28,14 +28,27 @@ namespace Gamesim.Simulation
         {
             // Talk rules 0: refused before anything else is read, written or logged.
             Require(FreeTalk.On(s), FreeTalk.OffReason);
+            // Talk rules 3 (slice S3): the romance's answers, choices and continuations have their own path; below it, exactly
+            // slice 1 and 2's.
+            if (TalkRomance.LevelOn(s)) { RomanceTalk(s, c.targetId, c.text); return; }
             var offer = FreeTalk.Offer(s, c.targetId);
             Require(offer.Available, offer.Reason);
             Require(FreeTalk.TryParse(c.text, out string talkId, out string tone)
                 && string.Equals(talkId, offer.Talk.Id, StringComparison.Ordinal), FreeTalk.NotOnOfferReason);
             var result = FreeTalk.Result(s, c.targetId, talkId, tone);
             Require(result != null, FreeTalk.ToneReason);
+            ApplyCountedTalk(s, s.Find(c.targetId), result, tone, spend: true);
+        }
 
-            var npc = s.Find(c.targetId);
+        /// <summary>
+        /// Writes one counted talk's result: the cap by attempt, the free warmth on the keyed story stream, rapport and its tenths,
+        /// the agreement, the tones (none for a choice, <paramref name="tone"/> null), the spend (when <paramref name="spend"/>),
+        /// the fact, the standing snapshot, and at talk rules 2 the lean and a stage's event row. Slice 1 and 2's writes, in their
+        /// order; returns the contact.
+        /// </summary>
+        private static ContactState ApplyCountedTalk(EpisodeState s, ContestantState npc, TalkResult result, string tone, bool spend)
+        {
+            string talkId = result.TalkId;
             var contact = FreeTalk.Contact(s, npc.id);
             if (contact == null)
             {
@@ -57,10 +70,13 @@ namespace Gamesim.Simulation
             contact.rapport = result.RapportAfter;
             contact.talkTenths = result.TenthsAfter;
             contact.agreement = result.AgreementAfter;
-            contact.priorTone = contact.lastTone;
-            contact.lastTone = tone;
+            if (tone != null)
+            {
+                contact.priorTone = contact.lastTone;
+                contact.lastTone = tone;
+            }
             // Spent once, with the tone it was answered in; a repeat of "the usual" adds nothing (R9).
-            if (!result.Repeat && contact.spentTalks.Count < TalkRules.MostSpentTalks
+            if (spend && !result.Repeat && contact.spentTalks.Count < TalkRules.MostSpentTalks
                 && !contact.spentTalks.Any(e => TalkRules.SpentId(e) == talkId))
                 contact.spentTalks.Add(TalkRules.Spent(talkId, tone));
 
@@ -84,6 +100,7 @@ namespace Gamesim.Simulation
                 if (!string.IsNullOrEmpty(result.StageEvent))
                     Log(s, TalkFriendship.StageEventKind, result.StageEvent, s.playerId, npc.id);
             }
+            return contact;
         }
     }
 }

@@ -21,8 +21,13 @@ namespace Gamesim.Tests.EditMode
     /// no free talk was had. Level 1 is read only by the player's own JustTalk command (and the screens), and that command
     /// always writes the contact's window and count, so such a season played exactly as it would have at 0, and its view is
     /// the same JSON. It is B9's pattern: the tuning arm admits a fresh season's own native tuning value
-    /// (<see cref="LegacyDigestSchema30Observer.AdmitNativeTuned30"/>). Any talk had, a lean, a pair, or a level past 2 is
+    /// (<see cref="LegacyDigestSchema30Observer.AdmitNativeTuned30"/>). Any talk had, a lean, a pair, or a level past 3 is
     /// still refused.</para>
+    ///
+    /// <para>Since level 3's enrolment (free talk slice 3), <see cref="TalkRules.Romance"/> is admitted as level 2 is: a season at
+    /// level 3 in which nobody free-talked is NOT always the season level 2 played either, because Late Nights' opening beat is
+    /// not offered at level 3 and the Friends named are read before a nomination's closing beats. A walk that played
+    /// differently shows as a moved digest in the fixture that walked it, never as a refusal here.</para>
     ///
     /// <para>Since level 2's enrolment (free talk slice 2), <see cref="TalkRules.Chemistry"/> is admitted the same way, with
     /// one difference: a season at level 2 in which nobody free-talked is NOT always the season level 1 played, because a
@@ -60,7 +65,8 @@ namespace Gamesim.Tests.EditMode
             Require(names.Count >= Story.Length && names.Skip(names.Count - Story.Length).SequenceEqual(Story),
                 "The talk fields must stand last on the story, in their declared order.");
             // Level 1, enrolled, is admitted with nothing else of free talk written (the class summary: no talk was had).
-            Require((Integer(story["talkRules"], 0) || Integer(story["talkRules"], TalkRules.Talk) || Integer(story["talkRules"], TalkRules.Chemistry))
+            Require((Integer(story["talkRules"], 0) || Integer(story["talkRules"], TalkRules.Talk) || Integer(story["talkRules"], TalkRules.Chemistry)
+                    || Integer(story["talkRules"], TalkRules.Romance))
                     && Integer(story["talkLean"], 0) && story["talkPairs"] is JArray pairs && pairs.Count == 0,
                 "Only a season without free talk has a schema-30 view.");
             Require(Integer(story["mindRules"], 0), "Only a season without the housemates' minds has a schema-30 view.");

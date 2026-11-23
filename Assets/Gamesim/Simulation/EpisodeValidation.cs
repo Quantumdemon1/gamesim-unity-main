@@ -146,7 +146,7 @@ namespace Gamesim.Simulation
             }
             else if (s.unifiedVoteReveals == null || s.unifiedVoteReveals.Count != 0)
                 return Fail(out error, "Unified Vote evidence is not enabled in this build.");
-            if (s.competitionRulesVersion < 1 || s.competitionRulesVersion > CompetitionRules.Current)
+            if (s.competitionRulesVersion < 1 || s.competitionRulesVersion > CompetitionRules.Newest)
                 return Fail(out error, "Unsupported competition rules version.");
             if (!Text(s.sessionId, 160) || s.week < 1 || s.week > 100 || s.revision < 0 || s.revision > 1000000 ||
                 s.nextSequence < 1 || s.nextSequence > 1000000 || s.socialActions < 0

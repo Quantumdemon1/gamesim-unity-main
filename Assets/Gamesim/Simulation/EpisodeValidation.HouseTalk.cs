@@ -14,7 +14,7 @@ namespace Gamesim.Simulation
         private static bool TryValidateHouseTalk(EpisodeState s, out string error)
         {
             error = null;
-            return TryValidateHouseTalkManners(s, out error);
+            return TryValidateHouseTalkManners(s, out error) && TryValidateHouseTalkOverheard(s, out error);
         }
 
         // ---------------------------------------------------------------- S1: manners, candour, tells (story rules 12)
@@ -49,6 +49,51 @@ namespace Gamesim.Simulation
                     ok = parts.Length == 4 && int.TryParse(parts[1], out int won) && won >= 1 && won <= s.week && (parts[2] == "hoh" || parts[2] == "veto")
                          && Seated(parts[3]) && parts[3] != s.playerId;
                 if (!ok) return Fail(out error, "Invalid house talk records.");
+            }
+            return true;
+        }
+
+        // ---------------------------------------------------------------- S2a: overheard (story rules 12)
+
+        /// <summary>
+        /// Overhearing's records (§I, §L): a <see cref="ClaimSource.Seen"/> standing, a <see cref="ClaimSource.Missed"/> standing
+        /// between two houseguests (a caught Listen's), the <see cref="EpisodeEngine.HunchEventKind"/> line and the
+        /// <c>heard:{sequence}</c> and <c>pact-heard:{week}</c> cooldown keys. A season below story rules 12 holds none of them.
+        /// At 12 a <c>Seen</c> row is a standing between two houseguests whose score is a <see cref="HunchTone"/>, never a vote
+        /// claim; the hunch line is the player's alone; a <c>heard:</c> key names a conversation the season has numbered and a
+        /// <c>pact-heard:</c> key a week of the season.
+        /// </summary>
+        private static bool TryValidateHouseTalkOverheard(EpisodeState s, out string error)
+        {
+            error = null;
+            var standings = s.ledger?.standings;
+            var claims = s.ledger?.claims;
+            bool At(string key, string prefix) => key != null && key.StartsWith(prefix, StringComparison.Ordinal);
+            bool Between(StandingRow r) => r.fromId != s.playerId && r.toId != s.playerId;
+            var seen = standings == null ? new System.Collections.Generic.List<StandingRow>()
+                : standings.Where(r => r != null && r.source == ClaimSource.Seen).ToList();
+            bool caughtRows = standings != null && standings.Any(r => r != null && r.source == ClaimSource.Missed && Between(r));
+            bool seenClaims = claims != null && claims.Any(k => k != null && k.source == ClaimSource.Seen);
+            bool lines = s.events != null && s.events.Any(e => e != null && e.kind == EpisodeEngine.HunchEventKind);
+            var keys = s.story?.cooldowns == null ? new System.Collections.Generic.List<StoryCooldownState>()
+                : s.story.cooldowns.Where(c => At(c?.key, EpisodeEngine.HeardPrefix) || At(c?.key, EpisodeEngine.PactHeardPrefix)).ToList();
+            if (seen.Count == 0 && !caughtRows && !seenClaims && !lines && keys.Count == 0) return true;
+            if (!EpisodeEngine.StoryAt(s, StoryRules.Manners))
+                return Fail(out error, "A season below the house talk's overhearing has none of its records.");
+            if (seenClaims || seen.Any(r => !Between(r) || !HunchTone.IsKnown(r.score))
+                || s.events.Any(e => e != null && e.kind == EpisodeEngine.HunchEventKind
+                    && (e.audienceIds == null || e.audienceIds.Count != 1 || e.audienceIds[0] != s.playerId)))
+                return Fail(out error, "Invalid overheard records.");
+            long numbered = s.npcSocial?.nextConversationSequence ?? 0;
+            foreach (var row in keys)
+            {
+                bool pact = At(row.key, EpisodeEngine.PactHeardPrefix);
+                string rest = row.key.Substring(pact ? EpisodeEngine.PactHeardPrefix.Length : EpisodeEngine.HeardPrefix.Length);
+                bool digits = rest.Length > 0 && rest.All(ch => ch >= '0' && ch <= '9');
+                bool ok = pact
+                    ? digits && int.TryParse(rest, out int week) && week >= 1 && week <= s.week
+                    : digits && long.TryParse(rest, out long sequence) && sequence >= 1 && sequence < numbered;
+                if (!ok) return Fail(out error, "Invalid overheard records.");
             }
             return true;
         }

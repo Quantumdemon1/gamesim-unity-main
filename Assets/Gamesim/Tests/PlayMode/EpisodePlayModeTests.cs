@@ -819,6 +819,14 @@ namespace Gamesim.Tests.PlayMode
                 int beforeClick = director.Snapshot.revision;
                 button.onClick.Invoke();
                 yield return null; yield return null;
+                // The veto meeting, the ballot and the final choice: the press picks, and the commit
+                // under the screen that names the result makes it (EpisodeDirector.PickThenConfirm.cs).
+                if (director.DecisionPickCommitCaption != null)
+                {
+                    Assert.That(director.Snapshot.revision, Is.EqualTo(beforeClick), before.phase + ": the pick commits nothing");
+                    ButtonWithCaption(director.DecisionPickCommitCaption).onClick.Invoke();
+                    yield return null; yield return null;
+                }
                 Assert.That(director.Snapshot.revision, Is.EqualTo(beforeClick + 1),
                     before.phase + ": " + director.StatusMessage
                     + "  ·  one button press must commit exactly one command");

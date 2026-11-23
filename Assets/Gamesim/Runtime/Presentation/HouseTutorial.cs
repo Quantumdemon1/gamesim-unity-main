@@ -19,10 +19,15 @@ namespace Gamesim.Presentation
     /// has to wait, and a player must be able to leave it at any point.</para>
     ///
     /// <para>That makes it the one overlay that could strand an automated season, so it is never
-    /// shown in batchmode. The director shows it at every season's opening, as the reference build
-    /// shows it in every new game's first week, and once to a player who arrives in a season that
-    /// has no opening to play (an import, a migrated save). <see cref="Show"/> is public so a test
-    /// can drive and photograph it without pretending to be either.</para>
+    /// shown in batchmode. The director offers it at every season's opening (<see cref="Offer"/>):
+    /// a first-time player gets the tour itself, as the reference build shows it in every new
+    /// game's first week, and a player who has finished or skipped it before gets a card asking
+    /// "Take the tour?" instead of the tour again. A player who arrives in a season that has no
+    /// opening to play (an import, a migrated save) gets it once. <see cref="Show"/> is public so a
+    /// test can drive and photograph it without pretending to be either.</para>
+    ///
+    /// <para>Its card docks beside the chrome each step lights, never over it (<see cref="TourDock"/>),
+    /// and is as wide as its title needs to sit on one line.</para>
     ///
     /// <para><b>What is the reference build's, and what is not.</b> The order and the job of each
     /// step, the dim with its cut-out and lit ring, where the card stands beside what it points at,
@@ -62,9 +67,14 @@ namespace Gamesim.Presentation
 
         /// <summary>
         /// How to see the tour again, on every card, so it is there at the moment of skipping. True
-        /// because the house's Settings carry a "Replay the tour" control (EpisodeDirector.Season.cs).
+        /// because a new season offers it (<see cref="Offer"/>) and the house's Settings carry a
+        /// "Replay the tour" control (EpisodeDirector.Season.cs).
         /// </summary>
-        public const string ReplayNote = "You can replay the tour from Settings in the house.";
+        public const string ReplayNote = TourOfferWords.ReplayNote;
+
+        /// <summary>The offer's answers, by caption: the contract tests and screen readers find them by.</summary>
+        public const string TakeCaption = TourOfferWords.TakeCaption;
+        public const string NotNowCaption = TourOfferWords.NotNowCaption;
         public const string ReplayNoteName = "Replay note";
 
         /// <summary>The names of the tour's parts, so a test can measure them without guessing.</summary>
@@ -118,12 +128,10 @@ namespace Gamesim.Presentation
             PadLine = pad.Value;
             if (step < 0 || step >= visible.Count || body == null) return;
             body.text = Localisation.Text(BodyFor(visible[step]));
-            Layout();
+            dockDirty = true;
             Place();
         }
 
-        /// <summary>The reference card's width: its max-w-sm, in the canvas's 1600x900 units.</summary>
-        private const float CardWidth = 384f;
         /// <summary>How far the ring stands off the thing it lights, so its edge never sits on the panel's own.</summary>
         private const float HolePadding = 6f;
         /// <summary>The reference build's black/60.</summary>
@@ -180,7 +188,7 @@ namespace Gamesim.Presentation
                 "Nominations, votes and the week's other decisions happen at the living-room screen. This button walks you there; " + StationStepKeys,
                 "Go to episode screen"),
             new Step("carousel", "Cast Strip",
-                "Everyone in the house, along the bottom. Click a face to follow them with the camera. Under each name is their mood; once you know them, a tag says where you stand.",
+                "Everyone in the house, along the bottom. Click someone's face to open their menu: talk, profile, deals or follow. Under each name is their mood; once you know them, a tag says where you stand.",
                 CastRail.StripName),
             new Step("overlay", "Phase Panels",
                 "A phase is the part of the week the house is in, such as free time, nominations or the vote. Open the episode screen for its decisions; the objective at the top left explains what comes next. Conversations show your words, then the houseguest's reply. Continue conversation reads the next line; Skip conversation moves on after the action has already happened.",
@@ -194,9 +202,18 @@ namespace Gamesim.Presentation
         private RectTransform[] dims;
         private CanvasGroup layerGroup, cardGroup;
         private Image mark;
-        private TMP_Text counter, title, body, nextLabel, skipLabel, backLabel, replayNote;
-        private Button next, skip, back;
+        private TMP_Text counter, title, body, nextLabel, skipLabel, backLabel, replayNote, takeLabel, notNowLabel;
+        private Button next, skip, back, take, notNow;
         private int step = -1;
+        /// <summary>Whether the offer card is up: "Take the tour?", asked of a player who has been through it before.</summary>
+        private bool offering;
+        /// <summary>Where the card was docked last, so a frame whose hole and frame have not moved does not lay it out again.</summary>
+        private bool dockDirty = true;
+        private TourDock.Box dockedFrame;
+        private TourDock.Box? dockedHole;
+        private float dockedScale;
+        /// <summary>The phase step's open panel had no side with room for the card, so the step lights the objective instead.</summary>
+        private bool panelRefused;
         private readonly List<Step> visible = new List<Step>();
         private Func<string, RectTransform> anchorLookup;
 
@@ -226,17 +243,22 @@ namespace Gamesim.Presentation
         /// </summary>
         public Action StepSound;
 
-        public bool IsShowing => step >= 0;
+        /// <summary>Whether the tour, or the offer of it, is on screen: either dims the house and waits for an answer.</summary>
+        public bool IsShowing => step >= 0 || offering;
+        /// <summary>Whether the offer card ("Take the tour?") is on screen. <see cref="StepIndex"/> is -1 while it is.</summary>
+        public bool IsOffering => offering;
+        /// <summary>Whether the card on screen stands clear of what its step lights (always, but for a frame with no side wide enough).</summary>
+        public bool CardDocked { get; private set; } = true;
         public int StepIndex => step;
 
         /// <summary>How many steps this showing has: seven, less any whose chrome is not on screen.</summary>
-        public int Count => IsShowing ? visible.Count : Steps.Length;
+        public int Count => step >= 0 ? visible.Count : Steps.Length;
 
         /// <summary>This showing's step titles, in order, in English. A read, for tests and tools.</summary>
         public IReadOnlyList<string> StepTitles => visible.Select(item => item.Title).ToArray();
 
         /// <summary>The chrome the step on screen lights, by name; empty for a centred step.</summary>
-        public IReadOnlyList<string> CurrentAnchors => IsShowing ? anchorNames : Array.Empty<string>();
+        public IReadOnlyList<string> CurrentAnchors => step >= 0 ? anchorNames : Array.Empty<string>();
 
         /// <summary>True when this player has already been through the tour, or skipped it.</summary>
         public static bool Seen => PlayerPrefs.GetInt(SeenKey, 0) != 0;
@@ -281,6 +303,8 @@ namespace Gamesim.Presentation
         {
             anchorLookup = anchors;
             Build();
+            offering = false;
+            SetOfferMode(false);
             visible.Clear();
             foreach (var candidate in Steps)
                 if (candidate.Anchors.Length == 0 || candidate.Anchors.Any(name => Lookup(name) != null))
@@ -296,6 +320,57 @@ namespace Gamesim.Presentation
             // Next before Skip: the tour takes the keyboard while it is up, and the ring lands on the
             // first control it finds - which put Enter on the skip.
             if (EventSystem.current != null && IsShowing) EventSystem.current.SetSelectedGameObject(next.gameObject);
+        }
+
+        /// <summary>
+        /// A season's opening: the tour itself for a player who has never been through it, and for
+        /// one who has, a card asking "Take the tour?" - "Take the tour" starts it from its first
+        /// step, "Not now" (or Escape, or the pad's B) lets the season go on. Nothing is saved in
+        /// the season: the only record is the existing preference that the tour has been seen.
+        /// </summary>
+        public void Offer(Func<string, RectTransform> anchors)
+        {
+            if (!TourOfferWords.OpensWithOffer(HasSeen)) { Show(anchors); return; }
+            anchorLookup = anchors;
+            Build();
+            step = -1;
+            offering = true;
+            SetOfferMode(true);
+            visible.Clear();
+            fadeFrom = 0f;
+            hole = null;
+            canvas.gameObject.SetActive(true);
+            Canvas.ForceUpdateCanvases();
+            title.text = Localisation.Text(TourOfferWords.OfferTitle);
+            body.text = Localisation.Text(TourOfferWords.OfferBody);
+            dockDirty = true;
+            stepAge = 0f;
+            Place();
+            ApplyMotion();
+            // The keyboard and the pad start on the yes; Escape and B are the no.
+            if (EventSystem.current != null) EventSystem.current.SetSelectedGameObject(take.gameObject);
+        }
+
+        /// <summary>The offer's yes: the tour from its first step, on the lookup the offer was made with.</summary>
+        public void TakeTour()
+        {
+            if (!offering) return;
+            offering = false;
+            Show(anchorLookup);
+        }
+
+        /// <summary>The offer's parts in, the tour's out, or the other way round.</summary>
+        private void SetOfferMode(bool offer)
+        {
+            if (card == null) return;
+            counter.gameObject.SetActive(!offer);
+            if (mark != null) mark.gameObject.SetActive(!offer);
+            next.gameObject.SetActive(!offer);
+            skip.gameObject.SetActive(!offer);
+            if (offer) back.gameObject.SetActive(false);
+            replayNote.gameObject.SetActive(!offer);
+            take.gameObject.SetActive(offer);
+            notNow.gameObject.SetActive(offer);
         }
 
         /// <summary>The next step, or the end of the tour from the last one - with the step sound either way.</summary>
@@ -326,12 +401,17 @@ namespace Gamesim.Presentation
                 EventSystem.current.SetSelectedGameObject(step > 0 ? back.gameObject : next.gameObject);
         }
 
-        /// <summary>Leaves the tour and remembers that, so the offer to an imported season does not come back.</summary>
+        /// <summary>
+        /// Leaves the tour, or answers the offer "Not now", and remembers that the tour has been
+        /// seen, so the offer to an imported season does not come back and the next season's
+        /// opening asks rather than replays.
+        /// </summary>
         public void Skip() => Finish();
 
         private void Finish()
         {
             step = -1;
+            offering = false;
             completedThisSession = true;
             if (RememberCompletion)
             {
@@ -358,7 +438,7 @@ namespace Gamesim.Presentation
             nextLabel.text = Localisation.Text(step == visible.Count - 1 ? FinishCaption : NextCaption);
             if (back.gameObject.activeSelf != step > 0) back.gameObject.SetActive(step > 0);
 
-            Layout();
+            dockDirty = true;
             stepAge = 0f;
             Track(0f);
             Place();
@@ -372,10 +452,11 @@ namespace Gamesim.Presentation
         /// </summary>
         private void LateUpdate()
         {
-            if (step < 0 || card == null) return;
-            FollowDevice();
+            if (!IsShowing || card == null) return;
             float delta = Time.unscaledDeltaTime;
             stepAge += delta;
+            if (offering) { Place(); ApplyMotion(); return; }
+            FollowDevice();
             Track(delta);
             Place();
             ApplyMotion();
@@ -386,17 +467,21 @@ namespace Gamesim.Presentation
         /// <summary>Takes up a step's chrome. False when none of it is on screen, which drops the step.</summary>
         private bool Enter(Step candidate)
         {
+            panelRefused = false;
             LookupTargets(candidate);
             hole = null;
             relookIn = 0f;
             return candidate.Anchors.Length == 0 || targets.Any(Visible);
         }
 
-        /// <summary>The phase step lights one useful target: the decision itself, then its objective.</summary>
+        /// <summary>
+        /// The phase step lights one useful target: the decision itself, then its objective - and
+        /// the objective when the open panel left no side with room for the card beside it.
+        /// </summary>
         private void LookupTargets(Step candidate)
         {
             anchorNames = candidate.Id == "overlay"
-                ? candidate.Anchors.Where(name => Lookup(name) != null).Take(1).ToArray()
+                ? candidate.Anchors.Where(name => Lookup(name) != null && !(panelRefused && name == PanelAnchor)).Take(1).ToArray()
                 : candidate.Anchors;
             targets = new RectTransform[anchorNames.Length];
             for (int i = 0; i < anchorNames.Length; i++) targets[i] = Lookup(anchorNames[i]);
@@ -482,8 +567,60 @@ namespace Gamesim.Presentation
             bool lit = hole.HasValue;
             if (ring.gameObject.activeSelf != lit) ring.gameObject.SetActive(lit);
             if (lit) Put(ring, hole.Value);
-            cardRest = CardCorner(bounds, card.sizeDelta);
+            if (Dock(bounds)) return;
+
+            // The open panel left no side with room for the card: the phase step lights the
+            // objective instead, which the step names as well, and the card docks beside that.
+            panelRefused = true;
+            LookupTargets(visible[step]);
+            relookIn = RelookSeconds;
+            hole = null;
+            Track(0f);
+            Shade(bounds);
+            lit = hole.HasValue;
+            if (ring.gameObject.activeSelf != lit) ring.gameObject.SetActive(lit);
+            if (lit) Put(ring, hole.Value);
+            dockDirty = true;
+            Dock(bounds);
         }
+
+        /// <summary>The name of the open decision panel, the phase step's first target.</summary>
+        private const string PanelAnchor = "Episode panel";
+
+        /// <summary>
+        /// Lays the card out and docks it beside the hole (<see cref="TourDock"/>), when the frame,
+        /// the hole, the text size or the words have changed since it was last docked. False only
+        /// when the phase step's open panel had no side with room for the card and the objective
+        /// can stand in for it.
+        /// </summary>
+        private bool Dock(Rect bounds)
+        {
+            var frame = new TourDock.Box(bounds.xMin, bounds.yMin, bounds.width, bounds.height);
+            TourDock.Box? target = hole.HasValue
+                ? new TourDock.Box(hole.Value.xMin, hole.Value.yMin, hole.Value.width, hole.Value.height)
+                : (TourDock.Box?)null;
+            float s = TourDock.Scale(FontScale);
+            if (!dockDirty && s == dockedScale && Near(frame, dockedFrame) && target.HasValue == dockedHole.HasValue
+                && (!target.HasValue || Near(target.Value, dockedHole.Value)))
+                return true;
+            dockDirty = false;
+            dockedFrame = frame; dockedHole = target; dockedScale = s;
+
+            SetFontSizes(s);
+            float titleWidth = title.GetPreferredValues(title.text).x;
+            float baseWidth = TourDock.BaseWidth(s, titleWidth, frame.W);
+            var placement = TourDock.Place(frame, target, baseWidth, TourDock.MinWidth(s, titleWidth), Layout);
+            Layout(placement.Card.W);
+            cardRest = new Vector2(placement.Card.X, placement.Card.Y);
+            CardDocked = placement.Docked;
+
+            bool refuse = !placement.Docked && !offering && step >= 0 && step < visible.Count && visible[step].Id == "overlay"
+                && !panelRefused && anchorNames.Length > 0 && anchorNames[0] == PanelAnchor && Lookup("Objective") != null;
+            return !refuse;
+        }
+
+        private static bool Near(TourDock.Box a, TourDock.Box b) =>
+            Mathf.Abs(a.X - b.X) < .5f && Mathf.Abs(a.Y - b.Y) < .5f && Mathf.Abs(a.W - b.W) < .5f && Mathf.Abs(a.H - b.H) < .5f;
 
         /// <summary>
         /// The reference build's desktop dim: four black panels round the hole, not one panel with a
@@ -511,38 +648,6 @@ namespace Gamesim.Presentation
             Put(dims[1], Rect.MinMaxRect(bounds.xMin, bounds.yMin, bounds.xMax, open.yMin));
             Put(dims[2], Rect.MinMaxRect(bounds.xMin, open.yMin, open.xMin, open.yMax));
             Put(dims[3], Rect.MinMaxRect(open.xMax, open.yMin, bounds.xMax, open.yMax));
-        }
-
-        /// <summary>
-        /// Where the card rests: the reference build's placement rules, read off the hole's real
-        /// position instead of its hard-coded one.
-        ///
-        /// <para>Against the right edge, to its left with the tops level (its <c>right: 80px</c>,
-        /// twenty clear of a sixty-wide rail). Against the left edge, to its right with the tops
-        /// level (its <c>left: 110px</c>, fourteen clear of a ninety-six-wide carousel). Across the
-        /// top, under it and in from its left (its <c>top: 70px; left: 16px</c>, ten under a
-        /// sixty-high bar). The reference has nothing across the bottom; this HUD has the cast strip
-        /// and the status line there, and the card stands over them the way it stands under the top
-        /// bar. No hole, the middle of the frame. Always inside the frame.</para>
-        /// </summary>
-        private Vector2 CardCorner(Rect bounds, Vector2 size)
-        {
-            Vector2 corner;
-            if (!hole.HasValue) corner = bounds.center - size * .5f;
-            else
-            {
-                var lit = hole.Value;
-                float edge = bounds.width * .2f;
-                bool rightEdge = bounds.xMax - lit.xMax < edge && lit.xMin > bounds.center.x;
-                bool leftEdge = lit.xMin - bounds.xMin < edge && lit.xMax < bounds.center.x;
-                if (rightEdge) corner = new Vector2(lit.xMin - 20f - size.x, lit.yMax - size.y);
-                else if (leftEdge) corner = new Vector2(lit.xMax + 14f, lit.yMax - size.y);
-                else if (lit.center.y >= bounds.center.y) corner = new Vector2(lit.xMin + 16f, lit.yMin - 10f - size.y);
-                else corner = new Vector2(lit.center.x - size.x * .5f, lit.yMax + 10f);
-            }
-            float left = bounds.xMin + 12f, right = Mathf.Max(left, bounds.xMax - 12f - size.x);
-            float bottom = bounds.yMin + 12f, top = Mathf.Max(bottom, bounds.yMax - 12f - size.y);
-            return new Vector2(Mathf.Clamp(corner.x, left, right), Mathf.Clamp(corner.y, bottom, top));
         }
 
         /// <summary>
@@ -582,18 +687,9 @@ namespace Gamesim.Presentation
 
         // ---------------------------------------------------------------- the card
 
-        /// <summary>
-        /// The card sized to what this step says, at the player's text size. Every box is at least
-        /// 1.3 times its type: Inter draws nothing at all in a box under about 1.21.
-        /// </summary>
-        private void Layout()
+        /// <summary>The card's type at a text scale.</summary>
+        private void SetFontSizes(float s)
         {
-            float s = Mathf.Max(0.5f, FontScale);
-            var bounds = layer.rect;
-            float width = CardWidth * s;
-            if (bounds.width > 48f) width = Mathf.Min(width, bounds.width - 24f);
-            float pad = 20f * s, inner = width - 2f * pad;
-
             counter.fontSize = 13f * s;
             title.fontSize = 21f * s;
             body.fontSize = 15f * s;
@@ -601,40 +697,52 @@ namespace Gamesim.Presentation
             skipLabel.fontSize = 14f * s;
             backLabel.fontSize = 14f * s;
             replayNote.fontSize = 14f * s;
+            takeLabel.fontSize = 15f * s;
+            notNowLabel.fontSize = 14f * s;
+        }
 
-            float y = pad, counterX = pad, counterHeight = 18f * s;
+        /// <summary>
+        /// The card laid out at <paramref name="width"/>, at the player's text size, by
+        /// <see cref="TourDock.Measure"/>; returns its height, which is what docking asks of it. Every
+        /// box is at least 1.3 times its type: Inter draws nothing at all in a box under about 1.21.
+        /// </summary>
+        private float Layout(float width)
+        {
+            float s = TourDock.Scale(FontScale);
+            SetFontSizes(s);
+            var rows = TourDock.Measure(width, s,
+                inner => title.GetPreferredValues(title.text, inner, 0f).y,
+                inner => body.GetPreferredValues(body.text, inner, 0f).y,
+                inner => replayNote.GetPreferredValues(replayNote.text, inner, 0f).y,
+                offering);
+            float pad = rows.Pad, inner = rows.Inner, counterX = pad, counterHeight = TourDock.CounterHeight(s);
             if (mark != null)
             {
-                Row(mark.rectTransform, pad - 2f * s, y, counterHeight, counterHeight);
+                Row(mark.rectTransform, pad - 2f * s, rows.CounterY, counterHeight, counterHeight);
                 counterX = pad + 24f * s;
             }
-            Row(counter.rectTransform, counterX, y, width - pad - counterX, counterHeight);
-            y += counterHeight + 6f * s;
+            Row(counter.rectTransform, counterX, rows.CounterY, width - pad - counterX, counterHeight);
+            Row(title.rectTransform, pad, rows.TitleY, inner, rows.TitleHeight);
+            Row(body.rectTransform, pad, rows.BodyY, inner, rows.BodyHeight);
 
-            float titleHeight = Mathf.Ceil(Mathf.Max(title.GetPreferredValues(title.text, inner, 0f).y, title.fontSize * 1.3f)) + 2f;
-            Row(title.rectTransform, pad, y, inner, titleHeight);
-            y += titleHeight + 8f * s;
-
-            float bodyHeight = Mathf.Ceil(Mathf.Max(body.GetPreferredValues(body.text, inner, 0f).y, body.fontSize * 1.3f)) + 4f;
-            Row(body.rectTransform, pad, y, inner, bodyHeight);
-            y += bodyHeight + 18f * s;
-
-            // Skip at the left, then Previous beside Next at the right: the step on and the step back together.
-            float buttonHeight = 36f * s, nextWidth = 124f * s, skipWidth = 116f * s, backWidth = 96f * s;
-            Row((RectTransform)skip.transform, pad - 10f * s, y, skipWidth, buttonHeight);
-            Row((RectTransform)next.transform, width - pad - nextWidth, y, nextWidth, buttonHeight);
-            Row((RectTransform)back.transform, width - pad - nextWidth - 8f * s - backWidth, y, backWidth, buttonHeight);
+            float buttonHeight = TourDock.ButtonHeight(s), nextWidth = TourDock.NextWidth(s), backWidth = TourDock.BackWidth(s);
+            // The offer: "Not now" at the left, "Take the tour" at the right, where Skip and Next stand.
+            Row((RectTransform)notNow.transform, pad - 10f * s, rows.ButtonsY, TourDock.SkipWidth(s), buttonHeight);
+            Row((RectTransform)take.transform, width - pad - TourDock.TakeWidth(s), rows.ButtonsY, TourDock.TakeWidth(s), buttonHeight);
+            // The tour: Skip at the left, then Previous beside Next at the right - the step on and the
+            // step back together. On a narrow card, Skip takes the row under them.
+            Row((RectTransform)skip.transform, pad - 10f * s, rows.SkipY, TourDock.SkipWidth(s), buttonHeight);
+            Row((RectTransform)next.transform, width - pad - nextWidth, rows.ButtonsY, nextWidth, buttonHeight);
+            Row((RectTransform)back.transform, width - pad - nextWidth - 8f * s - backWidth, rows.ButtonsY, backWidth, buttonHeight);
             // The words clear of the chevron, which is a mark of its own beside them.
             nextLabel.rectTransform.offsetMin = new Vector2(10f * s, 0f);
             nextLabel.rectTransform.offsetMax = new Vector2(-24f * s, 0f);
-            y += buttonHeight + 8f * s;
 
             // How to see it again, under the buttons, in the card's quiet type.
-            float noteHeight = Mathf.Ceil(Mathf.Max(replayNote.GetPreferredValues(replayNote.text, inner, 0f).y, replayNote.fontSize * 1.3f)) + 2f;
-            Row(replayNote.rectTransform, pad, y, inner, noteHeight);
-            y += noteHeight + pad;
+            Row(replayNote.rectTransform, pad, rows.NoteY, inner, Mathf.Max(rows.NoteHeight, replayNote.fontSize * 1.3f));
 
-            card.sizeDelta = new Vector2(width, y);
+            card.sizeDelta = new Vector2(width, rows.Height);
+            return rows.Height;
         }
 
         private void Build()
@@ -728,6 +836,18 @@ namespace Gamesim.Presentation
             backLabel = back.GetComponentInChildren<TMP_Text>();
             back.onClick.AddListener(Back);
             back.gameObject.SetActive(false);
+
+            // The offer's two answers, up only while it asks: the yes in the action blue Next wears,
+            // the no in the skip's quiet words. Escape and the pad's B are the no as well.
+            take = TextButton(TakeCaption, card, Color.white, 15f, UiTheme.ActionBlue);
+            takeLabel = take.GetComponentInChildren<TMP_Text>();
+            if (semibold != null) takeLabel.font = semibold;
+            take.onClick.AddListener(TakeTour);
+            take.gameObject.SetActive(false);
+            notNow = TextButton(NotNowCaption, card, UiTheme.Muted, 14f);
+            notNowLabel = notNow.GetComponentInChildren<TMP_Text>();
+            notNow.onClick.AddListener(Skip);
+            notNow.gameObject.SetActive(false);
 
             replayNote = HudPrimitives.Label(ReplayNoteName, card, 14f, UiTheme.Muted, TextAlignmentOptions.TopLeft);
             replayNote.text = Localisation.Text(ReplayNote);

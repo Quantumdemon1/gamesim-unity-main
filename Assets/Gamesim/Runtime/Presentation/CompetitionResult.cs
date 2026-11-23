@@ -16,6 +16,31 @@ namespace Gamesim.Presentation
         /// <summary>The score details' way back to the standings, worded as every way back is ("Back to &lt;place&gt;").</summary>
         public static readonly string BackToStandingsCaption = WayOut.BackTo("the standings");
 
+        /// <summary>
+        /// Between an attempt's headline and its line in the attempt <see cref="Play"/> is given: the
+        /// game screen's finish headline ("BOARD CLEARED") over the measure, as the finish plate said
+        /// them. An attempt without it is one line, as it always was.
+        /// </summary>
+        public const char AttemptHeadlineBreak = '\n';
+
+        /// <summary>The attempt as one string: <paramref name="headline"/> over <paramref name="line"/>, or the line alone.</summary>
+        public static string JoinAttempt(string headline, string line) =>
+            string.IsNullOrEmpty(headline) || string.IsNullOrEmpty(line) ? line : headline + AttemptHeadlineBreak + line;
+
+        /// <summary>The attempt's headline, or null when it has none.</summary>
+        public static string AttemptHeadlineOf(string attempt)
+        {
+            int split = attempt == null ? -1 : attempt.IndexOf(AttemptHeadlineBreak);
+            return split > 0 ? attempt.Substring(0, split) : null;
+        }
+
+        /// <summary>The attempt's line, its measure: all of it when it has no headline.</summary>
+        public static string AttemptLineOf(string attempt)
+        {
+            int split = attempt == null ? -1 : attempt.IndexOf(AttemptHeadlineBreak);
+            return split >= 0 ? attempt.Substring(split + 1) : attempt;
+        }
+
         public readonly struct Standing
         {
             public readonly string Name;
@@ -272,9 +297,21 @@ namespace Gamesim.Presentation
             var semibold=UiTheme.Font(UiTheme.Weight.SemiBold);if(semibold!=null)line.font=semibold;
             Fit(line,14);
             // The player's own attempt, in the game's own measure, where the player played one.
+            // A played game's attempt carries the finish plate's headline ("BOARD CLEARED") over its
+            // measure: the headline takes the attempt's place and the measure goes under it, both
+            // above the ranking's heading.
             if(!string.IsNullOrEmpty(playedAttempt))
             {
-                var attempt=Label("Player attempt",column,playedAttempt,14,120,(92+38)*fs,inner/scale-90,22*fs,UiTheme.Glow);
+                string attemptHeadline=AttemptHeadlineOf(playedAttempt);
+                float attemptTop=(92+38)*fs;
+                if(attemptHeadline!=null)
+                {
+                    var headlineLabel=Label("Attempt headline",column,attemptHeadline,12,120,(92+36)*fs,inner/scale-90,17*fs,UiTheme.Paper);
+                    if(bold!=null)headlineLabel.font=bold;headlineLabel.characterSpacing=2f;
+                    Fit(headlineLabel,9);
+                    attemptTop=(92+36+18)*fs;
+                }
+                var attempt=Label("Player attempt",column,AttemptLineOf(playedAttempt),14,120,attemptTop,inner/scale-90,22*fs,UiTheme.Glow);
                 Fit(attempt,10);
             }
             showingDetails=false;

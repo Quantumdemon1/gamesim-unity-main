@@ -28,14 +28,13 @@ namespace Gamesim.Episode
 
         /// <summary>
         /// What the notes page has on them (<see cref="HouseguestNotes.For"/>), each line as the notes card
-        /// prints it, newest first - less their word and your memories of them, which the profile's
-        /// "Other records" and "What you remember" already say.
+        /// prints it, newest first - less the promises between you and your memories of them, which the
+        /// profile's "Other records" and "What you remember" already say. The alliance-call notes stay,
+        /// each once (<see cref="ProfileNotes"/>).
         /// </summary>
         public static List<string> ProfileNotesLines(EpisodeState state, string id, out int more)
         {
-            var notes = HouseguestNotes.For(state, id)
-                .Where(n => n.kind != HouseguestNotes.Kinds.Word && n.kind != HouseguestNotes.Kinds.Memory)
-                .Select(n => n.ToString()).ToList();
+            var notes = ProfileNotes.For(state, id).Select(n => n.ToString()).ToList();
             more = System.Math.Max(0, notes.Count - ProfileLinesShown);
             return notes.Take(ProfileLinesShown).ToList();
         }

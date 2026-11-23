@@ -46,6 +46,16 @@ namespace Gamesim.Simulation
         public static string Opener(EpisodeState s, string npcId, TalkRow talk) =>
             talk == null ? "" : TalkText.Fill(s, npcId, talk.Open ?? "");
 
+        /// <summary>
+        /// The paragraph a scene left open is redrawn with ("Name: opener"), or null when the row opens with nothing (a Flirt
+        /// answered in kind): the panel then draws no empty "Name: " line above the choices.
+        /// </summary>
+        public static string SceneOpener(EpisodeState s, string npcId, TalkRow row, string first)
+        {
+            string text = Opener(s, npcId, row);
+            return string.IsNullOrEmpty(text) ? null : first + ": " + text;
+        }
+
         /// <summary>One reply button: the tone it is said in, the tone's caption (the button's pill), and the player's words (its caption).</summary>
         public sealed class Reply
         {
@@ -177,18 +187,46 @@ namespace Gamesim.Simulation
         /// <summary>The housemate page's "Between you" block, above the free talk's other blocks: none below talk rules 2 or with nothing to say.</summary>
         public static List<Block> BondBlocks(EpisodeState s, string npcId)
         {
-            var blocks = new List<Block>();
             string line = BondLine(TalkNotes.BondWith(s, npcId));
-            if (line != null) blocks.Add(new Block { Heading = BetweenYouHeading, Lines = { line } });
+            // Talk rules 3: the romance's line and the romance's notes under it; never read below the level.
+            if (!RomanceShown(s)) return BondBlocks(line, null, null);
+            return BondBlocks(line, TalkRomanceNotes.PageLine(s, npcId), TalkRomanceNotes.ProfileNotes(s, npcId));
+        }
+
+        /// <summary>
+        /// The "Between you" block from its parts: the stage and chemistry line, then (talk rules 3) the romance's page line and
+        /// its notes ("Took the no well"); none when every part is empty. With no romance parts it is exactly slice 2's block.
+        /// </summary>
+        public static List<Block> BondBlocks(string bondLine, string romanceLine, IEnumerable<string> romanceNotes)
+        {
+            var blocks = new List<Block>();
+            var block = new Block { Heading = BetweenYouHeading };
+            if (bondLine != null) block.Lines.Add(bondLine);
+            if (!string.IsNullOrEmpty(romanceLine)) block.Lines.Add(romanceLine);
+            foreach (string note in romanceNotes ?? Enumerable.Empty<string>())
+                if (!string.IsNullOrEmpty(note) && !block.Lines.Contains(note)) block.Lines.Add(note);
+            if (block.Lines.Count > 0) blocks.Add(block);
             return blocks;
         }
 
         /// <summary>The player's own card's "How you come across" block, "The house reads you as a flirt.": none below talk rules 2.</summary>
         public static List<Block> YourReadBlocks(EpisodeState s)
         {
-            var blocks = new List<Block>();
             string line = s == null ? null : TalkNotes.HouseReadsYou(s);
-            if (!string.IsNullOrEmpty(line)) blocks.Add(new Block { Heading = YourReadHeading, Lines = { line } });
+            // Talk rules 3: "Took the no well" once, when any housemate's page holds it (the engine's note, never a name).
+            bool tookTheNoWell = RomanceShown(s) && s.contestants != null && s.contestants.Any(c =>
+                c != null && !c.isPlayer && TalkRomanceNotes.ProfileNotes(s, c.id)?.Contains(TalkRomanceNotes.TookTheNoWell) == true);
+            return YourReadBlocks(line, tookTheNoWell);
+        }
+
+        /// <summary>The "How you come across" block from its parts: the house's read, then (talk rules 3) "Took the no well"; none when both are empty.</summary>
+        public static List<Block> YourReadBlocks(string readLine, bool tookTheNoWell)
+        {
+            var blocks = new List<Block>();
+            var block = new Block { Heading = YourReadHeading };
+            if (!string.IsNullOrEmpty(readLine)) block.Lines.Add(readLine);
+            if (tookTheNoWell) block.Lines.Add(TalkRomanceNotes.TookTheNoWell);
+            if (block.Lines.Count > 0) blocks.Add(block);
             return blocks;
         }
 
@@ -230,5 +268,155 @@ namespace Gamesim.Simulation
         public static List<Block> NotebookBlocks(EpisodeState s, string npcId) =>
             s == null || string.IsNullOrEmpty(npcId) || !FreeTalk.On(s) ? new List<Block>()
                 : NotebookBlocks(TalkNotes.WhatYouKnow(s, npcId), TalkNotes.FromThem(s, npcId));
+
+        // ------------------------------------------------------------------ talk rules 3 (free talk slice 3): romance
+
+        /// <summary>
+        /// Whether the panel and the pages draw anything of slice 3: talk rules 3 or later with free talk on
+        /// (<see cref="TalkRomance.LevelOn"/>). Below it not one romance query is made, so the screen is exactly slice 2's.
+        /// </summary>
+        public static bool RomanceShown(EpisodeState s) => s?.story != null && TalkRomance.LevelOn(s);
+
+        /// <summary>The Flirt reply's caption (a contract: tests and screen readers find the button by it). Placed last among the replies.</summary>
+        public const string FlirtCaption = "Flirt";
+
+        /// <summary>The romance choices' captions (contracts), the words of <see cref="TalkChoices.Caption"/>.</summary>
+        public const string MakeItOfficialCaption = "Make it official", AcceptCaption = "Accept", NotYetCaption = "Not yet",
+            NotLikeThatCaption = "Not like that", JustFriendsCaption = "Just friends", EndItKindlyCaption = "End it kindly",
+            LaughItOffCaption = "Laugh it off", PushAgainCaption = "Push again", ApologizeCaption = "Apologize";
+
+        /// <summary>A choice's button caption; empty for None.</summary>
+        public static string ChoiceCaption(TalkChoice choice)
+        {
+            switch (choice)
+            {
+                case TalkChoice.MakeItOfficial: return MakeItOfficialCaption;
+                case TalkChoice.Accept: return AcceptCaption;
+                case TalkChoice.NotYet: return NotYetCaption;
+                case TalkChoice.NotLikeThat: return NotLikeThatCaption;
+                case TalkChoice.JustFriends: return JustFriendsCaption;
+                case TalkChoice.EndItKindly: return EndItKindlyCaption;
+                case TalkChoice.LaughItOff: return LaughItOffCaption;
+                case TalkChoice.PushAgain: return PushAgainCaption;
+                case TalkChoice.Apologize: return ApologizeCaption;
+                default: return "";
+            }
+        }
+
+        /// <summary>One choice button: the choice, its caption, and the answer its command carries (<c>choice:&lt;id&gt;</c>).</summary>
+        public sealed class ChoiceButton
+        {
+            public TalkChoice Choice;
+            public string Caption, Answer;
+        }
+
+        /// <summary>The buttons for a list of open choices, in the engine's order: one per choice, None and repeats left out.</summary>
+        public static List<ChoiceButton> ChoiceButtons(IEnumerable<TalkChoice> choices)
+        {
+            var buttons = new List<ChoiceButton>();
+            foreach (var choice in choices ?? Enumerable.Empty<TalkChoice>())
+            {
+                if (choice == TalkChoice.None || buttons.Any(b => b.Choice == choice)) continue;
+                buttons.Add(new ChoiceButton { Choice = choice, Caption = ChoiceCaption(choice), Answer = TalkChoices.Answer(choice) });
+            }
+            return buttons;
+        }
+
+        /// <summary>The choices on offer with a talk on offer (a romance talk's, by the engine): none below talk rules 3.</summary>
+        public static List<ChoiceButton> OfferChoices(EpisodeState s, string npcId, TalkRow talk) =>
+            !RomanceShown(s) || talk == null || talk.Kind <= TalkKind.Stage ? new List<ChoiceButton>()
+                : ChoiceButtons(TalkRomance.ChoicesNow(s, npcId, talk));
+
+        /// <summary>
+        /// Whether the Flirt button joins a talk's replies: talk rules 3, no reply of the talk already in the flirt tone, and the
+        /// engine's word that this talk carries the Flirt answer (<see cref="TalkRomance.FlirtOffered"/>: a layer, rhythm, standing
+        /// or stage talk while Flirt is open; never a romance talk, whose own replies hold the flirt where it has one).
+        /// </summary>
+        public static bool FlirtShown(EpisodeState s, string npcId, TalkRow talk, IEnumerable<Reply> replies) =>
+            RomanceShown(s) && talk != null
+            && !(replies ?? Enumerable.Empty<Reply>()).Any(r => r.Tone == TalkRules.Flirt)
+            && TalkRomance.FlirtOffered(s, npcId, talk);
+
+        /// <summary>
+        /// The command's text for an answer (a tone or <c>choice:&lt;id&gt;</c>): at talk rules 3 the engine's
+        /// <see cref="TalkRomance.CommandText"/> with the housemate the house sees in the room (none when null); below it
+        /// slice 1's two-part text, the witness never sent.
+        /// </summary>
+        public static string AnswerText(EpisodeState s, string talkId, string answer, string seenById) =>
+            RomanceShown(s) ? TalkRomance.CommandText(talkId, answer, seenById) : FreeTalk.CommandText(talkId, answer);
+
+        /// <summary>The command an answer sends, on the state the screen was drawn from; below talk rules 3 exactly <see cref="Command"/>'s.</summary>
+        public static EpisodeCommand AnswerCommand(EpisodeState s, string npcId, string talkId, string answer, string seenById, string commandId)
+        {
+            var command = Command(s, npcId, talkId, answer, commandId);
+            command.text = AnswerText(s, talkId, answer, seenById);
+            return command;
+        }
+
+        /// <summary>What the command would do, as the engine says before it applies it: <see cref="TalkRomance.Result"/> at talk rules 3, else <see cref="FreeTalk.Result"/>.</summary>
+        public static TalkResult Preview(EpisodeState s, string npcId, string talkId, string answer, string seenById)
+        {
+            if (RomanceShown(s)) return TalkRomance.Result(s, npcId, AnswerText(s, talkId, answer, seenById));
+            return FreeTalk.Result(s, npcId, talkId, answer);
+        }
+
+        /// <summary>Whether a result carries anything of the romance (a choice, a continuation, a scene or a change); false for every slice 1 and 2 result.</summary>
+        public static bool HasRomance(TalkResult result) =>
+            result != null && (result.Choice != TalkChoice.None || result.Continuation || result.Scene != RomanceScene.None
+                || result.Change != RomanceChange.None || (result.Choices != null && result.Choices.Count > 0));
+
+        /// <summary>Their words in a scene, in order (beat 1, then beat 2), each by first name: "Dana: “...”". Empty when none.</summary>
+        public static List<string> SceneLines(TalkResult result, string firstName)
+        {
+            var lines = new List<string>();
+            if (result == null) return lines;
+            string who = string.IsNullOrEmpty(firstName) ? "They" : firstName;
+            if (!string.IsNullOrEmpty(result.SceneLine)) lines.Add(who + ": " + result.SceneLine);
+            if (!string.IsNullOrEmpty(result.SceneSecond)) lines.Add(who + ": " + result.SceneSecond);
+            return lines;
+        }
+
+        /// <summary>The romance's after-lines for a result (the engine's <see cref="TalkRomanceNotes.AfterLines"/>); none for a result without romance.</summary>
+        public static List<string> RomanceLines(TalkResult result, string firstName) =>
+            HasRomance(result) ? (TalkRomanceNotes.AfterLines(result, firstName) ?? new List<string>()) : new List<string>();
+
+        /// <summary>
+        /// The third beat's lines with the romance's: slice 2's lines, the romance's after-lines before the change line, and
+        /// "nothing new" left out when the romance said what changed (always on a continuation, which is not a counted talk).
+        /// With no romance lines and no continuation it is exactly <see cref="Aftermath(TalkResult, string)"/>.
+        /// </summary>
+        public static List<string> Aftermath(TalkResult result, string firstName, IList<string> romanceLines)
+        {
+            var lines = Aftermath(result, firstName);
+            var romance = (romanceLines ?? new List<string>()).Where(l => !string.IsNullOrEmpty(l)).ToList();
+            if (result == null || (romance.Count == 0 && !result.Continuation)) return lines;
+            int at = lines.Count - 1;
+            if (lines[at] == NothingNew) lines.RemoveAt(at);
+            else if (result.Continuation) at = lines.Count;
+            lines.InsertRange(Math.Min(at, lines.Count), romance);
+            return lines;
+        }
+
+        /// <summary>A scene left open with choices (talk rules 3, saved in contact.talkPending): its row and its choices, so the panel can finish it after a way back or a load.</summary>
+        public sealed class OpenScene
+        {
+            public TalkRow Row;
+            public List<ChoiceButton> Choices = new List<ChoiceButton>();
+        }
+
+        /// <summary>The scene left open with a housemate this window, or null (always null below talk rules 3).</summary>
+        public static OpenScene PendingScene(EpisodeState s, string npcId)
+        {
+            if (!RomanceShown(s) || string.IsNullOrEmpty(npcId)) return null;
+            var contact = s.story.contacts?.FirstOrDefault(c => c != null && c.npcId == npcId);
+            if (contact == null || string.IsNullOrEmpty(contact.talkPending)) return null;
+            // The engine continues a scene only in the window it was left open in: a stale one is not drawn.
+            int key = FreeTalk.WindowKey(s);
+            if (key == 0 || contact.talkWindow != key) return null;
+            var row = TalkBank.Find(contact.talkPending);
+            if (row == null) return null;
+            var choices = ChoiceButtons(TalkRomance.ChoicesNow(s, npcId, row));
+            return choices.Count == 0 ? null : new OpenScene { Row = row, Choices = choices };
+        }
     }
 }

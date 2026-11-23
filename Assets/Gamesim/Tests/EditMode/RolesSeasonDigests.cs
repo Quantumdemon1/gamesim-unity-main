@@ -151,6 +151,11 @@ namespace Gamesim.Tests.EditMode
             // Current, which competition rules 5 (the ring tower) moved. Only which game a competition deals reads it,
             // and nothing is dealt before the season's first competition, so the pin plays the recorded seasons.
             s.competitionRulesVersion = CompetitionRules.Widened;
+            // Held at free talk rules 2 and the minds' rules 0 by name too: main's replay of these seasons at those levels
+            // kept every recorded digest, and ApplyFresh writes the shipped levels, which free talk slice 3 moves to 3 (a
+            // season at 3 offers no Late Nights opening beat and reads the Friends named earlier, so it may play differently).
+            s.story.talkRules = TalkRules.Chemistry;
+            s.story.mindRules = MindRules.Off;
             Assert.That(EpisodeValidation.TryValidate(s, out var invalid), Is.True, invalid);
             return s;
         }
@@ -200,9 +205,27 @@ namespace Gamesim.Tests.EditMode
         /// <summary>The whole state's JSON, then the commitment digests' readers of it: as each week opens, and at the end.</summary>
         private static void Checkpoint(EpisodeState s, IncrementalHash hash)
         {
-            var trace = new StringBuilder(JObject.FromObject(s).ToString(Formatting.None)).Append('\n');
-            ReadersOf.Invoke(null, new object[] { s, trace });
+            var trace = new StringBuilder();
+            Checkpoint(s, trace);
             hash.AppendData(Encoding.UTF8.GetBytes(trace.ToString()));
+        }
+
+        /// <summary>
+        /// One checkpoint's text: the whole state's JSON in the shape the digests were recorded in, then every reader.
+        /// <see cref="Recorded"/> was taken at schema 30, so a live state is digested through its schema-30 view
+        /// (<see cref="LegacyDigestSchema31Observer.View30"/>): schema 31's talk and minds fields, all at their defaults in
+        /// these seasons, are left out and the header reads 30, exactly the JSON a schema-30 build wrote. The observer
+        /// refuses a season with any talk had, so a season that played differently is never hidden by the view. A later
+        /// schema bump fails here, by name, until its own observer is put in front (HeldReplayShapeTests).
+        /// </summary>
+        private static void Checkpoint(EpisodeState s, StringBuilder trace)
+        {
+            var view = LegacyDigestSchema31Observer.OwnView30(s);
+            Assert.That(view["schemaVersion"]?.Type, Is.EqualTo(JTokenType.Integer));
+            Assert.That((long)view["schemaVersion"], Is.EqualTo(30),
+                "The role moments' seasons were recorded at schema 30: the live schema needs its observer's schema-30 view here.");
+            trace.Append(view.ToString(Formatting.None)).Append('\n');
+            ReadersOf.Invoke(null, new object[] { s, trace });
         }
 
         private static readonly MethodInfo ReadersOf =

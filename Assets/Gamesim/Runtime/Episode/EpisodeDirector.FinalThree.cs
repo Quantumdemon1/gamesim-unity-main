@@ -120,6 +120,10 @@ namespace Gamesim.Episode
         private void FinalTwoChoice(EpisodeState state)
         {
             var others = FinalistRead.Others(state);
+            // A press on a choice picks it; the one button pinned under the page names the result
+            // and commits it (EpisodeDirector.PickThenConfirm.cs).
+            PinDecisionCommit(state);
+            var pick = Picked(state, DecisionPick.Screen.FinalChoice) ? decisionPick : null;
             if (others.Count != 2)
             {
                 // Not a shape the engine produces; the plain paired choice it used to be.
@@ -127,7 +131,9 @@ namespace Gamesim.Episode
                 foreach (var candidate in others)
                 {
                     string id = candidate.id;
-                    hud.PairedActionFor(pairs, id, FinalChoiceWords.FallbackCaption(candidate.name), () => Commit(state, EpisodeCommandKind.FinalEvict, id));
+                    var choice = hud.PairedActionFor(pairs, id, FinalChoiceWords.FallbackCaption(candidate.name),
+                        () => PickDecision(DecisionPick.FinalChoice(state, id)));
+                    if (pick != null && pick.Target == id) hud.MeetingPicked(choice, true);
                 }
                 return;
             }
@@ -166,7 +172,8 @@ namespace Gamesim.Episode
                     Consequence = FinalChoiceConsequence(take, cut),
                     // What this choice alone would break of the player's word (EpisodeDirector.YourWord).
                     Breach = FinalChoiceBreach(state, take, cut),
-                    Choose = () => Commit(state, EpisodeCommandKind.FinalEvict, cutId),
+                    Choose = () => PickDecision(DecisionPick.FinalChoice(state, cutId)),
+                    Picked = pick != null && pick.Target == cutId,
                 });
             }
             hud.FinalChoicePage(spec);

@@ -205,6 +205,7 @@ namespace Gamesim.Episode
             hud.RegisterOverlay(competitionCard.GetComponent<CanvasGroup>());
             keyCeremony = KeyCeremony.Attach(gameObject);
             keyCeremony.CueRequested += cue => { if (audioBed != null) audioBed.PlayCue(cue); };
+            ListenForCeremonySpeed();
             // The staged ceremonies' skip, on screen while one runs (EpisodeDirector.CeremonyStage).
             skipChip = CeremonySkipChip.Attach(gameObject);
             tutorial = HouseTutorial.Attach(gameObject);
@@ -736,6 +737,7 @@ namespace Gamesim.Episode
             if (focusedNpc != null) conversationIntent = null;
             moveScreenId = null; comparingFinalists = false; juryHouseOpen = false; juryHouseOverHouse = false; reviewingSpeeches = false; juryQuestionsOpen = false;
             finalCaseOpen = false; ForgetFinalCaseChoice();
+            ForgetDecisionPick();
             // The finale page's open reason goes with the panel too.
             ForgetFinaleView();
             // The nomination's view goes with the panel, which opens again on the week's current step,
@@ -1026,12 +1028,12 @@ namespace Gamesim.Episode
                         reveal = screen => voteReveal.Play(committed.week, EvictionBlock(committed),
                             EvictionBallots(committed), evictedNow, reducedMotion, ceremonyPace,
                             NameOf(committed, committed.hohId), committed.hohId == committed.playerId,
-                            evictedNow != null && evictedNow == committed.playerId, screen);
+                            evictedNow != null && evictedNow == committed.playerId, screen, ceremonySpeed);
                     else if (kind == CeremonySting.NominationKind && keyCeremony != null)
                         reveal = screen => keyCeremony.Play(committed.week, NameOf(committed, committed.hohId),
                             committed.hohId == committed.playerId,
                             SafeHouseguests(committed), NominatedHouseguests(committed), reducedMotion, ceremonyPace, screen,
-                            RosterHouseguests(committed));
+                            RosterHouseguests(committed), ceremonySpeed);
                     // The veto meeting is staged in the living room and plays on its screen
                     // (EpisodeDirector.CeremonyStageVeto.cs); unstaged it is the generic card below,
                     // exactly as it was. Its commit still makes the veto's sound, the same for
@@ -1057,7 +1059,7 @@ namespace Gamesim.Episode
                         revealed = ceremony.kind == CeremonySting.WinnerKind
                             && juryReveal != null
                             && juryReveal.Play(JuryFinalists(result.state), JuryVotes(result.state), result.state.winnerId,
-                                reducedMotion, ceremonyPace, unchecked((int)result.state.seed));
+                                reducedMotion, ceremonyPace, unchecked((int)result.state.seed), ceremonySpeed);
                         if (!revealed) PlayGenericCeremonyCard(result.state, ceremony.kind, ceremony.text, wasActive, wasNominated);
                         else
                         {
@@ -1333,7 +1335,7 @@ namespace Gamesim.Episode
             var played = WeeklyRecap.Season(state).Where(w => w.evicted != null).ToList();
             if (played.Count > 0)
             {
-                hud.Heading("WEEKS SO FAR");
+                hud.Heading(StorySoFarWords.WeeksSoFarHeading);
                 foreach (var week in played)
                 {
                     int number = week.week;
@@ -1528,6 +1530,7 @@ namespace Gamesim.Episode
                     // The notebook's one foot, as every page has; the graph's legend carries its caveat.
                     hud.NotebookFooter(null, "House activities", OpenHouseActivities);
                 }
+                DecisionPeekWayBack();
                 hud.ApplyPendingScroll();
                 return;
             }
@@ -1656,7 +1659,7 @@ namespace Gamesim.Episode
                     // Ranked as the engine ranks them, as rows: a face, a name, the winner's badge -
                     // the crown, or the veto's medal - and no score (UI-UX-PASS-PLAN C0). The rows
                     // are the result card's own standings, so the two never disagree.
-                    hud.Section("FINAL STANDINGS");
+                    hud.Section(CompetitionWords.StandingsHeading);
                     hud.CompetitionStandings(CompetitionStandings(state), WinnersMark(state.phase));
                     // The way on, pinned: it used to sit under the standings, well past the fold.
                     AdvanceWarning(state);

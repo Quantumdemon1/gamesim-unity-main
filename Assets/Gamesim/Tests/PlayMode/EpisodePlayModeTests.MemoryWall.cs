@@ -55,7 +55,12 @@ namespace Gamesim.Tests.PlayMode
                     yield return null;
                 }
                 Assert.That(expected, Is.Not.Null, "The shared appearance portrait must finish for " + actor.name + ".");
-                yield return null; // Let the wall's asynchronous binding publish the completed image.
+                // Let the wall's binding publish the completed image. The binding looks for a finished
+                // portrait on its own clock (every tenth of a second), not every frame, and a batch
+                // frame is far shorter than that: so the frame is given real time, not one frame.
+                double shownBy = Time.realtimeSinceStartupAsDouble + 5;
+                do yield return null;
+                while (PortraitTexture(frames[i]) != expected && Time.realtimeSinceStartupAsDouble < shownBy);
 
                 Assert.That(PortraitTexture(frames[i]), Is.SameAs(expected),
                     "Frame " + i + " should show " + actor.name + ".");

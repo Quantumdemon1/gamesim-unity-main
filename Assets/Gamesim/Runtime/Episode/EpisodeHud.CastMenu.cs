@@ -57,7 +57,7 @@ namespace Gamesim.Episode
                     new Vector2(10f * scale, -(CastMenuHead + i * (CastMenuRow + CastMenuGap)) * scale),
                     new Vector2(width - 20f * scale, CastMenuRow * scale), rows[i].action);
                 var words = button.GetComponentInChildren<TMP_Text>();
-                if (words != null) { words.fontSize = 16; words.fontSizeMax = 16; }
+                if (words != null) words.fontSize = words.fontSizeMax = TextSizeFit.Font(TextSizeFit.MenuRowFont, scale);
             }
             // The keyboard goes to the card as it opens: the first way on. A rebuild while it is open
             // (a body finishing assembly) keeps whichever of its rows the keyboard had reached.

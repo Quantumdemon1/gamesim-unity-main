@@ -51,6 +51,8 @@ namespace Gamesim.Simulation
             roles = new[] { Role("PARTNER", StoryPeople.Sensitivity.Romance), Optional("GOSSIP") },
             cast = c =>
             {
+                // Free talk's rules 3: its opening beat is not offered; a couple made in free talk starts the arc at its second beat.
+                if (TalkRomance.LevelOn(c.state)) return null;
                 bool Open(ContestantState x) => Lore.RomanceOpen(c.state, x.id) && Bonds.ShowmancePartner(c.state, x.id) == null
                     && Mutual(c, P(c), x.id) >= 25 && (c.state.story.contacts.FirstOrDefault(k => k.npcId == x.id)?.rapport ?? 0) >= 4;
                 string partner = c.focus != null

@@ -73,7 +73,12 @@ namespace Gamesim.Episode
             var drawn = VetoDraw.Drawn(committed);
             if (drawn.Count == 0) return false;
             // Unity's fake null: a card destroyed with its scene compares equal to null, and a ?? would not see it.
-            if (drawReveal == null) drawReveal = VetoDrawReveal.Attach(gameObject);
+            if (drawReveal == null)
+            {
+                drawReveal = VetoDrawReveal.Attach(gameObject);
+                drawReveal.SpeedChanged += RememberCeremonySpeed;
+                drawReveal.PadHints = CardsOnPad;
+            }
             drawReveal.FontScale = TextScale;
             VetoDrawReveal.Player Entry(string id, string badge)
             {
@@ -86,7 +91,7 @@ namespace Gamesim.Episode
             foreach (var id in committed.nominees)
                 if (committed.vetoPlayers.Contains(id)) byRight.Add(Entry(id, "NOM"));
             bool played = drawReveal.Play(committed.week, byRight, drawn.Select(id => Entry(id, "DRAWN")).ToList(),
-                VetoFieldLine(committed), reducedMotion);
+                VetoFieldLine(committed), reducedMotion, ceremonyPace, ceremonySpeed);
             if (played) HoldHudForReveal();
             return played;
         }

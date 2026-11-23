@@ -530,7 +530,10 @@ namespace Gamesim.Episode
                 FreeTile(ExploreTheHouseCaption, "house", () => ShowOverview()),
             };
             // Listening in needs two to overhear.
-            if (state.Active.Count(c => !c.isPlayer) >= 2)
+            // At story rules 12 it is free and walks you over (EpisodeDirector.Overhear.cs).
+            if (state.Active.Count(c => !c.isPlayer) >= 2 && Overhearing.On(state))
+                tiles.Add(FreeTile(OverviewListenCaption, "eye", WalkOverToListen));
+            else if (state.Active.Count(c => !c.isPlayer) >= 2)
                 tiles.Add(CostedTile(OverviewListenCaption, "eye", "Works 7 in 10", UiTheme.Joke, () => Commit(state, EpisodeCommandKind.Eavesdrop)));
             tiles.Add(CostedTile(EpisodeHud.RallyHouseCaption, "people", "Risky", UiTheme.Joke,
                 () => Commit(state, EpisodeCommandKind.HouseMeeting, text: EpisodeEngine.RallyTroops)));

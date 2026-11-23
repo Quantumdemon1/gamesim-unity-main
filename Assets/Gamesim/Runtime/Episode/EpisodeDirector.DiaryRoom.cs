@@ -495,7 +495,7 @@ namespace Gamesim.Episode
                             : VetoOfferBoardShows(state) ? DiaryOffersSaveLine : "Nothing is committed until you confirm it."));
             else
                 hud.DiaryStatusCard("No private decision pending", ballotCast
-                    ? "Your ballot has already been recorded. Return to the episode screen for the eviction reveal."
+                    ? "Your ballot has already been recorded. Close the diary room: the eviction reveal happens at the episode screen."
                     : "Viewing this page changes nothing.");
             RenderBlockSpeechReadback(state);
             int reflections = state.playerPersona.history.Count;
@@ -560,7 +560,7 @@ namespace Gamesim.Episode
             any |= RenderStudyHouse(state);
             if (any) return;
             hud.DiaryNothingPending(state.phase == EpisodePhase.Eviction && state.votes.Any(vote => vote.voterId == state.playerId)
-                ? "Your ballot has already been recorded. Return to the episode screen for the eviction reveal."
+                ? "Your ballot has already been recorded. Close the diary room: the eviction reveal happens at the episode screen."
                 : "You have no private decision to make right now. You can review your own memories or leave the room.");
         }
 
@@ -626,7 +626,7 @@ namespace Gamesim.Episode
             if (state.pendingDiary != null)
             { hud.Paragraph("Answer or skip your pending private reflection before studying."); return true; }
             if (EpisodeEngine.SocialActionsSpent(state) >= EpisodeEngine.SocialActionBudget(state))
-            { hud.Paragraph("No actions left in this window. Return to the episode screen when ready to continue."); return true; }
+            { hud.Paragraph("No actions left in this window. Close the diary room when you are ready to go on."); return true; }
             if (TuningRules.At(state, TuningRules.Bands)) return RenderStudyTuned(state, cost);
             hud.OptionCard(EpisodeHud.StudyMemorizeCaption, "Guaranteed +1 preparation, up to the limit of 5.", "house",
                 () => ReviewStudyHouse(state, "memorize-layout"));
@@ -944,12 +944,22 @@ namespace Gamesim.Episode
                     hud.Paragraph("At the final four only one houseguest votes, and tonight that is you. "
                         + "Your single vote decides the eviction outright.");
                 VoterRoster(state);
-                // Out of the diary a card is the vote itself, cast as it is pressed: what each one
-                // would break of the player's word is said over the cards, before either is
-                // pressed (EpisodeDirector.YourWord). In the diary the card stages the choice, and
-                // its review says it then.
-                hud.BallotCards(state, state.nominees, null, id => "Vote to evict " + state.Find(id).name,
-                    id => OfferBallot(state, privateRoom, tieBreak, id), warning: privateRoom ? null : BallotWarning(state, state.nominees), over: over);
+                // In the diary the card stages the choice, and its review says it then. Out of the
+                // diary a card picks the vote, lit in place, and the one button pinned under the
+                // cards casts it (EpisodeDirector.PickThenConfirm.cs): what each card would break of
+                // the player's word is said over the cards before either is pressed, and once one is
+                // picked, what that one would break (EpisodeDirector.YourWord).
+                if (privateRoom)
+                    hud.BallotCards(state, state.nominees, null, id => "Vote to evict " + state.Find(id).name,
+                        id => OfferBallot(state, privateRoom, tieBreak, id), over: over);
+                else
+                {
+                    bool picked = PinDecisionCommit(state) != null && Picked(state, DecisionPick.Screen.Ballot);
+                    hud.BallotCards(state, state.nominees, picked ? decisionPick.Target : null, id => "Vote to evict " + state.Find(id).name,
+                        id => PickDecision(DecisionPick.Ballot(state, id)),
+                        warning: picked ? PickWarning(state, DecisionPick.Screen.Ballot) : BallotWarning(state, state.nominees),
+                        under: picked ? 0f : -1f, over: over);
+                }
                 VoterThoughts(state);
                 return true;
             }

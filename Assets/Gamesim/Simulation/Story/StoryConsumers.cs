@@ -138,6 +138,12 @@ namespace Gamesim.Simulation
                 }
                 if (Bonds.Nemesis(s, jurorId, finalistId)) value -= 10;
             }
+            // Free talk's rules 3 (U6): how the player took a juror's turn-aside, inside the band.
+            if (finalistId == s.playerId && TalkRomance.LevelOn(s) && FreeTalk.Contact(s, jurorId) is ContactState contact)
+            {
+                if (contact.talkFlags.Contains(TalkRules.TookTheNoWell)) value += TalkRomance.JuryTookTheNoWell;
+                if (contact.talkFlags.Contains(TalkRules.Pushy)) value += TalkRomance.JuryPushy;
+            }
             return Math.Max(-15, Math.Min(12, value));
         }
 

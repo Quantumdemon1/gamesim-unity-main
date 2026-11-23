@@ -785,7 +785,10 @@ namespace Gamesim.Episode
         /// <summary>Opens the notebook on a section as every panel opens: everything else closed, the house paused.</summary>
         private void OpenNotebookAt(string section, bool scroll = true)
         {
+            // A decision screen under the notebook comes back with its picks (EpisodeDirector.PickThenConfirm.cs).
+            var peek = KeepDecisionForNotebook();
             PauseNpcSocialForPanel(); ClosePanels();
+            decisionPeek = peek;
             journalSection = section; journalOpen = true; roomsFilter = HouseMap.Filter.All;
             peopleFilter = PeopleFilter.All; peopleSearch = string.Empty; profileId = null; profileFrom = null; votesTab = VotesTab.Results; notesFilter = NotesFilter.Everyone;
             player.SetInputEnabled(false); cameraRig.ControlsEnabled = false;

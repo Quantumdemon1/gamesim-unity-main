@@ -427,8 +427,9 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(director.Snapshot.revision, Is.EqualTo(state.revision), "Reading the cards commits nothing.");
             Assert.That(director.Snapshot.phase, Is.EqualTo(EpisodePhase.FinalEviction));
 
-            // One press on a column's control commits that column's choice and nothing else: the
-            // other finalist joins the jury, and the column's finalist sits beside the player.
+            // A press on a column's control picks that column's choice, and the commit under the page
+            // makes it and nothing else: the other finalist joins the jury, and the column's finalist
+            // sits beside the player.
             yield return OpenFinalePanel();
             yield return Frames(2);
             var kept = others[0];
@@ -437,8 +438,11 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(press.transform.IsChildOf(LastActive("Finalist column · " + kept.name)), Is.True, "The control stands in the column of the finalist it takes.");
             press.onClick.Invoke();
             yield return Frames(2);
+            Assert.That(director.Snapshot.revision, Is.EqualTo(state.revision), "The press picks; it commits nothing.");
+            Assert.That(LastActive(EpisodeHud.PickedEdgeName), Is.Not.Null, "The card picked stays lit.");
+            yield return CommitThePick();
             var after = director.Snapshot;
-            Assert.That(after.revision, Is.EqualTo(state.revision + 1), "One press, one command.");
+            Assert.That(after.revision, Is.EqualTo(state.revision + 1), "One commit, one command.");
             Assert.That(after.Find(gone.id).status, Is.EqualTo(ContestantStatus.Jury), gone.name + " joins the jury.");
             Assert.That(after.Find(kept.id).status, Is.EqualTo(ContestantStatus.Active), kept.name + " sits in the Final 2,");
             Assert.That(after.Find(after.playerId).status, Is.EqualTo(ContestantStatus.Active), "beside the player.");
@@ -498,8 +502,10 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(Lit(gone), Is.False, "and only that one.");
             yield return PressKey(Key.Enter);
             yield return Frames(2);
+            Assert.That(director.Snapshot.revision, Is.EqualTo(state.revision), "Enter on the lit choice picks it;");
+            yield return CommitThePick();
             var after = director.Snapshot;
-            Assert.That(after.revision, Is.EqualTo(state.revision + 1), "Enter on the lit choice commits it, once.");
+            Assert.That(after.revision, Is.EqualTo(state.revision + 1), "the commit makes it, once.");
             Assert.That(after.Find(gone.id).status, Is.EqualTo(ContestantStatus.Jury), "Enter took the lit card's choice: " + gone.name + " joins the jury,");
             Assert.That(after.Find(kept.id).status, Is.EqualTo(ContestantStatus.Active), "and " + kept.name + " sits in the Final 2.");
             yield return PutAwayTheCards();
@@ -795,8 +801,10 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(Lit(gone), Is.False, "and only that one.");
             yield return PressKey(Key.Enter);
             yield return Frames(2);
+            Assert.That(director.Snapshot.revision, Is.EqualTo(state.revision), where + ": Enter on the lit choice picks it;");
+            yield return CommitThePick();
             var after = director.Snapshot;
-            Assert.That(after.revision, Is.EqualTo(state.revision + 1), where + ": Enter on the lit choice commits it, once.");
+            Assert.That(after.revision, Is.EqualTo(state.revision + 1), where + ": the commit makes it, once.");
             Assert.That(after.Find(gone.id).status, Is.EqualTo(ContestantStatus.Jury), "Enter took the lit card's choice: " + gone.name + " joins the jury,");
             Assert.That(after.Find(kept.id).status, Is.EqualTo(ContestantStatus.Active), "and " + kept.name + " sits in the Final 2.");
             yield return PutAwayTheCards();

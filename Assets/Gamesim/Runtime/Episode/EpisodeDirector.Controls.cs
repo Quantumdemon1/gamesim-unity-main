@@ -280,6 +280,8 @@ namespace Gamesim.Episode
             {
                 if (TryDeferVisibleNpcInvitation()) return true;
                 if (BackConversationNavigation()) return true;
+                // A choice picked and not committed is cleared before the screen closes (EpisodeDirector.PickThenConfirm.cs).
+                if (ClearDecisionPick()) return true;
                 // A page reached from another page inside the panel goes back a page, as its way
                 // back at the top left does, before anything closes (menu slice 2, the review's change 1).
                 if (BackNestedPage()) return true;

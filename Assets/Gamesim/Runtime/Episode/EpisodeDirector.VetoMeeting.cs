@@ -28,8 +28,8 @@ namespace Gamesim.Episode
     /// <para>What the player sees is what the house knows: nobody is told what a houseguest holding
     /// the veto will do before they do it, unless the player is the Head of Household who has to
     /// name the replacement, which is how the meeting has always worked. Nothing here is saved; the
-    /// Head of Household and holder's choice of whom to save is the screen's until a name is
-    /// pressed.</para>
+    /// Head of Household and holder's choice of whom to save is the screen's, and so is every
+    /// choice picked, until the commit under the screen is pressed (EpisodeDirector.PickThenConfirm.cs).</para>
     /// </summary>
     public sealed partial class EpisodeDirector
     {
@@ -196,11 +196,14 @@ namespace Gamesim.Episode
                 string savedByNpc = EpisodeEngine.NpcVetoSave(state);
                 if (savedByNpc == null) return false;
                 hud.MeetingTitle(null, VetoReplacementLine(state, savedByNpc));
+                // The name picked is committed by the one button under the screen (EpisodeDirector.PickThenConfirm.cs).
+                PinDecisionCommit(state);
                 int mark = hud.MeetingColumnMark();
                 var named = MeetingCardsBefore(state, savedByNpc);
                 hud.MeetingEyebrow(NameTheReplacementEyebrow, UiTheme.Danger, PackArt.Pack8IconTarget, "target");
-                // Which names would break the player's word, over the names (EpisodeDirector.YourWord).
-                hud.BreachStrip(VetoWarning(state, null));
+                // Which names would break the player's word, over the names (EpisodeDirector.YourWord):
+                // the name picked, once there is one.
+                hud.BreachStrip(Picked(state, DecisionPick.Screen.VetoMeeting) ? PickWarning(state, DecisionPick.Screen.VetoMeeting) : VetoWarning(state, null));
                 VetoReplacementGrid(state, savedByNpc);
                 hud.MeetingCards(named, -1, null, hud.MeetingRoomLeft(), mark);
                 return true;
@@ -213,6 +216,9 @@ namespace Gamesim.Episode
                 : alsoHoh
                     ? "You hold the Golden Power of Veto, and as Head of Household you name the replacement too."
                     : "You hold the Golden Power of Veto and must decide whether to use it.");
+            // The choice picked is committed by the one button under the screen (EpisodeDirector.PickThenConfirm.cs).
+            PinDecisionCommit(state);
+            bool picked = Picked(state, DecisionPick.Screen.VetoMeeting);
             int at = hud.MeetingColumnMark();
             var cards = MeetingCardsBefore(state, null);
             // Nominees who asked for it, answered where the decision is made: under the role moments on the offer
@@ -223,7 +229,7 @@ namespace Gamesim.Episode
             {
                 KeepTheBlock(state);
                 hud.Paragraph(locked ? VetoLockedLine : VetoNoReplacementLine);
-                hud.BreachStrip(VetoWarning(state, null));
+                hud.BreachStrip(picked ? PickWarning(state, DecisionPick.Screen.VetoMeeting) : VetoWarning(state, null));
             }
             else
             {
@@ -242,6 +248,8 @@ namespace Gamesim.Episode
                         var choice = hud.MeetingGridActionFor(pick, id, VetoSavePickCaption(state.Find(id).name), () =>
                         {
                             vetoSavePick = id; vetoSavePickWeek = state.week;
+                            // A replacement picked under another nominee goes with that nominee.
+                            if (decisionPick != null && decisionPick.UseVeto && decisionPick.Target != id) decisionPick = null;
                             Render();
                         });
                         hud.MeetingPicked(choice, id == saving);
@@ -250,20 +258,23 @@ namespace Gamesim.Episode
                 else
                 {
                     // The nominees are peers, side by side under the eyebrow, as they always were.
+                    // A press picks the save; the commit under the screen makes it.
                     var saves = hud.Pairs();
                     foreach (var nominee in state.nominees)
                     {
                         string saved = nominee;
-                        hud.MeetingGoldFrame(hud.PairedActionFor(saves, saved, VetoSaveCaption(state, saved), () =>
-                            OfferPlayerDecision(state, false, EpisodeCommandKind.ResolveVeto,
-                                "Use the veto to save " + state.Find(saved).name + ". The HoH chooses the replacement.", saved, useVeto: true)));
+                        var save = hud.PairedActionFor(saves, saved, VetoSaveCaption(state, saved), () =>
+                            PickDecision(DecisionPick.Save(state, saved)));
+                        if (decisionPick != null && decisionPick.Is(EpisodeCommandKind.ResolveVeto, saved, null, true)) hud.MeetingPicked(save, true);
+                        else hud.MeetingGoldFrame(save);
                     }
                 }
                 KeepTheBlock(state);
                 hud.MeetingInfoStrip(VetoInfoLine, PackArt.Pack8InfoStrip, PackArt.Pack8IconInfo, "bulb", UiTheme.Accent);
                 // What each way would break of the player's word, under the rule and over who goes up
-                // (EpisodeDirector.YourWord): a label, never a control, measured into the step.
-                hud.BreachStrip(VetoWarning(state, saving));
+                // (EpisodeDirector.YourWord): a label, never a control, measured into the step. Once
+                // a choice is picked, what that choice would break.
+                hud.BreachStrip(picked ? PickWarning(state, DecisionPick.Screen.VetoMeeting) : VetoWarning(state, saving));
                 // Who goes up comes last, under the way to keep the block and the rule that says a
                 // replacement follows: in a large house the list is taller than the stage has left,
                 // and it is the end of the list that scrolls then, never the way to decline.
@@ -277,12 +288,14 @@ namespace Gamesim.Episode
             return true;
         }
 
-        /// <summary>The holder's way to keep the block: its own row, "Do not use the veto", under the mockup's words for it.</summary>
-        private void KeepTheBlock(EpisodeState state) =>
-            hud.MeetingKeepRow("Do not use the veto", KeepNominationsLine, () => OfferPlayerDecision(state, false,
-                EpisodeCommandKind.ResolveVeto, "Decline to use the veto. Both current nominees remain nominated."));
+        /// <summary>The holder's way to keep the block: its own row, "Do not use the veto", under the mockup's words for it. A press picks it.</summary>
+        private void KeepTheBlock(EpisodeState state)
+        {
+            var keep = hud.MeetingKeepRow("Do not use the veto", KeepNominationsLine, () => PickDecision(DecisionPick.KeepTheBlock(state)));
+            if (decisionPick != null && decisionPick.Is(EpisodeCommandKind.ResolveVeto, null)) hud.MeetingPicked(keep, true);
+        }
 
-        /// <summary>Who can go up in the saved nominee's place, each once, as a grid of peers: pressing a name uses the veto and names them.</summary>
+        /// <summary>Who can go up in the saved nominee's place, each once, as a grid of peers: pressing a name picks it, and the commit uses the veto and names them.</summary>
         private void VetoReplacementGrid(EpisodeState state, string saved)
         {
             if (state.Find(saved) == null) return;
@@ -290,8 +303,8 @@ namespace Gamesim.Episode
             foreach (var candidate in EpisodeEngine.ReplacementCandidates(state))
             {
                 string id = candidate.id;
-                hud.MeetingGridActionFor(grid, id, candidate.name, () => OfferPlayerDecision(state, false, EpisodeCommandKind.ResolveVeto,
-                    "Use the veto to save " + state.Find(saved).name + " and nominate " + state.Find(id).name + " as the replacement.", saved, id, true));
+                var name = hud.MeetingGridActionFor(grid, id, candidate.name, () => PickDecision(DecisionPick.Save(state, saved, id)));
+                if (decisionPick != null && decisionPick.Is(EpisodeCommandKind.ResolveVeto, saved, id, true)) hud.MeetingPicked(name, true);
             }
         }
 

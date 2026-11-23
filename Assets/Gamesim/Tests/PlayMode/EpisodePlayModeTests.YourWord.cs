@@ -420,6 +420,8 @@ namespace Gamesim.Tests.PlayMode
             int revision = director.Snapshot.revision;
             ButtonWithCaption("Do not use the veto").onClick.Invoke();
             yield return null; yield return null;
+            Assert.That(director.Snapshot.revision, Is.EqualTo(revision), "The press picks; it commits nothing.");
+            yield return CommitThePick();
             var after = director.Snapshot;
             Assert.That(after.revision, Is.EqualTo(revision + 1));
             Assert.That(after.vetoResolved, Is.True);
@@ -478,8 +480,10 @@ namespace Gamesim.Tests.PlayMode
             yield return null;
             ButtonWithCaption(before.Find(named).name).onClick.Invoke();
             yield return null; yield return null;
+            Assert.That(director.Snapshot.vetoResolved, Is.False, "The name is picked;");
+            yield return CommitThePick();
             var after = director.Snapshot;
-            Assert.That(after.vetoResolved, Is.True, "The name is the decision.");
+            Assert.That(after.vetoResolved, Is.True, "the commit is the decision.");
             Assert.That(after.nominees, Does.Contain(named));
             Assert.That(after.deals.Single(d => d.id == "deal-named").status, Is.EqualTo(DealStatus.Broken), "Naming them broke the deal, as the warning said.");
             director.ClosePanels();
@@ -546,6 +550,8 @@ namespace Gamesim.Tests.PlayMode
             if (Application.isBatchMode) yield return CaptureFraming("breach-warning-veto-replacement");
             ButtonWithCaption(before.Find(promisedTo).name).onClick.Invoke();
             yield return null; yield return null;
+            Assert.That(director.Snapshot.vetoResolved, Is.False, "The name is picked; the commit uses the veto.");
+            yield return CommitThePick();
             var after = director.Snapshot;
             Assert.That(after.vetoResolved, Is.True, "A name uses the veto.");
             Assert.That(after.nominees, Is.EquivalentTo(new[] { before.nominees[0], promisedTo }), "on the nominee picked, and puts the name up.");
@@ -680,6 +686,8 @@ namespace Gamesim.Tests.PlayMode
             int revision = director.Snapshot.revision;
             ButtonWithCaption("Vote to evict " + state.Find(evict).name).onClick.Invoke();
             yield return null; yield return null;
+            Assert.That(director.Snapshot.revision, Is.EqualTo(revision), "The card picks the ballot; it casts nothing.");
+            yield return CommitThePick();
             var after = director.Snapshot;
             Assert.That(after.revision, Is.EqualTo(revision + 1), "One ballot.");
             Assert.That(after.votes.Single(vote => vote.voterId == after.playerId).targetId, Is.EqualTo(evict));
@@ -875,6 +883,12 @@ namespace Gamesim.Tests.PlayMode
             if (Application.isBatchMode) yield return CaptureFraming("breach-warning-final-choice");
 
             ButtonWithCaption(breakingCaption).onClick.Invoke();
+            yield return null; yield return null;
+            // The press picks the finalist to take; the commit under the screen that names the result makes it
+            // (EpisodeDirector.PickThenConfirm.cs).
+            Assert.That(director.Snapshot.revision, Is.EqualTo(seeded.revision), "The pick commits nothing,");
+            Assert.That(director.DecisionPickCommitCaption, Is.Not.Null, "and a commit names the result.");
+            ButtonWithCaption(director.DecisionPickCommitCaption).onClick.Invoke();
             yield return null; yield return null;
             var after = director.Snapshot;
             Assert.That(after.revision, Is.EqualTo(seeded.revision + 1), "One command.");

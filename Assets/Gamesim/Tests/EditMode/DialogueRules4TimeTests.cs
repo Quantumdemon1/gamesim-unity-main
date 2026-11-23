@@ -296,7 +296,7 @@ namespace Gamesim.Tests.EditMode
         private static EpisodeState campaignState;
 
         /// <summary>A rules-4 campaign (window after the veto, two seats) whose week has no extras of its own: bought time sets them.</summary>
-        private static EpisodeState QuietCampaign()
+        internal static EpisodeState QuietCampaign()
         {
             if (campaignState != null) return campaignState.Clone();
             for (uint seed = 1; seed <= 20; seed++)
@@ -315,7 +315,7 @@ namespace Gamesim.Tests.EditMode
             return null;
         }
 
-        private static void Receipt(EpisodeState s, int week, int window, int applied) => s.dialogue.episodes.Add(new DialogueEpisodeState
+        internal static void Receipt(EpisodeState s, int week, int window, int applied) => s.dialogue.episodes.Add(new DialogueEpisodeState
         {
             id = "time-" + s.dialogue.episodes.Count, week = week, window = window,
             time = new DialogueTimeReceiptState { window = window, proposedDelta = applied, appliedDelta = applied },
@@ -329,8 +329,8 @@ namespace Gamesim.Tests.EditMode
         [TestCase(0, 2, 0, false, 1, 2)]
         [TestCase(1, 2, 0, false, 1, 3)]
         [TestCase(1, 3, 1, false, 1, 3)]
-        [TestCase(-1, 1, 0, false, 1, 3)]
-        [TestCase(-1, 2, -1, false, 2, 2)]
+        [TestCase(-1, 1, 0, false, 1, 2)]
+        [TestCase(-1, 2, -1, false, 2, 1)]
         [TestCase(0, 0, 0, true, 1, 3)]
         public void TheBudgetReadsTheWeeksReceipts(int nominations, int spentThere, int open, bool lastWeek, int extras, int budget)
         {

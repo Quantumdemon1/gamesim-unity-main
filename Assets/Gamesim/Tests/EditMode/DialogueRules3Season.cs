@@ -38,11 +38,14 @@ namespace Gamesim.Tests.EditMode
         /// The first campaign in seeds 1 to 40 (weeks <paramref name="fromWeek"/> to 3) where the player is nominated, the
         /// asks are answered, and at least two voters can be talked to with two actions left. A detached copy.
         /// </summary>
-        internal static Stop FindCampaign(int fromWeek = 1)
+        internal static Stop FindCampaign(int fromWeek = 1) => FindCampaign(seed => Start(seed), fromWeek);
+
+        /// <summary>The same walk from another enrolment of the shipped season (rules 4's, for the chip since D5c).</summary>
+        internal static Stop FindCampaign(Func<uint, EpisodeState> start, int fromWeek = 1)
         {
             for (uint seed = 1; seed <= 40; seed++)
             {
-                var engine = new EpisodeEngine(Start(seed));
+                var engine = new EpisodeEngine(start(seed));
                 for (int step = 0; step < 400; step++)
                 {
                     var s = engine.Snapshot;
@@ -55,7 +58,7 @@ namespace Gamesim.Tests.EditMode
                             .Where(id => DialogueRules.CanStart(s, id, out _)).ToArray();
                         if (voters.Length >= 2 && DialogueRules2Season.Remaining(s) >= 2)
                         {
-                            TestContext.Out.WriteLine("Rules-3 campaign: seed " + seed + ", week " + s.week + ", revision " + s.revision + ".");
+                            TestContext.Out.WriteLine("Rules-" + s.dialogueRulesVersion + " campaign: seed " + seed + ", week " + s.week + ", revision " + s.revision + ".");
                             return new Stop { Seed = seed, State = s.Clone(), People = voters };
                         }
                     }

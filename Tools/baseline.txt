@@ -456,7 +456,8 @@
 # disjoint cases, so the floor is their sum (the stacked landing of 22 November 2026). Counted from the two sides.
 # 10917 = 10894 + dialogue D4's 23: DialogueRules4Tests 20, the ladder's rules-4 schema case 1 (both also in the dotnet
 # subset) and DialogueRules4SaveTests 2 (EditMode only), 2026-11-22.
-Gamesim.EditModeTests 10917
+# 10921 = 10917 + the D4 review's fixes: DialogueRules4ReviewTests 4 (all also in the dotnet subset), 2026-11-22.
+Gamesim.EditModeTests 10921
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and
@@ -1255,4 +1256,5 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # 22994 = 22969 (dialogue rules 3 on top of the three fixes) + the final two deal's 25 (22959 - 22934 on this branch):
 # disjoint cases, so the floor is their sum (the stacked landing of 22 November 2026). Counted from the two sides.
 # 23015 = 22994 + dialogue D4's 21 shared cases: DialogueRules4Tests 20 and the ladder's rules-4 schema case 1, 2026-11-22.
-Gamesim.SimulationTests 23015
+# 23019 = 23015 + the D4 review's fixes: the same 4 DialogueRules4ReviewTests cases, 2026-11-22.
+Gamesim.SimulationTests 23019

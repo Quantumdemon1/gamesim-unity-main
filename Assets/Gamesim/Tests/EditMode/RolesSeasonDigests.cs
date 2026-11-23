@@ -151,6 +151,11 @@ namespace Gamesim.Tests.EditMode
             // Current, which competition rules 5 (the ring tower) moved. Only which game a competition deals reads it,
             // and nothing is dealt before the season's first competition, so the pin plays the recorded seasons.
             s.competitionRulesVersion = CompetitionRules.Widened;
+            // Held at free talk rules 2 and the minds' rules 0 by name too: main's replay of these seasons at those levels
+            // kept every recorded digest, and ApplyFresh writes the shipped levels, which free talk slice 3 moves to 3 (a
+            // season at 3 offers no Late Nights opening beat and reads the Friends named earlier, so it may play differently).
+            s.story.talkRules = TalkRules.Chemistry;
+            s.story.mindRules = MindRules.Off;
             Assert.That(EpisodeValidation.TryValidate(s, out var invalid), Is.True, invalid);
             return s;
         }

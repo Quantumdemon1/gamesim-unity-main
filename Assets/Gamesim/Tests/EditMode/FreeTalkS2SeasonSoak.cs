@@ -120,8 +120,11 @@ namespace Gamesim.Tests.EditMode
 
         private static void Season(uint seed, CastTemplates.Roster roster, Arm arm, Tally tally)
         {
-            var engine = new EpisodeEngine(FreeTalkIntegrationTests.FreshShipped(seed, roster, 12));
-            Assert.That(engine.Snapshot.story.talkRules, Is.EqualTo(TalkRules.Chemistry), "A season the game starts is at talk rules 2.");
+            // Held at talk rules 2 by name since level 3's enrolment (free talk slice 3): this soak proves level 2's season.
+            var fresh = FreeTalkIntegrationTests.FreshShipped(seed, roster, 12);
+            Assert.That(fresh.story.talkRules, Is.GreaterThanOrEqualTo(TalkRules.Chemistry), "A season the game starts plays talk rules 2 or later.");
+            fresh.story.talkRules = TalkRules.Chemistry;
+            var engine = new EpisodeEngine(fresh);
             var walk = new Walk { StartClass = TalkLean.StartClass(engine.Snapshot) };
             Assert.That(ClassOrder, Does.Contain(walk.StartClass));
             Tally.Add(tally.ClassAtStart, walk.StartClass);

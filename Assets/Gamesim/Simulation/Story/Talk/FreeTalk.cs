@@ -95,6 +95,45 @@ namespace Gamesim.Simulation
 
         /// <summary>The agreement with them after the talk (-10..10): the saved agreement plus <see cref="Landing"/>, clamped.</summary>
         public int AgreementAfter;
+
+        // ------------------------------------------------------------------ talk rules 3 (slice S3); at their defaults below it
+
+        /// <summary>The choice answered (<c>talkId|choice:&lt;id&gt;</c>), or None for a tone.</summary>
+        public TalkChoice Choice;
+
+        /// <summary>A continuation: a choice answered on the scene left open this window. Not counted: no cap, no gain, no landing.</summary>
+        public bool Continuation;
+
+        /// <summary>The scene a Flirt (or the player's Make it official) played, and its row; None and null otherwise.</summary>
+        public RomanceScene Scene;
+        public string SceneTalkId;
+
+        /// <summary>Their words in the scene, tokens filled (a turn-aside's beat 1 and beat 2), or the answer a choice row gives; null when none.</summary>
+        public string SceneLine, SceneSecond;
+
+        /// <summary>A turn-aside's attempt, 1 to 3; 0 otherwise.</summary>
+        public int Attempt;
+
+        /// <summary>The spark with them before and after (0..100).</summary>
+        public int SparkBefore, SparkAfter;
+
+        /// <summary>contact.romance before and after ("" for none; <see cref="TalkRules.Romances"/>).</summary>
+        public string RomanceBefore = "", RomanceAfter = "";
+
+        /// <summary>The headline of what changed in the romance.</summary>
+        public RomanceChange Change;
+
+        /// <summary>The act's number on their view of the player (a choice's, an ending's), beside <see cref="Warmth"/>; 0 when none.</summary>
+        public int ActWarmth;
+
+        /// <summary>The choices now open on <see cref="SceneTalkId"/> (contact.talkPending), answered by a continuation command; empty when none.</summary>
+        public List<TalkChoice> Choices = new List<TalkChoice>();
+
+        /// <summary>The couple's fact went public with this answer (a witness in the room, U8).</summary>
+        public bool WentPublic;
+
+        /// <summary>The event row the answer writes to the season's log (<see cref="TalkRomance.EventKind"/>), or null.</summary>
+        public string RomanceEvent;
     }
 
     /// <summary>
@@ -171,14 +210,21 @@ namespace Gamesim.Simulation
             var contact = Contact(s, npcId);
             if (contact != null && contact.talkWindow == key) return Refused(TalkRefusal.TalkedThisWindow, TalkedReason);
 
+            // Talk rules 3 (slice S3): the romance talk due with them, if any; jealousy and their declaration come first of all.
+            var romance = TalkRomance.LevelOn(s) ? TalkRomance.DueTalk(s, npcId) : null;
+            if (romance != null && PriorityOf(romance) >= TalkRomance.DeclarationPriority)
+                return new TalkOffer { Refusal = TalkRefusal.None, Talk = romance };
+
             // Talk rules 2 (T5): a stage talk that has come due is the talk on offer, ahead of every other.
             var stageTalk = TalkFriendship.DueTalk(s, npcId);
             if (stageTalk != null) return new TalkOffer { Refusal = TalkRefusal.None, Talk = stageTalk };
 
             var spent = new HashSet<string>((contact?.spentTalks ?? new List<string>()).Select(TalkRules.SpentId), StringComparer.Ordinal);
             bool full = spent.Count >= TalkRules.MostSpentTalks;
-            // A stage talk is only ever offered as one (above), never as an ordinary talk, at any level.
-            var rows = TalkBank.Rows.Where(t => t != null && t.Kind != TalkKind.Stage && Holds(s, npc, contact, t)).ToList();
+            // A stage talk is only ever offered as one (above), never as an ordinary talk, at any level; nor is a romance talk
+            // (slice S3), which only TalkRomance.DueTalk offers.
+            var rows = TalkBank.Rows.Where(t => t != null && t.Kind != TalkKind.Stage && !TalkRomance.IsRomanceKind(t.Kind)
+                && Holds(s, npc, contact, t)).ToList();
             bool standingLeft = rows.Any(t => t.Kind == TalkKind.Standing && !spent.Contains(t.Id));
             TalkRow best = null; bool bestRepeat = false; int bestPriority = int.MinValue; double bestCoin = 2;
             void Consider(TalkRow t, bool repeat)
@@ -193,6 +239,8 @@ namespace Gamesim.Simulation
                 if (!spent.Contains(t.Id)) { if (!full) Consider(t, false); }
                 else if (t.Kind == TalkKind.Standing && !standingLeft) Consider(t, true);
             }
+            // A romance talk (talk rules 3) competes by its priority; it is never spent here (TalkRomance.DueTalk keeps its own).
+            if (romance != null) Consider(romance, false);
             if (best == null)
                 foreach (var t in rows)
                     if (t.Usual && spent.Contains(t.Id)) Consider(t, true);
@@ -240,7 +288,7 @@ namespace Gamesim.Simulation
             }
         }
 
-        private static bool InWindow(EpisodeState s, string window)
+        internal static bool InWindow(EpisodeState s, string window)
         {
             bool firstNight = EpisodeEngine.IsFirstNight(s);
             int open = EpisodeEngine.Window(s);
@@ -291,6 +339,17 @@ namespace Gamesim.Simulation
             var talk = offer.Talk;
             var reply = talk.Replies.FirstOrDefault(r => r.Tone == tone);
             if (reply == null) return null;
+            return Answer(s, npcId, offer, reply);
+        }
+
+        /// <summary>
+        /// What answering the talk on offer with one reply in its tone does (the body of <see cref="Result"/>): the reply is the
+        /// talk's own, or at talk rules 3 the Flirt line's (<see cref="TalkKind.FlirtLine"/>) or a romance row's tone reply.
+        /// </summary>
+        internal static TalkResult Answer(EpisodeState s, string npcId, TalkOffer offer, TalkReply reply)
+        {
+            var talk = offer.Talk;
+            string tone = reply.Tone;
             var npc = s.Find(npcId);
             var contact = Contact(s, npcId);
             // Talk rules 2 (slice S2): nothing below reads a slice-2 rule unless this holds.
@@ -381,7 +440,8 @@ namespace Gamesim.Simulation
 
         /// <summary>
         /// How a tone lands on a housemate now: <see cref="Landing"/>, and from talk rules 2 (ruling R10) one step lower, not below -1,
-        /// when the player answered them in the same tone in either of the last two counted talks (<c>lastTone</c>, <c>priorTone</c>).
+        /// when the player answered them in the same tone in either of the last two counted talks (<c>lastTone</c>, <c>priorTone</c>);
+        /// from talk rules 3 a Flirt is exempt (courting repeats it by design), and still counts in those two talks for the others.
         /// Below talk rules 2 exactly <see cref="Landing"/>.
         /// </summary>
         public static int LandingNow(EpisodeState s, string npcId, string tone)
@@ -390,7 +450,12 @@ namespace Gamesim.Simulation
             int landing = Landing(s, npc, tone);
             if (!TalkChemistry.On(s) || string.IsNullOrEmpty(tone)) return landing;
             var contact = Contact(s, npcId);
-            if (contact != null && (contact.lastTone == tone || contact.priorTone == tone)) landing = Math.Max(-1, landing - 1);
+            // Talk rules 3: courting is a Flirt every chance you get, so a Flirt does not wear thin by repetition; every other
+            // tone still lands one step lower on a repeat.
+            bool flirtAtThree = tone == TalkRules.Flirt && TalkRomance.LevelOn(s);
+            if (!flirtAtThree && contact != null && (contact.lastTone == tone || contact.priorTone == tone)) landing = Math.Max(-1, landing - 1);
+            // Talk rules 3 (spec 3.3): a pushed turn-aside's cool lowers the landing one step for that many counted talks.
+            if (contact != null && contact.cool > 0 && TalkRomance.LevelOn(s)) landing = Math.Max(-1, landing - 1);
             return landing;
         }
 
@@ -487,6 +552,7 @@ namespace Gamesim.Simulation
         /// <summary>A talk's priority: its own, or its kind's default.</summary>
         public static int PriorityOf(TalkRow talk) =>
             talk == null ? 0 : talk.Priority > 0 ? talk.Priority
+                : TalkRomance.IsRomanceKind(talk.Kind) ? TalkRomance.PriorityOfKind(talk.Kind)
                 : talk.Kind != TalkKind.Rhythm ? LayerPriority : talk.When?.Window != null ? WindowPriority : RhythmPriority;
     }
 }

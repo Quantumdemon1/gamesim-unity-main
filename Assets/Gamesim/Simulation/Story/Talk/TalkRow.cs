@@ -19,6 +19,67 @@ namespace Gamesim.Simulation
         /// an ordinary talk. The Close friend talk asks a favour: its replies carry <see cref="TalkReply.Favour"/>.
         /// </summary>
         Stage,
+
+        // ------------------------------------------------------------------ talk rules 3 (slice S3): romance. Never offered below
+        // talk rules 3, never as an ordinary talk (FreeTalk.Offer leaves every kind below out), and only from the romance tables:
+        // a class pool's (Pool spark, steady or guarded) or an All-Star template's own (Owner). Never spent in contact.spentTalks.
+
+        /// <summary>
+        /// The player's Flirt answer: <see cref="TalkRow.Replies"/> holds ONE reply in the tone <see cref="TalkRules.Flirt"/>, its
+        /// <c>Line</c> what the player says and its <c>Lands</c>/<c>Even</c>/<c>Grates</c> their answer in kind when interested. The
+        /// engine adds it, as a fourth reply, to the talk on offer when Flirt is open (<see cref="TalkRomance.FlirtOpen"/>). No
+        /// <see cref="TalkRow.Open"/> is read.
+        /// </summary>
+        FlirtLine,
+
+        /// <summary>They flirt first (priority 60): a Spark housemate, interested, only after the player's own first Flirt (R8).
+        /// Replies: tones (a Flirt reply among them counts as the player's Flirt), and the choice <see cref="TalkChoice.JustFriends"/>.</summary>
+        Opening,
+
+        /// <summary>Their kind no to a Flirt (scene): "I like you. Not like that." Only <see cref="TalkRow.Open"/>; no replies.</summary>
+        SoftNo,
+
+        /// <summary>An undecided housemate's first answer to a Flirt (scene): they hold back. Only <see cref="TalkRow.Open"/>.</summary>
+        HoldBack,
+
+        /// <summary>A closed regular's answer to a Flirt (scene): they draw the line, kindly. Only <see cref="TalkRow.Open"/>.</summary>
+        LineDrawn,
+
+        /// <summary>
+        /// A here-to-play housemate's answer to a Flirt (scene), by <see cref="TalkRow.Attempt"/>: 1 the full scene
+        /// (<see cref="TalkRow.Open"/> their reaction, <see cref="TalkRow.Second"/> their "I'm here to play", and three choice replies
+        /// <see cref="TalkChoice.LaughItOff"/>, <see cref="TalkChoice.PushAgain"/>, <see cref="TalkChoice.Apologize"/>, each with its
+        /// player line in <c>Line</c> and their answer in <c>Lands</c>); 2 the short line; 3 the final short line. Attempts 2 and 3
+        /// hold only <see cref="TalkRow.Open"/>.
+        /// </summary>
+        TurnAside,
+
+        /// <summary>
+        /// They declare (priority 95): <see cref="TalkRow.Open"/>, then the choice replies <see cref="TalkChoice.Accept"/>,
+        /// <see cref="TalkChoice.NotYet"/>, <see cref="TalkChoice.NotLikeThat"/> and <see cref="TalkChoice.JustFriends"/>, each with
+        /// the player's line and their answer in <c>Lands</c>.
+        /// </summary>
+        Declaration,
+
+        /// <summary>Their yes when the player makes it official (scene): only <see cref="TalkRow.Open"/>.</summary>
+        Accepts,
+
+        /// <summary>Their "not like that" when the player makes it official and they are not interested (scene): only <see cref="TalkRow.Open"/>.</summary>
+        Refuses,
+
+        /// <summary>A couple's talk (priority 60, while the two are a couple): tones, and the choice <see cref="TalkChoice.EndItKindly"/>.</summary>
+        Couple,
+
+        /// <summary>The ex talk (priority 60, for two weeks after it ends): tones only.</summary>
+        Ex,
+
+        /// <summary>The jealousy talk (priority 100): the one who heard the player flirted elsewhere. Tones, and
+        /// <see cref="TalkChoice.EndItKindly"/> when the two are a couple.</summary>
+        Jealousy,
+
+        /// <summary>A third housemate's reaction to the player's couple (priority 40): <see cref="TalkRow.Reaction"/> 1 ("You two
+        /// aren't subtle.") or 2 ("Careful. A pair is a target."). Tones only. About the pair in the game, nothing else.</summary>
+        Reaction,
     }
 
     /// <summary>
@@ -75,6 +136,17 @@ namespace Gamesim.Simulation
         /// on every other kind; a stage talk holding any other value is never offered.
         /// </summary>
         public FriendStage Stage;
+
+        // ------------------------------------------------------------------ talk rules 3 (slice S3); defaults on every other kind
+
+        /// <summary>A <see cref="TalkKind.TurnAside"/> row's attempt: 1, 2 or 3. 0 on every other kind.</summary>
+        public int Attempt;
+
+        /// <summary>A <see cref="TalkKind.Reaction"/> row's reaction: 1 ("You two aren't subtle.") or 2 ("Careful. A pair is a target."). 0 otherwise.</summary>
+        public int Reaction;
+
+        /// <summary>The second beat of a <see cref="TalkKind.TurnAside"/> attempt 1: their "I'm here to play", in their own voice. Null otherwise.</summary>
+        public string Second;
     }
 
     /// <summary>
@@ -94,6 +166,12 @@ namespace Gamesim.Simulation
 
         /// <summary><c>window=...</c>: one of <see cref="TalkWindows"/>, or null for any window.</summary>
         public string Window;
+
+        /// <summary>
+        /// <c>spark&gt;=N</c> (talk rules 3, romance rows only): the player's spark with them is N or more; 0 for no gate. A romance
+        /// row may also use <see cref="Week"/> and <see cref="Window"/>; <see cref="First"/> and <see cref="Layer"/> are never read on one.
+        /// </summary>
+        public int Spark;
     }
 
     /// <summary>One reply the player can give, and their reaction to it at each landing.</summary>
@@ -117,6 +195,98 @@ namespace Gamesim.Simulation
         /// (the default) everywhere else, and ignored on every other talk.
         /// </summary>
         public TalkFavour Favour;
+
+        /// <summary>
+        /// On a romance row only (talk rules 3): the reply is a CHOICE, not a tone (<see cref="Tone"/> null): its <c>Line</c> the
+        /// player's words and its <c>Lands</c> their answer. <see cref="TalkChoice.None"/> (the default) on a tone reply. What a
+        /// choice does is the engine's (<see cref="TalkRomance"/>), never the row's.
+        /// </summary>
+        public TalkChoice Choice;
+    }
+
+    /// <summary>
+    /// The continuation choices of a romance talk or scene (slice S3, talk rules 3). Which are on offer is the engine's
+    /// (<see cref="TalkRomance.ChoicesNow"/>); a row only gives their words. Sent as <c>talkId|choice:&lt;id&gt;</c>
+    /// (<see cref="TalkChoices.Answer"/>).
+    /// </summary>
+    public enum TalkChoice
+    {
+        None = 0,
+        /// <summary>The player's own declaration, once ready (in any romance talk or scene).</summary>
+        MakeItOfficial,
+        /// <summary>Yes to their declaration: a couple.</summary>
+        Accept,
+        /// <summary>Not yet to their declaration: nothing lost; asked again a week later, at most twice (R8).</summary>
+        NotYet,
+        /// <summary>No to their declaration: romance with them closed three weeks.</summary>
+        NotLikeThat,
+        /// <summary>Free, in every romance talk: romance with them closed for the season at no cost, until the player's own later Flirt (R8).</summary>
+        JustFriends,
+        /// <summary>In a couple's talk: it ends kindly.</summary>
+        EndItKindly,
+        /// <summary>A here-to-play turn-aside, attempt 1: laugh it off.</summary>
+        LaughItOff,
+        /// <summary>A here-to-play turn-aside, attempt 1: push again.</summary>
+        PushAgain,
+        /// <summary>A here-to-play turn-aside, attempt 1: apologize.</summary>
+        Apologize,
+    }
+
+    /// <summary>The choices' command ids and captions (American spelling).</summary>
+    public static class TalkChoices
+    {
+        /// <summary>The answer prefix of a choice in a command's text: <c>talkId|choice:accept</c>.</summary>
+        public const string Prefix = "choice:";
+
+        public static string Id(TalkChoice choice)
+        {
+            switch (choice)
+            {
+                case TalkChoice.MakeItOfficial: return "official";
+                case TalkChoice.Accept: return "accept";
+                case TalkChoice.NotYet: return "not-yet";
+                case TalkChoice.NotLikeThat: return "not-like-that";
+                case TalkChoice.JustFriends: return "just-friends";
+                case TalkChoice.EndItKindly: return "end-it";
+                case TalkChoice.LaughItOff: return "laugh";
+                case TalkChoice.PushAgain: return "push-again";
+                case TalkChoice.Apologize: return "apologize";
+                default: return null;
+            }
+        }
+
+        /// <summary>The choice an id names, or <see cref="TalkChoice.None"/>.</summary>
+        public static TalkChoice FromId(string id)
+        {
+            foreach (TalkChoice choice in Enum.GetValues(typeof(TalkChoice)))
+                if (choice != TalkChoice.None && string.Equals(Id(choice), id, StringComparison.Ordinal)) return choice;
+            return TalkChoice.None;
+        }
+
+        /// <summary>The answer part of a command's text for a choice: <c>choice:&lt;id&gt;</c>.</summary>
+        public static string Answer(TalkChoice choice) => choice == TalkChoice.None ? "" : Prefix + Id(choice);
+
+        /// <summary>The choice an answer part names (<c>choice:&lt;id&gt;</c>), or <see cref="TalkChoice.None"/> for a tone or anything else.</summary>
+        public static TalkChoice FromAnswer(string answer) =>
+            answer != null && answer.StartsWith(Prefix, StringComparison.Ordinal) ? FromId(answer.Substring(Prefix.Length)) : TalkChoice.None;
+
+        /// <summary>The choice's pill on its button (the reply's own words stay its caption, as a tone's do).</summary>
+        public static string Caption(TalkChoice choice)
+        {
+            switch (choice)
+            {
+                case TalkChoice.MakeItOfficial: return "Make it official";
+                case TalkChoice.Accept: return "Accept";
+                case TalkChoice.NotYet: return "Not yet";
+                case TalkChoice.NotLikeThat: return "Not like that";
+                case TalkChoice.JustFriends: return "Just friends";
+                case TalkChoice.EndItKindly: return "End it kindly";
+                case TalkChoice.LaughItOff: return "Laugh it off";
+                case TalkChoice.PushAgain: return "Push again";
+                case TalkChoice.Apologize: return "Apologize";
+                default: return "";
+            }
+        }
     }
 
     /// <summary>What a reply to the Close friend stage talk does with their favour (slice S2, ruling T6).</summary>

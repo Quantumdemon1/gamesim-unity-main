@@ -59,7 +59,7 @@ namespace Gamesim.Tests.EditMode
             switch (defect)
             {
                 // A level past the enrolled ones: levels 1 and 2 with nothing else written are admitted since their enrolment (the observer's summary).
-                case "talk-rules": story["talkRules"] = TalkRules.Chemistry + 1; break;
+                case "talk-rules": story["talkRules"] = TalkRules.Romance + 1; break;
                 case "lean": story["talkLean"] = -1; break;
                 case "pair": ((JArray)story["talkPairs"]).Add(new JObject()); break;
                 case "talks": contact["talks"] = 1; break;

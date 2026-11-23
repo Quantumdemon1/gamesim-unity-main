@@ -145,11 +145,14 @@ namespace Gamesim.Tests.EditMode
         /// taken down the same way, but it is NOT always the season level 1 played: a housemate who reaches Friend through paid
         /// talk answers a vote question more honestly and costs more to nominate. Such a season shows as a moved digest in the
         /// fixture that walked it, never as a refusal here; that fixture holds its level by name or is re-recorded with the
-        /// reason. Literals 1 and 2, not the TalkRules constants: this file is compiled against older builds too.
+        /// reason. Since free talk slice 3, also at 3 (enrolled for every season the game starts since slice 3), the same way:
+        /// Late Nights' opening beat is not offered at 3 and the Friends named are read before a nomination's closing beats, so
+        /// such a season too can show as a moved digest. Literals 1, 2 and 3, not the TalkRules constants: this file is
+        /// compiled against older builds too.
         /// </summary>
         private static readonly Dictionary<string, JToken[]> Enrolled = new Dictionary<string, JToken[]>(StringComparer.Ordinal)
         {
-            { "story.talkRules", new JToken[] { 1, 2 } },
+            { "story.talkRules", new JToken[] { 1, 2, 3 } },
         };
 
         /// <summary>The newest schema <see cref="Project"/> knows: a state above it is refused rather than guessed at.</summary>

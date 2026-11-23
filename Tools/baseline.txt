@@ -459,7 +459,9 @@
 # 10921 = 10917 + the D4 review's fixes: DialogueRules4ReviewTests 4 (all also in the dotnet subset), 2026-11-22.
 # 10936 = 10921 + dialogue D5a, the nominee's grant: DialogueRules4GrantTests 14 (all also in the dotnet subset) and
 # DialogueRules4GrantSaveTests 1 (EditMode only), 2026-11-22.
-Gamesim.EditModeTests 10936
+# 10956 = 10936 + dialogue D5c, conversation time: DialogueRules4TimeTests 19 (all also in the dotnet subset) and
+# DialogueRules4TimeSaveTests 1 (EditMode only), 2026-11-22.
+Gamesim.EditModeTests 10956
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and
@@ -1261,4 +1263,5 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # 23019 = 23015 + the D4 review's fixes: the same 4 DialogueRules4ReviewTests cases, 2026-11-22.
 # 23033 = 23019 + dialogue D5a, the nominee's grant: the same 14 DialogueRules4GrantTests cases, 2026-11-22.
 # 23035 = 23033 + the D5a review's fix: 2 DialogueRules4GrantAdmitTests cases, dotnet only (internal), 2026-11-22.
-Gamesim.SimulationTests 23035
+# 23054 = 23035 + dialogue D5c, conversation time: 19 DialogueRules4TimeTests cases, 2026-11-22.
+Gamesim.SimulationTests 23054

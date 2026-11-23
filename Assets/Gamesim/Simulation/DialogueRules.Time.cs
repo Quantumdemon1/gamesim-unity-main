@@ -70,10 +70,6 @@ namespace Gamesim.Simulation
         public static int TimeInWindow(EpisodeState s, int window) => !TimeOn(s) || s.dialogue?.episodes == null ? 0
             : s.dialogue.episodes.Where(e => e?.time != null && e.week == s.week && e.time.window == window).Sum(e => e.time.appliedDelta);
 
-        /// <summary>The applied +1s of the current week in one window: actions they paid for are not the week's extras.</summary>
-        public static int EarnedInWindow(EpisodeState s, int window) => !TimeOn(s) || s.dialogue?.episodes == null ? 0
-            : s.dialogue.episodes.Count(e => e?.time != null && e.week == s.week && e.time.window == window && e.time.appliedDelta > 0);
-
         // ---------------------------------------------------------------- the validator
 
         /// <summary>

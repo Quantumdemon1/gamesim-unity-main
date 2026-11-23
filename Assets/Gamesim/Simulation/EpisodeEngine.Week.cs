@@ -107,8 +107,9 @@ namespace Gamesim.Simulation
             {
                 if (other == window) continue;
                 int spent = s.windowActions != null && other < s.windowActions.Count ? s.windowActions[other] : 0;
-                // An action a +1 paid for is that window's own, never the week's extras (DIALOGUE-PLAN §4).
-                usedElsewhere += Math.Max(0, spent - WindowSeats(s, other) - DialogueRules.EarnedInWindow(s, other));
+                // A window's seats are moved by both of its receipts: an action a +1 paid for is that window's own, never the
+                // week's extras, and an action spent past seats a -1 took away is an extra used (DIALOGUE-PLAN §4).
+                usedElsewhere += Math.Max(0, spent - WindowSeats(s, other) - DialogueRules.TimeInWindow(s, other));
             }
             return Math.Max(1, seats + Math.Max(0, extras - usedElsewhere));
         }

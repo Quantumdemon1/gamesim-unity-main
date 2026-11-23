@@ -526,7 +526,7 @@ namespace Gamesim.Episode
             float scale = TextScale;
             if (hud != null) { hud.FontScale = scale; hud.ReducedMotion = reducedMotion; }
             if (sting != null) { sting.FontScale = scale; sting.CaptionTime = captionTime; }
-            if (takeover != null) takeover.FontScale = scale;
+            if (takeover != null) { takeover.FontScale = scale; takeover.CaptionTime = captionTime; }
             if (voteReveal != null) voteReveal.FontScale = scale;
             if (juryReveal != null) juryReveal.FontScale = scale;
             if (competitionCard != null) competitionCard.FontScale = scale;

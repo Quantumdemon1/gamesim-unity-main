@@ -90,6 +90,19 @@ namespace Gamesim.Presentation
         /// <summary>The beat's sounds, for the director to play: a vote's for each juror read, and the finale's for the winner.</summary>
         public event System.Action<HouseAudio.Cue> CueRequested;
 
+        /// <summary>
+        /// The player sped this reveal up, or back to its own pace: the speed it runs at now. The
+        /// director keeps it for the session's later reveals (CeremonyPacing.SessionSpeed).
+        /// </summary>
+        public event System.Action<float> SpeedChanged;
+
+        /// <summary>
+        /// The device the house last heard a press from, asked as the card opens (UI-UX plan U5): a
+        /// controller player's first card names A from its first frame, not only after a press on it.
+        /// Unset, the card starts on the device it last saw.
+        /// </summary>
+        public System.Func<bool> PadHints { get; set; }
+
         private CanvasGroup group;
         private RectTransform column, scrim, jurorRow, banner;
         private TMP_Text eyebrow, title, progress, countEyebrow, countLine, host, bannerText, controls, speedMark;
@@ -177,11 +190,12 @@ namespace Gamesim.Presentation
         /// jurors are read in the order given.
         /// </summary>
         public bool Play(IList<Finalist> pair, IList<Juror> jury, string winner, bool reducedMotion,
-            CeremonyPace pace = CeremonyPace.Suspenseful, int seed = 0)
+            CeremonyPace pace = CeremonyPace.Suspenseful, int seed = 0, float speed = 1f)
         {
             if (pair == null || pair.Count != 2 || jury == null || jury.Count == 0) return false;
             if (winner != pair[0].Id && winner != pair[1].Id) return false;
             foreach (var juror in jury) if (juror.TargetId != pair[0].Id && juror.TargetId != pair[1].Id) return false;
+            usingPad = CeremonyCardWords.StartsOnPad(PadHints, usingPad);
 
             finalists = new List<Finalist>(pair);
             jurors = new List<Juror>(jury);
@@ -199,7 +213,8 @@ namespace Gamesim.Presentation
             shown = -1;
             resultShown = false;
             HoldingForDecidingVote = false;
-            SetSpeed(1f);
+            // At the speed the player left the last reveal at, this session (UI-UX plan D2).
+            SetSpeed(CeremonyPacing.SessionSpeed(speed));
             playing = true;
 
             eyebrow.text = "THE FINALE";
@@ -257,7 +272,11 @@ namespace Gamesim.Presentation
             upFor += Time.unscaledDeltaTime;
             FollowDevice();
 
-            if (Dismissable && CeremonyTakeover.SpeedPressed()) SetSpeed(speed > 1f ? 1f : CeremonyPacing.SpeedUp);
+            if (Dismissable && CeremonyTakeover.SpeedPressed())
+            {
+                SetSpeed(speed > 1f ? 1f : CeremonyPacing.SpeedUp);
+                SpeedChanged?.Invoke(speed);
+            }
             if (Dismissable && CeremonyTakeover.SkipPressed())
             {
                 if (resultShown) { Cancel(); return; }

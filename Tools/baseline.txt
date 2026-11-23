@@ -516,10 +516,17 @@
 # from the two sides.
 # 11220 = 11210 (the device hints on the new main) + the largest text's 10 (11040 - 11030 on this branch): disjoint
 # cases, so the floor is their sum (the second wave's landing of 22 November 2026). Counted from the two sides.
-# 11148 = 11027 (the new main) + 121: the cases added by the season card, the tour, the lock, the device hints and the
-# largest text. The 11220 above counted 72 cases twice: those of the first wave's changes, which this branch held from
-# an older chain and the new main holds too. Corrected 2026-11-22; the floor is the count the test lists give.
-Gamesim.EditModeTests 11148
+# 10925 = 10919 + the ceremony cards' press and speed: CeremonyCardPressTests 6 (all also in the dotnet subset), 2026-11-22.
+# 10926 = 10925 + the review's fix: CeremonyCardDeviceTests 1 (also in the dotnet subset), 2026-11-22.
+# 11047 = 11040 (the largest text on top of the hints, the lock and the menu changes) + the ceremony cards' 7 (10926 -
+# 10919 on this branch): disjoint cases, so the floor is their sum (the second wave's landing of 22 November 2026).
+# Counted from the two sides.
+# 11227 = 11220 (the largest text on the new main) + the ceremony cards' 7 (11047 - 11040 on this branch): disjoint
+# cases, so the floor is their sum (the second wave's landing of 22 November 2026). Counted from the two sides.
+# 11155 = 11027 (the new main) + 128: the cases added by the two menu changes, the three hint changes and the ceremony
+# cards. The 11227 above counted 72 cases twice: those of the first wave's changes, which this branch held from an
+# older chain and the new main holds too. Corrected 2026-11-22; the floor is the count the test lists give.
+Gamesim.EditModeTests 11155
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and
@@ -810,10 +817,16 @@ Gamesim.EditModeTests 11148
 # two sides.
 # 1699 = 1698 (the device hints on the new main) + the largest text's 1 (1691 - 1690 on this branch): disjoint cases,
 # so the floor is their sum (the second wave's landing of 22 November 2026). Counted from the two sides.
-# 1693 = 1686 (the new main) + 7: the cases added by the season card, the tour, the lock, the device hints and the
-# largest text. The 1699 above counted 6 cases twice: those of the first wave's changes, which this branch held from
-# an older chain and the new main holds too. Corrected 2026-11-22; the floor is the count the test lists give.
-Gamesim.PlayModeTests 1693
+# 1686 = 1684 + the ceremony cards' press and speed: CeremonyCardPressPlayModeTests 2, 2026-11-22.
+# 1693 = 1691 (the largest text on top of the hints, the lock and the menu changes) + the ceremony cards' 2 (1686 -
+# 1684 on this branch): disjoint cases, so the floor is their sum (the second wave's landing of 22 November 2026).
+# Counted from the two sides.
+# 1701 = 1699 (the largest text on the new main) + the ceremony cards' 2 (1693 - 1691 on this branch): disjoint cases,
+# so the floor is their sum (the second wave's landing of 22 November 2026). Counted from the two sides.
+# 1695 = 1686 (the new main) + 9: the cases added by the two menu changes, the three hint changes and the ceremony
+# cards. The 1701 above counted 6 cases twice: those of the first wave's changes, which this branch held from an older
+# chain and the new main holds too. Corrected 2026-11-22; the floor is the count the test lists give.
+Gamesim.PlayModeTests 1695
 # The UMA build of the same assembly, read by a plan built without -WithoutUma. 1281 = the 1241 above + the
 # 40 tests that compile only under GAMESIM_UMA, as run at r1 (2026-10-16): in EpisodePlayModeTests,
 # GroundedFarewell 11, Creator 9, HouseLife 8, Emotes 3, OpeningCaptures 2, and one each in CreatorEntry,
@@ -1028,10 +1041,16 @@ Gamesim.PlayModeTests 1693
 # two sides.
 # 1744 = 1743 (the device hints on the new main) + the largest text's 1 (1736 - 1735 on this branch): disjoint cases,
 # so the floor is their sum (the second wave's landing of 22 November 2026). Counted from the two sides.
-# 1738 = 1731 (the new main) + 7: the cases added by the season card, the tour, the lock, the device hints and the
-# largest text. The 1744 above counted 6 cases twice: those of the first wave's changes, which this branch held from
-# an older chain and the new main holds too. Corrected 2026-11-22; the floor is the count the test lists give.
-Gamesim.PlayModeTests.UmaBuild 1738
+# 1731 = 1729 + the ceremony cards' press and speed: CeremonyCardPressPlayModeTests 2, 2026-11-22.
+# 1738 = 1736 (the largest text on top of the hints, the lock and the menu changes) + the ceremony cards' 2 (1731 -
+# 1729 on this branch): disjoint cases, so the floor is their sum (the second wave's landing of 22 November 2026).
+# Counted from the two sides.
+# 1746 = 1744 (the largest text on the new main) + the ceremony cards' 2 (1738 - 1736 on this branch): disjoint cases,
+# so the floor is their sum (the second wave's landing of 22 November 2026). Counted from the two sides.
+# 1740 = 1731 (the new main) + 9: the cases added by the two menu changes, the three hint changes and the ceremony
+# cards. The 1746 above counted 6 cases twice: those of the first wave's changes, which this branch held from an older
+# chain and the new main holds too. Corrected 2026-11-22; the floor is the count the test lists give.
+Gamesim.PlayModeTests.UmaBuild 1740
 # The UMA bodies: runs only where the GAMESIM_UMA define is set (the working tree and the D: copy).
 # 82 = the 89 run on 2026-10-15, less the 7 farewell probes moved to Gamesim.Uma.DiagnosticsPlayModeTests;
 # 85 = 82 + the 3 farewell readiness decision tests (UmaFarewellReadinessDecisionPlayModeTests, 2026-10-16);
@@ -1471,7 +1490,14 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # from the two sides.
 # 23320 = 23310 (the device hints on the new main) + the largest text's 10 (23135 - 23125 on this branch): disjoint
 # cases, so the floor is their sum (the second wave's landing of 22 November 2026). Counted from the two sides.
-# 23247 = 23131 (the new main) + 116: the cases added by the season card, the tour, the lock, the device hints and the
-# largest text. The 23320 above counted 73 cases twice: those of the first wave's changes, which this branch held from
-# an older chain and the new main holds too. Corrected 2026-11-22; the floor is the count the test lists give.
-Gamesim.SimulationTests 23247
+# 23025 = 23019 + the ceremony cards' press and speed: the same 6 CeremonyCardPressTests cases, 2026-11-22.
+# 23026 = 23025 + the review's fix: the same CeremonyCardDeviceTests case, 2026-11-22.
+# 23142 = 23135 (the largest text on top of the hints, the lock and the menu changes) + the ceremony cards' 7 (23026 -
+# 23019 on this branch): disjoint cases, so the floor is their sum (the second wave's landing of 22 November 2026).
+# Counted from the two sides.
+# 23327 = 23320 (the largest text on the new main) + the ceremony cards' 7 (23142 - 23135 on this branch): disjoint
+# cases, so the floor is their sum (the second wave's landing of 22 November 2026). Counted from the two sides.
+# 23254 = 23131 (the new main) + 123: the cases added by the two menu changes, the three hint changes and the ceremony
+# cards. The 23327 above counted 73 cases twice: those of the first wave's changes, which this branch held from an
+# older chain and the new main holds too. Corrected 2026-11-22; the floor is the count the test lists give.
+Gamesim.SimulationTests 23254

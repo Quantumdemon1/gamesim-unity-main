@@ -107,6 +107,19 @@ namespace Gamesim.Presentation
         /// </summary>
         public event System.Action<CeremonyBeat> BeatReached;
 
+        /// <summary>
+        /// The player sped this reveal up, or back to its own pace: the speed it runs at now. The
+        /// director keeps it for the session's later reveals (CeremonyPacing.SessionSpeed).
+        /// </summary>
+        public event System.Action<float> SpeedChanged;
+
+        /// <summary>
+        /// The device the house last heard a press from, asked as the card opens (UI-UX plan U5): a
+        /// controller player's first card names A from its first frame, not only after a press on it.
+        /// Unset, the card starts on the device it last saw.
+        /// </summary>
+        public System.Func<bool> PadHints { get; set; }
+
         private CanvasGroup group;
         private RectTransform column, scrim, dotRow, banner, tiePip, tieMark;
         private TMP_Text eyebrow, title, progress, bannerText, host, controls, speedMark;
@@ -230,9 +243,10 @@ namespace Gamesim.Presentation
         /// </summary>
         public bool Play(int week, IList<Nominee> block, IList<Ballot> votes, string evicted, bool reducedMotion,
             CeremonyPace pace = CeremonyPace.Suspenseful, string hohName = null, bool hohIsPlayer = false,
-            bool evictedIsPlayer = false, ScreenSurface screen = null)
+            bool evictedIsPlayer = false, ScreenSurface screen = null, float speed = 1f)
         {
             if (block == null || block.Count != 2 || votes == null || votes.Count == 0) return false;
+            usingPad = CeremonyCardWords.StartsOnPad(PadHints, usingPad);
 
             nominees = new List<Nominee>(block);
             // Reveal in a stable order, and never one that leaks the result: committed order is the
@@ -263,8 +277,9 @@ namespace Gamesim.Presentation
             lastVotePending = false;
             tieCalled = false;
             tieBroken = false;
-            // Every reveal starts at its own pace; speeding one up is for that one.
-            SetSpeed(1f);
+            // At the speed the player left the last reveal at, this session (UI-UX plan D2): a caller
+            // that gives none starts it at its own pace.
+            SetSpeed(CeremonyPacing.SessionSpeed(speed));
             Held = false;
             playing = true;
 
@@ -337,7 +352,11 @@ namespace Gamesim.Presentation
             // up or back to its own pace, skip straight to the result - every vote on the board and
             // the result read, giving up the count's order and never the result - and a skip on the
             // result ends the card.
-            if (Dismissable && CeremonyTakeover.SpeedPressed()) SetSpeed(speed > 1f ? 1f : CeremonyPacing.SpeedUp);
+            if (Dismissable && CeremonyTakeover.SpeedPressed())
+            {
+                SetSpeed(speed > 1f ? 1f : CeremonyPacing.SpeedUp);
+                SpeedChanged?.Invoke(speed);
+            }
             if (Dismissable && CeremonyTakeover.SkipPressed())
             {
                 if (ShowingResult) { Cancel(); return; }

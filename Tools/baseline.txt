@@ -559,7 +559,8 @@
 # 11109 = 11105 + free talk slice 3's second fixes: FreeTalkNewCoupleTests 4 (also in the dotnet subset), 2026-11-22.
 # 11269 = 11187 (the new main of 23 November) + free talk slice 3's 82 (11109 - 11027 on this branch): disjoint cases,
 # so the floor is their sum (the romance landing of 23 November 2026). Counted from the two sides.
-Gamesim.EditModeTests 11269
+# 11272 = 11269 + the trivia's switch-on: CompetitionRules6Tests 3 (also in the dotnet subset), 2026-11-23.
+Gamesim.EditModeTests 11272
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and
@@ -1609,4 +1610,7 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # (compiled out of Unity: each held replay plays the free talk and minds levels it was recorded at), 2026-11-22.
 # 23366 = 23280 (the new main of 23 November) + free talk slice 3's 86 (23217 - 23131 on this branch): disjoint cases,
 # so the floor is their sum (the romance landing of 23 November 2026). Counted from the two sides.
-Gamesim.SimulationTests 23366
+# 23373 = 23366 + the trivia's switch-on: the same 3 CompetitionRules6Tests cases the EditMode floor counts, and
+# HeldReplayCompetitionLevelTests' 4 (compiled out of Unity: each held replay plays the competition rules it was recorded
+# at), 2026-11-23.
+Gamesim.SimulationTests 23373

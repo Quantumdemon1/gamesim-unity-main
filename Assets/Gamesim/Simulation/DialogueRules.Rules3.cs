@@ -384,8 +384,7 @@ namespace Gamesim.Simulation
             {
                 if (cycle.status != StorylineStatus.Completed || cycle.endedWeek != e.week || cycle.endingId != ending
                     || e.time == null || e.time.reason != (ending == "lapsed" ? "occasion-closed" : ending)
-                    || e.time.window != e.window || e.time.proposedDelta != 0 || e.time.appliedDelta != 0
-                    || e.time.spentRevision != 0 || e.time.spentSequence != 0 || e.time.spentWindowAction != 0
+                    || e.time.window != e.window || !TimeReceiptHolds(s, template, cycle, e, ending == "lapsed")
                     || !Revision(s, e.time.revision, e.time, DialogueRevisionField.Time, pending)
                     || e.time.sequence != cycle.path[cycle.path.Count - 1].logSequence)
                     return Fail(out error, "A closed conversation requires its exact zero-time receipt.");

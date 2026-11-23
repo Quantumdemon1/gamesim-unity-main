@@ -240,8 +240,12 @@ namespace Gamesim.Simulation
                 Require(!item.resolved && option != null && index >= 0, "The conversation choice is no longer open.");
                 item.resolved = true; item.chosenIndex = index;
                 item.outcome = lapsed ? DialogueCampaignV1.LapsedOutcome : option.outcome;
+                // From rules 4 an ending can win or cost conversation time (EpisodeEngine.Dialogue.Time.cs); zero below.
+                int proposedTime = 0, appliedTime = 0;
+                if (lapsed || (nextBeat ?? option.next).StartsWith("end:", StringComparison.Ordinal))
+                    TimeAtEnd(state, template, cycle, episode, lapsed, out proposedTime, out appliedTime);
                 int logSequence = state.nextSequence;
-                Log(state, StoryLog.Outcome, item.title + ": " + item.outcome, state.playerId, episode.npcId);
+                Log(state, StoryLog.Outcome, WithTimeLine(item.title + ": " + item.outcome, appliedTime), state.playerId, episode.npcId);
                 int pathIndex = cycle.path.Count;
                 AddStep(cycle, beat.id, optionId, lapsed ? StoryResults.Lapsed : StoryResults.Plain, state.week, logSequence);
                 var expectedEpisode = expected.episodes.Single(x => x.id == episode.id);
@@ -259,7 +263,7 @@ namespace Gamesim.Simulation
                 cycle.status = StorylineStatus.Completed; cycle.endedWeek = state.week; cycle.endingId = ending;
                 cycle.nextAnchor = null; cycle.nextWeek = 0;
                 var time = new DialogueTimeReceiptState { revision = revision, sequence = logSequence,
-                    window = episode.window, reason = lapsed ? "occasion-closed" : ending };
+                    window = episode.window, reason = lapsed ? "occasion-closed" : ending, proposedDelta = proposedTime, appliedDelta = appliedTime };
                 Require(episode.time == null && expectedEpisode.time == null, "This conversation already has its ending receipt.");
                 episode.time = time; expectedEpisode.time = time.Clone(); future.Add(time, DialogueRevisionField.Time);
             }

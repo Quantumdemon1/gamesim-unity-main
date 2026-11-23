@@ -587,7 +587,7 @@ namespace Gamesim.Episode
                     +" blockers="+(reserved?CompetitionStaticBlockers(footprint):"no reservation")+". "+CompetitionStageDiagnostic(),this);
                 // A show's result is committed: one rig it cannot stand goes, and the show goes on.
                 if(competitionShow!=null){instrument.gameObject.SetActive(false);return false;}
-                CompetitionArenaRefused("An instrument's reserved place is obstructed. Return to the briefing and try again.");return false;
+                CompetitionArenaRefused("An instrument's reserved place is obstructed. You are back at the briefing: try again.");return false;
             }
             instrument.gameObject.SetActive(true);return true;
         }
@@ -796,7 +796,7 @@ namespace Gamesim.Episode
                 || (competitionPlayerStation.Position-competitionPlayerStationPosition).sqrMagnitude>.0025f
                 || Mathf.Abs(Mathf.DeltaAngle(competitionPlayerStation.Facing,competitionPlayerStationFacing))>.5f
                 || !player.IsActivityMoveValid(competitionPlayerOwner)))
-            { CompetitionArenaRefused("Your competition route changed. Return to the briefing and try again.");return; }
+            { CompetitionArenaRefused("Your competition route changed. You are back at the briefing: try again.");return; }
             if(player==null){CompetitionArenaRefused("The player's body is gone.");return;}
             competitionArenaWasReady|=CompetitionArenaReady;
             bool paused=CompetitionArenaPaused;

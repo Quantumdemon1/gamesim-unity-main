@@ -6,7 +6,7 @@ using UnityEngine.UI;
 
 namespace Gamesim.Episode
 {
-    /// <summary>The results phase's FINAL STANDINGS as the kit's rows (UI-UX-PASS-PLAN C0).</summary>
+    /// <summary>The results phase's ranking (CompetitionWords.StandingsHeading) as the kit's rows (UI-UX-PASS-PLAN C0).</summary>
     public sealed partial class EpisodeHud
     {
         /// <summary>A standings row's name, followed by its rank: "Standing row 1" is the winner's.</summary>

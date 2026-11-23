@@ -17,7 +17,7 @@ namespace Gamesim.Tests.PlayMode
         /// <summary>
         /// A competition shows who won and the order; nobody in the house ever sees a 6.42
         /// (UI-UX-PASS-PLAN C0, decision 12). Through the director: the result card a commit opens,
-        /// its Score details in the player's words, and the results phase's FINAL STANDINGS as
+        /// its Score details in the player's words, and the results phase's ranking as
         /// rows with a face, a name and the crown on the winner - at both text sizes, with the
         /// larger size's captures.
         /// </summary>
@@ -207,13 +207,13 @@ namespace Gamesim.Tests.PlayMode
         {
             foreach (var text in card.GetComponentsInChildren<TMP_Text>(true))
             {
-                if (text.name == "Player attempt") continue;
+                if (text.name == "Player attempt" || text.name == "Attempt headline") continue;
                 Assert.That(CompetitionWords.HasDecimal(text.text), Is.False, where + ": '" + text.name + "' says a number: " + text.text);
             }
         }
 
         /// <summary>
-        /// The results phase's FINAL STANDINGS: a row a competitor in the engine's order, each with
+        /// The results phase's ranking (CompetitionWords.StandingsHeading): a row a competitor in the engine's order, each with
         /// its rank, a face and a name, the crown and the word on the winner's alone, every label
         /// in a box of at least 1.3 times its type, and not a decimal on the panel.
         /// </summary>
@@ -223,7 +223,7 @@ namespace Gamesim.Tests.PlayMode
             var panel = ActiveRect("Episode panel");
             Assert.That(panel, Is.Not.Null, at + ": the results panel is up.");
             var words = PanelWords(panel);
-            Assert.That(words, Does.Contain("FINAL STANDINGS"), at);
+            Assert.That(words, Does.Contain(CompetitionWords.StandingsHeading), at);
             foreach (var word in words) Assert.That(CompetitionWords.HasDecimal(word), Is.False, at + ": the panel says a number: " + word);
             var ranked = state.competitionScores.OrderByDescending(score => score.score).ToList();
             for (int rank = 0; rank < ranked.Count; rank++)

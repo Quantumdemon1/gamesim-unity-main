@@ -207,7 +207,7 @@ namespace Gamesim.Tests.EditMode
         private static IEnumerable<string> WordsThatNameKeys() => new[]
         {
             "Save now  [F5]", "Save [F5]", "Notebook [J]", "Go to diary room [R]", "Interact [E]", "[R]", "[J]", "[F5]", "[Esc]",
-            InputGlossary.HouseChallengeStopCaption, "Hit the target  [Space]", "Back to exploring    [Esc]", "Space  Speed up   ·   Enter  Skip",
+            InputGlossary.HouseChallengeStopCaption, "Hit the target  [Space]", "Back to the house    [Esc]", "Space  Speed up   ·   Enter  Skip",
             InputGlossary.KeyboardHelpCard, InputGlossary.KeyboardTourLine, InputGlossary.KeyboardStationArrived, InputGlossary.KeyboardStationHeading,
             InputGlossary.KeyboardDiaryArrived, InputGlossary.KeyboardDiaryWalk, InputGlossary.KeyboardCeremonySuspenseful, InputGlossary.KeyboardCeremonyQuick,
             InputGlossary.KeyboardStationStepKeys, InputGlossary.KeyboardChallenge, InputGlossary.ActivityLine("Sleep", false), InputGlossary.ActivityLine("Other", false),
@@ -238,7 +238,7 @@ namespace Gamesim.Tests.EditMode
             KeyBindings.Show(bindings);
             Assert.That(KeyBindings.Substitute("Notebook [J]"), Is.EqualTo("Notebook [K]"));
             Assert.That(KeyBindings.Substitute("[J]"), Is.EqualTo("[K]"));
-            Assert.That(KeyBindings.Substitute("Back to exploring    [Esc]"), Is.EqualTo("Back to exploring    [Esc]"), "The ways out are never rebound.");
+            Assert.That(KeyBindings.Substitute("Back to the house    [Esc]"), Is.EqualTo("Back to the house    [Esc]"), "The ways out are never rebound.");
             Assert.That(KeyBindings.Substitute("Save now  [F5]"), Is.EqualTo("Save now  [F5]"), "A key still as shipped stays.");
             Assert.That(KeyBindings.Substitute("Interact [E]"), Is.EqualTo("Interact [T]"));
             Assert.That(KeyBindings.Substitute(InputGlossary.HouseChallengeStopCaption), Is.EqualTo("STOP marker  [H]"));

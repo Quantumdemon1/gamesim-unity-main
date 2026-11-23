@@ -168,7 +168,9 @@ namespace Gamesim.Episode
             const int weeks = 3;
             int newest = visible.Max(e => e.week);
             int oldest = Mathf.Max(1, newest - (weeks - 1));
-            if (oldest > 1) hud.Paragraph("Earlier weeks are in the save; the last " + weeks + " are shown here.");
+            // The weeks left out are the recap buttons above, under WEEKS SO FAR: the line names them.
+            if (oldest > 1) hud.Paragraph(StorySoFarWords.EarlierWeeksLine(weeks,
+                WeeklyRecap.Season(state).Where(w => w.evicted != null && w.week < oldest).Select(w => w.week), EpisodeHud.ReviewWeekCaption));
 
             for (int week = oldest; week <= newest; week++)
             {

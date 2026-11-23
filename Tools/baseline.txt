@@ -533,7 +533,13 @@
 # cards and their one chip. The 11234 above counted 72 cases twice: those of the first wave's changes, which this
 # branch held from an older chain and the new main holds too. Corrected 2026-11-22; the floor is the count the test
 # lists give.
-Gamesim.EditModeTests 11162
+# 10933 = 10919 + lines that said the wrong thing and a competition result that can be read: TourNamesRailTests 3 and
+# LinesWrongWordsTests 7 (all also in the dotnet subset) and CompetitionAttemptBlockTests 4, 2026-11-22.
+# 10935 = 10933 + the review's LinesWrongWordsReviewTests 2 (also in the dotnet subset), 2026-11-22.
+# 11178 = 11162 (the new main, with the menu, hint and ceremony changes) + the wording fixes' 16 (10935 - 10919 on
+# this branch): disjoint cases, so the floor is their sum (the lines landing of 22 November 2026). Counted from the
+# two sides.
+Gamesim.EditModeTests 11178
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and
@@ -839,7 +845,12 @@ Gamesim.EditModeTests 11162
 # 1696 = 1686 (the new main) + 10: the cases added by the two menu changes, the three hint changes, the ceremony cards
 # and their one chip. The 1702 above counted 6 cases twice: those of the first wave's changes, which this branch held
 # from an older chain and the new main holds too. Corrected 2026-11-22; the floor is the count the test lists give.
-Gamesim.PlayModeTests 1696
+# 1686 = 1684 + lines that said the wrong thing and a competition result that can be read: the 2
+# CompetitionSurfacePlayModeTests.ResultReads cases (Enter or A skips a practice's count; the card's attempt headline), 2026-11-22.
+# 1698 = 1696 (the new main, with the menu, hint and ceremony changes) + the wording fixes' 2 (1686 - 1684 on this
+# branch): disjoint cases, so the floor is their sum (the lines landing of 22 November 2026). Counted from the two
+# sides.
+Gamesim.PlayModeTests 1698
 # The UMA build of the same assembly, read by a plan built without -WithoutUma. 1281 = the 1241 above + the
 # 40 tests that compile only under GAMESIM_UMA, as run at r1 (2026-10-16): in EpisodePlayModeTests,
 # GroundedFarewell 11, Creator 9, HouseLife 8, Emotes 3, OpeningCaptures 2, and one each in CreatorEntry,
@@ -1069,7 +1080,12 @@ Gamesim.PlayModeTests 1696
 # 1741 = 1731 (the new main) + 10: the cases added by the two menu changes, the three hint changes, the ceremony cards
 # and their one chip. The 1747 above counted 6 cases twice: those of the first wave's changes, which this branch held
 # from an older chain and the new main holds too. Corrected 2026-11-22; the floor is the count the test lists give.
-Gamesim.PlayModeTests.UmaBuild 1741
+# 1731 = 1729 + lines that said the wrong thing and a competition result that can be read: the same 2
+# CompetitionSurfacePlayModeTests.ResultReads cases, 2026-11-22.
+# 1743 = 1741 (the new main, with the menu, hint and ceremony changes) + the wording fixes' 2 (1731 - 1729 on this
+# branch): disjoint cases, so the floor is their sum (the lines landing of 22 November 2026). Counted from the two
+# sides.
+Gamesim.PlayModeTests.UmaBuild 1743
 # The UMA bodies: runs only where the GAMESIM_UMA define is set (the working tree and the D: copy).
 # 82 = the 89 run on 2026-10-15, less the 7 farewell probes moved to Gamesim.Uma.DiagnosticsPlayModeTests;
 # 85 = 82 + the 3 farewell readiness decision tests (UmaFarewellReadinessDecisionPlayModeTests, 2026-10-16);
@@ -1526,4 +1542,10 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # cards and their one chip. The 23334 above counted 73 cases twice: those of the first wave's changes, which this
 # branch held from an older chain and the new main holds too. Corrected 2026-11-22; the floor is the count the test
 # lists give.
-Gamesim.SimulationTests 23261
+# 23029 = 23019 + lines that said the wrong thing and a competition result that can be read: TourNamesRailTests 3 and
+# LinesWrongWordsTests 7, 2026-11-22.
+# 23031 = 23029 + the review's LinesWrongWordsReviewTests 2, 2026-11-22.
+# 23273 = 23261 (the new main, with the menu, hint and ceremony changes) + the wording fixes' 12 (23031 - 23019 on
+# this branch): disjoint cases, so the floor is their sum (the lines landing of 22 November 2026). Counted from the
+# two sides.
+Gamesim.SimulationTests 23273

@@ -188,7 +188,7 @@ namespace Gamesim.Presentation
                 "Nominations, votes and the week's other decisions happen at the living-room screen. This button walks you there; " + StationStepKeys,
                 "Go to episode screen"),
             new Step("carousel", "Cast Strip",
-                "Everyone in the house, along the bottom. Click a face to follow them with the camera. Under each name is their mood; once you know them, a tag says where you stand.",
+                "Everyone in the house, along the bottom. Click someone's face to open their menu: talk, profile, deals or follow. Under each name is their mood; once you know them, a tag says where you stand.",
                 CastRail.StripName),
             new Step("overlay", "Phase Panels",
                 "A phase is the part of the week the house is in, such as free time, nominations or the vote. Open the episode screen for its decisions; the objective at the top left explains what comes next. Conversations show your words, then the houseguest's reply. Continue conversation reads the next line; Skip conversation moves on after the action has already happened.",

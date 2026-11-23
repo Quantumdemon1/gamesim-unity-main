@@ -384,7 +384,7 @@ namespace Gamesim.Episode
                 var talkButton = FixedButton(card, CastTalkCaption(first), new Vector2(8f * s, -(photo + 70f * s)),
                     new Vector2(width - 16f * s, 36f * s), () => talk(captured));
                 var words = talkButton.GetComponentInChildren<TMP_Text>();
-                if (words != null) { words.fontSize = 15; words.fontSizeMax = 15; words.alignment = TextAlignmentOptions.Center; }
+                if (words != null) { words.fontSize = words.fontSizeMax = TextSizeFit.Font(TextSizeFit.SideButtonFont, s); words.alignment = TextAlignmentOptions.Center; }
             }
         }
 

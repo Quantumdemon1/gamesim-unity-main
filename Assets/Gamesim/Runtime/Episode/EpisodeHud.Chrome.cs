@@ -1230,7 +1230,10 @@ namespace Gamesim.Episode
         /// </summary>
         private void NearbyCard(Transform parent, float top)
         {
-            float width = RightColumnWidth, height = 168f;
+            // The button grows only where its words outgrow it, and what is under it moves down by as
+            // much: the card stays no taller than the week card whose place it takes (TextSizeFit).
+            float listenHeight = TextSizeFit.SideButton(FontScale), grown = listenHeight - TextSizeFit.SideButtonHeight;
+            float width = RightColumnWidth, height = TextSizeFit.SideCard(FontScale);
             nearbyCard = Chrome(NearbyCardName, parent);
             Anchor(nearbyCard, new Vector2(1, 1), new Vector2(1, 1), new Vector2(-RightColumnInset, -top), new Vector2(width, height));
             CardHeading(nearbyCard, "Nearby");
@@ -1241,19 +1244,20 @@ namespace Gamesim.Episode
             if (semibold != null) title.font = semibold;
             var line = FixedText(nearbyCard, "Two houseguests are talking within earshot.", 12, UiTheme.Muted, new Vector2(x, -62f), new Vector2(width - x - 12f, 32f));
             AutoSize(line, 10);
-            var listen = FixedButton(nearbyCard, ListenInCaption, new Vector2(14f, -100f), new Vector2(width - 28f, 36f), director.ListenInNearby);
+            var listen = FixedButton(nearbyCard, ListenInCaption, new Vector2(14f, -100f), new Vector2(width - 28f, listenHeight), director.ListenInNearby);
             var ground = listen.GetComponent<Image>();
             ground.color = new Color(UiTheme.Ink.r, UiTheme.Ink.g, UiTheme.Ink.b, .9f);
             UiTheme.AddBorder((RectTransform)listen.transform, UiTheme.ControlRadius, UiTheme.Allied);
             var words = listen.GetComponentInChildren<TMP_Text>();
             if (words != null)
             {
-                words.fontSize = 15; words.fontSizeMax = 15; words.alignment = TextAlignmentOptions.Center;
+                words.fontSize = words.fontSizeMax = TextSizeFit.Font(TextSizeFit.SideButtonFont, FontScale);
+                words.alignment = TextAlignmentOptions.Center;
                 if (semibold != null) words.font = semibold;
             }
             // At story rules 12 listening in is free, and the foot carries the pair's catch risk, set as the card comes up.
             bool free = director.OverhearFree;
-            var odds = FixedText(nearbyCard, free ? Overhearing.FreeFoot : "Uses an action \u00b7 works about 7 times in 10", 11, UiTheme.Muted, new Vector2(14f, -140f), new Vector2(width - 28f, 18f));
+            var odds = FixedText(nearbyCard, free ? Overhearing.FreeFoot : "Uses an action \u00b7 works about 7 times in 10", 11, UiTheme.Muted, new Vector2(14f, -(140f + grown)), new Vector2(width - 28f, 18f));
             odds.alignment = TextAlignmentOptions.Center;
             if (free) AutoSize(odds, 9);
             nearbyOdds = free ? odds : null;

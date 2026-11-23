@@ -384,7 +384,7 @@ namespace Gamesim.Episode
                 var talkButton = FixedButton(card, CastTalkCaption(first), new Vector2(8f * s, -(photo + 70f * s)),
                     new Vector2(width - 16f * s, 36f * s), () => talk(captured));
                 var words = talkButton.GetComponentInChildren<TMP_Text>();
-                if (words != null) { words.fontSize = 15; words.fontSizeMax = 15; words.alignment = TextAlignmentOptions.Center; }
+                if (words != null) { words.fontSize = words.fontSizeMax = TextSizeFit.Font(TextSizeFit.SideButtonFont, s); words.alignment = TextAlignmentOptions.Center; }
             }
         }
 
@@ -554,6 +554,12 @@ namespace Gamesim.Episode
             /// Pack 1's selected panel.
             /// </summary>
             public bool? Selected;
+            /// <summary>
+            /// A move the engine would refuse now (a whole-house move with no actions left, or outside
+            /// the part of the week it belongs to): drawn greyed and not pressable, its caption kept,
+            /// with the reason in <see cref="Foot"/> where the cost was.
+            /// </summary>
+            public bool Locked;
         }
 
         /// <summary>
@@ -617,9 +623,11 @@ namespace Gamesim.Episode
             float tallest = cellHeight;
             foreach (var tile in tiles)
             {
-                var rect = Chrome(tile.Caption, grid, UiTheme.Emphasis.Interactive);
-                HudEmphasis.Promote(rect, UiTheme.Emphasis.Interactive);
+                var emphasis = tile.Locked ? UiTheme.Emphasis.Resting : UiTheme.Emphasis.Interactive;
+                var rect = Chrome(tile.Caption, grid, emphasis);
+                HudEmphasis.Promote(rect, emphasis);
                 var button = Pressable(rect, tile.Choose);
+                button.interactable = !tile.Locked;
                 var colours = button.colors;
                 colours.highlightedColor = new Color(1.15f, 1.15f, 1.15f);
                 colours.selectedColor = colours.highlightedColor;
@@ -661,15 +669,18 @@ namespace Gamesim.Episode
             }
             // The caption's box at 1.3 times its size: under 1.21 TMP draws nothing.
             float captionHeight = 19f * s;
-            var caption = NewText(rect, tile.Caption, 14, Paper);
+            var caption = NewText(rect, tile.Caption, 14, tile.Locked ? UiTheme.Muted : Paper);
             var semibold = UiTheme.Font(UiTheme.Weight.SemiBold);
             if (semibold != null) caption.font = semibold;
             AutoSize(caption, 11);
             Anchor(caption.rectTransform, new Vector2(0, 1), new Vector2(0, 1), new Vector2(text, -top),
                 new Vector2(Mathf.Max(40f * s, cellWidth - text - right - chip), captionHeight));
             float y = top + captionHeight + 1f * s;
-            if (string.IsNullOrEmpty(tile.Description)) return y + 6f * s;
-            var line = NewText(rect, tile.Description, 13, UiTheme.Muted);
+            // A locked move says why where its line was: a row has no foot.
+            string words = tile.Locked ? tile.Foot : tile.Description;
+            if (string.IsNullOrEmpty(words)) return y + 6f * s;
+            var line = NewText(rect, words, 13, UiTheme.Muted);
+            if (tile.Locked) line.name = "Tile foot";
             float width = Mathf.Max(40f * s, cellWidth - text - right);
             // One line or two: what the words need, up to two lines of the size. A line that would
             // want a third is taken down a size or two by the auto-size rather than cut.
@@ -701,7 +712,7 @@ namespace Gamesim.Episode
             }
 
             float text = 64f * s;
-            var caption = NewText(rect, tile.Caption, 16, Paper);
+            var caption = NewText(rect, tile.Caption, 16, tile.Locked ? UiTheme.Muted : Paper);
             var semibold = UiTheme.Font(UiTheme.Weight.SemiBold);
             if (semibold != null) caption.font = semibold;
             AutoSize(caption, 11);
@@ -709,9 +720,12 @@ namespace Gamesim.Episode
                 new Vector2(cellWidth - text - 92f * s, 22f * s));
             // The ring sits below the corner's word at the row's right-hand end; the line stops short of it.
             float ring = radio ? (RadioSide + 12f) * s : 0f;
-            if (!string.IsNullOrEmpty(tile.Description))
+            // A locked move says why where its line was: a row has no foot.
+            string words = tile.Locked ? tile.Foot : tile.Description;
+            if (!string.IsNullOrEmpty(words))
             {
-                var line = NewText(rect, tile.Description, 13, UiTheme.Muted);
+                var line = NewText(rect, words, 13, UiTheme.Muted);
+                if (tile.Locked) line.name = "Tile foot";
                 AutoSize(line, 10);
                 Anchor(line.rectTransform, new Vector2(0, 1), new Vector2(0, 1), new Vector2(text, -32f * s),
                     new Vector2(cellWidth - text - 12f * s - ring, 40f * s));
@@ -725,7 +739,7 @@ namespace Gamesim.Episode
             float s = FontScale, pad = 12f * s, inner = cellWidth - 2f * pad;
             var mark = HudPrimitives.Glyph("Choice mark", rect, tile.Glyph ?? "journal", Accent, new Vector2(pad, -pad), 26f * s);
             float text = mark != null ? pad + 34f * s : pad;
-            var caption = NewText(rect, tile.Caption, 15, Paper);
+            var caption = NewText(rect, tile.Caption, 15, tile.Locked ? UiTheme.Muted : Paper);
             var semibold = UiTheme.Font(UiTheme.Weight.SemiBold);
             if (semibold != null) caption.font = semibold;
             AutoSize(caption, 10);
@@ -755,7 +769,7 @@ namespace Gamesim.Episode
             }
             if (!string.IsNullOrEmpty(tile.Foot))
             {
-                var cost = FixedText(rect, tile.Foot, 12, Paper, new Vector2(pad, -(cellHeight - pad - 16f * s)), new Vector2(inner, 18f * s));
+                var cost = FixedText(rect, tile.Foot, 12, tile.Locked ? UiTheme.Muted : Paper, new Vector2(pad, -(cellHeight - pad - 16f * s)), new Vector2(inner, 18f * s));
                 var medium = UiTheme.Font(UiTheme.Weight.Medium);
                 if (medium != null) cost.font = medium;
                 cost.name = "Tile foot";

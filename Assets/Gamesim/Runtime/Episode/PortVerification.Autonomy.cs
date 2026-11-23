@@ -14,6 +14,8 @@ namespace Gamesim.Episode
     {
         private bool verifyAutonomy;
         private AutonomyReport autonomyReport;
+        /// <summary>The id of the last overhearing command replayed on the detached expectation.</summary>
+        private string overhearReplayed;
 
         private IEnumerator ExerciseAutonomy(bool graphical)
         {
@@ -21,6 +23,7 @@ namespace Gamesim.Episode
             var baseline = seasonDirector.Snapshot;
             RequireSeason(baseline.npcSocial.rulesStartWeek == 1 && NpcSocialState.IsEligible(baseline),
                 "Autonomy QA requires a legal, freshly created eligible season.");
+            autonomyReport.houseTalk = Overhearing.On(baseline);
             double started = Time.realtimeSinceStartupAsDouble;
             yield return CloseSeasonPanel();
             var observed = seasonDirector.Snapshot;
@@ -180,6 +183,17 @@ namespace Gamesim.Episode
                 RequireSeason(result.accepted, "Detached source start expectation rejected: " + result.reason);
                 expected = result.candidate; autonomyReport.actualStartProofChecks++;
             }
+            // At story rules 12 (a chip season or a test's opt-in) the house's watch notices the conversation the player
+            // witnesses, and may hear one lingered on (EpisodeDirector.Overhear.cs): the only player commands this workload
+            // commits, sent after the frame's ticks and starts, so replayed on the detached expectation there.
+            var overheard = seasonDirector.LastOverhearCommand;
+            if (overheard != null && Overhearing.On(after) && overheard.id != overhearReplayed && overheard.expectedRevision == expected.revision)
+            {
+                var replay = new EpisodeEngine(expected).Apply(overheard);
+                RequireSeason(replay.accepted, "Detached overhearing expectation rejected: " + replay.reason);
+                expected = replay.state; overhearReplayed = overheard.id;
+                if (EpisodeEngine.TryReadConversationText(overheard.text, out _, out bool listen) && !listen) autonomyReport.notices++;
+            }
             RequireSeason(JsonUtility.ToJson(after) == JsonUtility.ToJson(expected),
                 "Actual world commits must match detached source candidates exactly, including gossip, arcs, memory and RNG. No cancellation is allowed in this reunion workload.");
             autonomyReport.sourceTransitionChecks++;
@@ -225,7 +239,9 @@ namespace Gamesim.Episode
                 || !autonomyReport.pendingReloadPreserved || !autonomyReport.modalSnapshotAndMotionPaused
                 || autonomyReport.reunionPhysicalProofChecks < 1 || autonomyReport.unreadyReunionFrames < 1
                 || autonomyReport.captionPhysicalProofChecks < 1
-                || !autonomyReport.witnessedCaption || !autonomyReport.playerStreamAndLogsPreserved)
+                || !autonomyReport.witnessedCaption || !autonomyReport.playerStreamAndLogsPreserved
+                // At story rules 12 the witnessed conversation is noticed: at least one Notice, replayed exactly.
+                || (autonomyReport.houseTalk && autonomyReport.notices < 1))
             {
                 if (autonomyReport != null) autonomyReport.status = "Failed";
                 RecordSeasonError("Required standalone autonomy gates were not completed.");
@@ -238,6 +254,9 @@ namespace Gamesim.Episode
             public int actualStartProofChecks, sourceTransitionChecks, completedConversations;
             public int reunionPhysicalProofChecks, unreadyReunionFrames;
             public int captionPhysicalProofChecks;
+            /// <summary>Story rules 12: whether the season overhears, and the Notices the watch committed and the replay matched.</summary>
+            public bool houseTalk;
+            public int notices;
             public bool witnessedCaption, modalSnapshotAndMotionPaused, pendingReloadPreserved, playerStreamAndLogsPreserved;
             public double elapsedSeconds;
         }

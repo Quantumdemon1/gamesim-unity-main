@@ -195,7 +195,10 @@ namespace Gamesim.Episode
         /// </summary>
         private void PullCard(Transform parent, float top)
         {
-            float width = RightColumnWidth, height = 168f;
+            // As the Nearby card: the answers grow only where their words outgrow them, the foot moves
+            // down by as much, and the card stays no taller than the week card (TextSizeFit).
+            float answerHeight = TextSizeFit.SideButton(FontScale), grown = answerHeight - TextSizeFit.SideButtonHeight;
+            float width = RightColumnWidth, height = TextSizeFit.SideCard(FontScale);
             // A rebuilt card starts blank: the next SetPull fills it whatever it showed before.
             pullKey = null; pullButtons.Clear();
             pullCard = Chrome(PullCardName, parent);
@@ -221,19 +224,19 @@ namespace Gamesim.Episode
             float inner = width - 28f, gap = 8f, wide = Mathf.Round((inner - gap) * .56f), narrow = inner - gap - wide;
             foreach (var caption in new[] { StepInCaption, HearThemOutCaption, JoinMeetingCaption, TakeItOnCaption })
             {
-                var button = FixedButton(pullCard, caption, new Vector2(14f, -104f), new Vector2(wide, 36f), () => pullAccept?.Invoke());
+                var button = FixedButton(pullCard, caption, new Vector2(14f, -104f), new Vector2(wide, answerHeight), () => pullAccept?.Invoke());
                 button.GetComponent<Image>().color = new Color(UiTheme.Ink.r, UiTheme.Ink.g, UiTheme.Ink.b, .9f);
                 UiTheme.AddBorder((RectTransform)button.transform, UiTheme.ControlRadius, UiTheme.Joke);
-                PullWords(button, 15, semibold);
+                PullWords(button, TextSizeFit.Font(TextSizeFit.SideButtonFont, FontScale), semibold);
                 pullButtons[caption] = button;
             }
             foreach (var caption in new[] { StayOutCaption, NotNowCaption })
             {
-                var button = FixedButton(pullCard, caption, new Vector2(14f + wide + gap, -104f), new Vector2(narrow, 36f), () => pullDecline?.Invoke());
-                PullWords(button, 13, null);
+                var button = FixedButton(pullCard, caption, new Vector2(14f + wide + gap, -104f), new Vector2(narrow, answerHeight), () => pullDecline?.Invoke());
+                PullWords(button, TextSizeFit.Font(TextSizeFit.PullNarrowFont, FontScale), null);
                 pullButtons[caption] = button;
             }
-            var foot = FixedText(pullCard, "Nothing happens unless you step in.", 11, UiTheme.Muted, new Vector2(14f, -146f), new Vector2(inner, 16f));
+            var foot = FixedText(pullCard, "Nothing happens unless you step in.", 11, UiTheme.Muted, new Vector2(14f, -(146f + grown)), new Vector2(inner, 16f));
             foot.alignment = TextAlignmentOptions.Center;
             pullCard.gameObject.SetActive(false);
         }

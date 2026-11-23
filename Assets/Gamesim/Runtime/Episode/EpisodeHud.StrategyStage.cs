@@ -37,8 +37,8 @@ namespace Gamesim.Episode
         public const string UpNextName = "Up next";
 
         /// <summary>Where the header starts: under the 62-unit phase band and a gap. The control hint's row, which the stage stands down.</summary>
-        private const float StrategyBandFoot = 72f;
-        private const float StrategyGap = 10f;
+        private const float StrategyBandFoot = TextSizeFit.StrategyBandFoot;
+        private const float StrategyGap = TextSizeFit.StrategyGap;
         /// <summary>The narrowest the way on and the secondary slot stand when the footer's row is shared, at the resting text size.</summary>
         private const float StrategyPrimaryWidth = 320f, StrategySecondaryWidth = 200f;
         /// <summary>A shell's corner in canvas units: a frame, so it does not grow with the text.</summary>
@@ -123,6 +123,27 @@ namespace Gamesim.Episode
             {
                 Stretch((RectTransform)modalScroll.transform, 20f, StrategyBandFoot + strategyHeaderUsed, 20f, 22f);
                 modalScroll.verticalNormalizedPosition = 1f;
+            }
+            KeepWayOutsAboveTheHeader();
+        }
+
+        /// <summary>
+        /// The ways out at the stage's top - the panel's Close and a page's way back - end a gap above
+        /// the header at every text size. At the larger and the largest text they stood 72 and 84
+        /// units deep, at and into the header at 72; on the stage they keep the height that holds
+        /// their words at 1.3 times their size and no more (<see cref="TextSizeFit.StrategyWayOutHeight"/>),
+        /// as wide and in words as large as anywhere. Called as the stage is laid out and as a way back
+        /// is drawn on it, whichever comes first.
+        /// </summary>
+        private void KeepWayOutsAboveTheHeader()
+        {
+            if (modal == null || activityLayout != ActivityLayout.Strategy) return;
+            float height = TextSizeFit.StrategyWayOutHeight(FontScale);
+            foreach (var control in new[] { panelClose, wayBack, decisionPageBack })
+            {
+                if (control == null) continue;
+                var rect = (RectTransform)control.transform;
+                if (rect.sizeDelta.y > height) rect.sizeDelta = new Vector2(rect.sizeDelta.x, height);
             }
         }
 

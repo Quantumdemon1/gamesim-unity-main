@@ -317,6 +317,7 @@ namespace Gamesim.Presentation
             if (run == null) { SetWord(progress,"Ready"); Rest(); return; }
             resting = false;
             SetWord(progress,paused ? "Paused" : !started && !preview ? "Ready" : Readout(run));
+            if (run.Kind == CompetitionMiniGames.Kind.Trivia) { SyncTrivia(run, started, paused); return; }
             switch (Instrument)
             {
                 case Family.PairConsole:
@@ -439,6 +440,7 @@ namespace Gamesim.Presentation
                     return "Effort " + run.Held.ToString("0.0", CultureInfo.InvariantCulture) + "s · grip " + Math.Round(run.Meter) + "%";
                 case CompetitionMiniGames.Kind.Dice: return "Roll " + run.RollsUsed + " / " + MiniGameRun.MaxRolls + " · total " + run.RollTotal;
                 case CompetitionMiniGames.Kind.Words: return run.WordsSolved + " solved · " + run.WordPoints.ToString("0.#", CultureInfo.InvariantCulture) + " points";
+                case CompetitionMiniGames.Kind.Trivia: return TriviaReadout(run);
                 default: return "Ready";
             }
         }

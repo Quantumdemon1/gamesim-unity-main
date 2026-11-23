@@ -29,8 +29,6 @@ namespace Gamesim.Presentation
     [DisallowMultipleComponent]
     public sealed class JuryReveal : MonoBehaviour
     {
-        private const float ReadDelay = 0.35f;
-
         /// <summary>
         /// The least room left between the card's glass and each edge of the canvas when the card is
         /// fitted to it: a little more than the glass's halo (<see cref="UiTheme.GlowWidth"/>), so the
@@ -90,6 +88,19 @@ namespace Gamesim.Presentation
         /// <summary>The beat's sounds, for the director to play: a vote's for each juror read, and the finale's for the winner.</summary>
         public event System.Action<HouseAudio.Cue> CueRequested;
 
+        /// <summary>
+        /// The player sped this reveal up, or back to its own pace: the speed it runs at now. The
+        /// director keeps it for the session's later reveals (CeremonyPacing.SessionSpeed).
+        /// </summary>
+        public event System.Action<float> SpeedChanged;
+
+        /// <summary>
+        /// The device the house last heard a press from, asked as the card opens (UI-UX plan U5): a
+        /// controller player's first card names A from its first frame, not only after a press on it.
+        /// Unset, the card starts on the device it last saw.
+        /// </summary>
+        public System.Func<bool> PadHints { get; set; }
+
         private CanvasGroup group;
         private RectTransform column, scrim, jurorRow, banner;
         private TMP_Text eyebrow, title, progress, countEyebrow, countLine, host, bannerText, controls, speedMark;
@@ -102,18 +113,13 @@ namespace Gamesim.Presentation
         private string winnerId;
         private int majority, decidedAt = -1, shown = -1, seed;
         private CeremonyPace pace = CeremonyPace.Suspenseful;
-        private float elapsed, upFor, speed = 1f;
 
         /// <summary>
-        /// The frame the card was played in. Neither it nor the next is the card's own time, as on the
-        /// key ceremony and the live eviction: the first update's delta can be the frame before the
-        /// card was played, and the next's is the frame it was played in - the commit, the house's
-        /// render and this card's own build - before anybody had seen it. Counted, a long one spent the
-        /// fade, the finalists and even votes before the card was drawn, and made a press in flight
-        /// look read.
+        /// The card's clock, the one every ceremony card runs on (<see cref="CeremonyCardClock"/>): the
+        /// frame it was played in, the read delay, its speed and the device it names.
         /// </summary>
-        private int playedFrame;
-        private bool playing, reduced, usingPad, tied, resultShown;
+        private CeremonyCardClock clock;
+        private bool playing, reduced, tied, resultShown;
         // The card's whole size with its glass, at full size, and the canvas size it was last fitted to.
         private Vector2 cardExtent, fittedTo;
 
@@ -121,7 +127,7 @@ namespace Gamesim.Presentation
         public bool IsPlaying => playing;
         public bool ShowingResult => resultShown;
         public CeremonyPace Pace => pace;
-        public float SpeedMultiplier => speed;
+        public float SpeedMultiplier => clock.Speed;
 
         /// <summary>How many jurors' votes are on the board.</summary>
         public int VotesShown => Mathf.Max(0, shown);
@@ -177,11 +183,12 @@ namespace Gamesim.Presentation
         /// jurors are read in the order given.
         /// </summary>
         public bool Play(IList<Finalist> pair, IList<Juror> jury, string winner, bool reducedMotion,
-            CeremonyPace pace = CeremonyPace.Suspenseful, int seed = 0)
+            CeremonyPace pace = CeremonyPace.Suspenseful, int seed = 0, float speed = 1f)
         {
             if (pair == null || pair.Count != 2 || jury == null || jury.Count == 0) return false;
             if (winner != pair[0].Id && winner != pair[1].Id) return false;
             foreach (var juror in jury) if (juror.TargetId != pair[0].Id && juror.TargetId != pair[1].Id) return false;
+            clock.OnPad = CeremonyCardWords.StartsOnPad(PadHints, clock.OnPad);
 
             finalists = new List<Finalist>(pair);
             jurors = new List<Juror>(jury);
@@ -193,13 +200,12 @@ namespace Gamesim.Presentation
 
             Build();
             reduced = reducedMotion;
-            elapsed = 0f;
-            upFor = 0f;
-            playedFrame = Time.frameCount;
+            // At the speed the player left the last reveal at, this session (UI-UX plan D2).
+            clock.Start(Time.frameCount, CeremonyPacing.SessionSpeed(speed), clock.OnPad);
             shown = -1;
             resultShown = false;
             HoldingForDecidingVote = false;
-            SetSpeed(1f);
+            MarkSpeed();
             playing = true;
 
             eyebrow.text = "THE FINALE";
@@ -244,40 +250,35 @@ namespace Gamesim.Presentation
             tied = decidedAt < 0;
         }
 
-        private bool Dismissable => upFor >= CeremonyPacing.FadeIn + ReadDelay;
-
         private void Update()
         {
             if (!playing) return;
             CeremonyOverlays.Showing();
             // The fit is the canvas's, not the card's time: it is kept from the card's first frame.
             FitToCanvas();
-            // Nothing from before its first frame on screen is the card's time (playedFrame).
-            if (Time.frameCount - playedFrame <= 1) return;
-            upFor += Time.unscaledDeltaTime;
-            FollowDevice();
+            // Nothing from before its first frame on screen is the card's time (the clock's Counts).
+            if (!clock.Counts(Time.frameCount)) return;
 
-            if (Dismissable && CeremonyTakeover.SpeedPressed()) SetSpeed(speed > 1f ? 1f : CeremonyPacing.SpeedUp);
-            if (Dismissable && CeremonyTakeover.SkipPressed())
+            var presses = clock.Step(Time.unscaledDeltaTime, CeremonyTakeover.PadUsed(),
+                CeremonyTakeover.SpeedPressed(), CeremonyTakeover.SkipPressed());
+            if (presses.DeviceChanged) SayTheControls();
+            if (presses.SpeedChanged)
+            {
+                MarkSpeed();
+                SpeedChanged?.Invoke(clock.Speed);
+            }
+            if (presses.Skip)
             {
                 if (resultShown) { Cancel(); return; }
-                elapsed = Mathf.Max(elapsed, ResultAt);
+                clock.Elapsed = Mathf.Max(clock.Elapsed, ResultAt);
                 Result();
                 return;
             }
 
-            elapsed += Time.unscaledDeltaTime * speed;
-            float end = ResultAt + CeremonyPacing.WinnerHold(pace);
-            if (reduced) group.alpha = 1f;
-            else if (elapsed < CeremonyPacing.FadeIn) group.alpha = Eased(elapsed / CeremonyPacing.FadeIn);
-            else if (elapsed < end) group.alpha = 1f;
-            else
-            {
-                float exit = (elapsed - end) / CeremonyPacing.FadeOut;
-                if (exit >= 1f) { Cancel(); return; }
-                group.alpha = 1f - Eased(exit);
-            }
-            if (reduced && elapsed >= Duration) { Cancel(); return; }
+            float elapsed = clock.Run(Time.unscaledDeltaTime);
+            bool up = CeremonyCardClock.Fade(elapsed, ResultAt + CeremonyPacing.WinnerHold(pace), reduced, out float alpha);
+            group.alpha = alpha;
+            if (!up) { Cancel(); return; }
 
             if (!resultShown)
             {
@@ -291,8 +292,6 @@ namespace Gamesim.Presentation
                 if (elapsed >= ResultAt) Result();
             }
         }
-
-        private static float Eased(float t) => 1f - (1f - t) * (1f - t);
 
         /// <summary>How many votes are on the board at <paramref name="t"/>: those whose time has come, never past the deciding vote until the winner is called.</summary>
         private int VotesDue(float t)
@@ -312,10 +311,10 @@ namespace Gamesim.Presentation
             return votes;
         }
 
-        private void SetSpeed(float value)
+        /// <summary>Says in the corner that the card's clock runs fast, while it does.</summary>
+        private void MarkSpeed()
         {
-            speed = value;
-            if (speedMark != null) speedMark.gameObject.SetActive(speed > 1f);
+            if (speedMark != null) speedMark.gameObject.SetActive(clock.SpedUp);
         }
 
         /// <summary>
@@ -339,12 +338,10 @@ namespace Gamesim.Presentation
             column.localScale = new Vector3(fit, fit, 1f);
         }
 
-        private void FollowDevice()
+        /// <summary>The key hints follow the device last used on the card, as the key ceremony's do.</summary>
+        private void SayTheControls()
         {
-            var pad = CeremonyTakeover.PadUsed();
-            if (!pad.HasValue || pad.Value == usingPad) return;
-            usingPad = pad.Value;
-            if (controls != null) controls.text = CeremonyTakeover.ControlsFor(usingPad);
+            if (controls != null) controls.text = CeremonyTakeover.ControlsFor(clock.OnPad);
         }
 
         private void Raise(HouseAudio.Cue cue) => CueRequested?.Invoke(cue);
@@ -566,9 +563,14 @@ namespace Gamesim.Presentation
             bannerText.rectTransform.offsetMin = Vector2.zero; bannerText.rectTransform.offsetMax = Vector2.zero;
             banner.gameObject.SetActive(false);
 
-            controls = HudPrimitives.Label("Controls", column, 12f * scale, UiTheme.Muted, TextAlignmentOptions.Center);
-            controls.text = CeremonyTakeover.ControlsFor(usingPad);
-            Place(controls.rectTransform, 900f * scale, 18f * scale, -(100f + portrait + 130f + face + 244f) * scale);
+            // What the card answers to, in the controls chip every ceremony card closes with (26 tall
+            // at the standard size, where the line was 12 points in an 18 box): the vote can be sped
+            // up, or skipped to the winner. The keys named follow the device last used on the card.
+            var controlsChip = CeremonyControlsChip.Build(column, "Controls");
+            controlsChip.SizeForHud(scale);
+            controlsChip.PlaceAt(-(100f + portrait + 130f + face + 244f) * scale);
+            controls = controlsChip.Label;
+            controlsChip.Say(CeremonyTakeover.ControlsFor(clock.OnPad));
 
             // Fitted afresh: this jury and this text size make a card of their own size.
             column.localScale = Vector3.one;

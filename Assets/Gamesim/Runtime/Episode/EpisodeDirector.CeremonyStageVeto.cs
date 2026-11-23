@@ -35,7 +35,7 @@ namespace Gamesim.Episode
             if (takeover == null) return false;
             return TryBeginCeremonyStage(CeremonySting.VetoKind, committed,
                 screen => screen != null
-                    ? takeover.PlayVetoMeeting(VetoMeetingScriptFor(committed, blockBefore), reducedMotion, ceremonyPace, screen)
+                    ? takeover.PlayVetoMeeting(VetoMeetingScriptFor(committed, blockBefore), reducedMotion, ceremonyPace, screen, ceremonySpeed)
                     : PlayGenericCeremonyCard(committed, CeremonySting.VetoKind, text, wasActive, wasNominated),
                 blockBefore);
         }
@@ -172,6 +172,8 @@ namespace Gamesim.Episode
             private void OnVetoBeat(CeremonyBeat beat)
             {
                 var pace = director.takeover != null ? director.takeover.MeetingPace : director.ceremonyPace;
+                // The room keeps time with the card: a sped-up meeting's cuts come as fast as its pages.
+                float speed = director.takeover != null ? UnityEngine.Mathf.Max(1f, director.takeover.MeetingSpeed) : 1f;
                 var block = VetoBlock.Where(id => placeOf.ContainsKey(id)).ToList();
                 string holder = !string.IsNullOrEmpty(state.vetoHolderId) && placeOf.ContainsKey(state.vetoHolderId) ? state.vetoHolderId : null;
                 switch (beat.Kind)
@@ -180,8 +182,8 @@ namespace Gamesim.Episode
                     {
                         ClearCues();
                         Cut(ScreenCut());
-                        float intro = CeremonyPacing.FadeIn + CeremonyPacing.VetoIntro(pace);
-                        float question = CeremonyPacing.VetoQuestion(pace);
+                        float intro = (CeremonyPacing.FadeIn + CeremonyPacing.VetoIntro(pace)) / speed;
+                        float question = CeremonyPacing.VetoQuestion(pace) / speed;
                         if (holder != null)
                             Schedule(intro * 0.45f, () =>
                             {
@@ -208,7 +210,7 @@ namespace Gamesim.Episode
                         Hush();
                         Cut(ScreenCut());
                         if (beat.Skipped) break;
-                        float decision = CeremonyPacing.VetoDecision(pace);
+                        float decision = CeremonyPacing.VetoDecision(pace) / speed;
                         string saved = beat.SubjectId;
                         if (saved != null && placeOf.ContainsKey(saved))
                             Schedule(decision * 0.4f, () =>
@@ -237,7 +239,7 @@ namespace Gamesim.Episode
                         ClearCues();
                         Cut(ScreenCut());
                         if (beat.Skipped) break;
-                        float naming = CeremonyPacing.VetoReplacement(pace);
+                        float naming = CeremonyPacing.VetoReplacement(pace) / speed;
                         string replacement = beat.SubjectId;
                         string hoh = !string.IsNullOrEmpty(state.hohId) && placeOf.ContainsKey(state.hohId) ? state.hohId : null;
                         if (hoh != null)

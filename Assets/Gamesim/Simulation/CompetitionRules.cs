@@ -53,20 +53,21 @@ namespace Gamesim.Simulation
         /// events (<see cref="CompetitionTrivia"/>), dealt only further along in a season: from week 4, after three
         /// evictions, and only when enough can be asked. It takes the place of a memory board, never of the Ring Tower.
         /// The kinds, their order, the weights, the rolls and the throw are rules 5's, so the housemates' scores draw
-        /// exactly what they drew. Defined and not enrolled: no season the game starts plays it until
-        /// <see cref="Current"/> moves to it.
+        /// exactly what they drew. Enrolled with the trivia's switch-on: every season the game starts plays it
+        /// (<see cref="Current"/>); a built season, a loaded one and every season saved before stay on the rules they hold.
         /// </summary>
         public const int Trivia = 6;
 
         /// <summary>
-        /// The rules <c>ShippedRules.ApplyFresh</c> starts every season the game starts on, and the bound the frozen
-        /// readers of older saves hold. Never a behaviour.
+        /// The rules <c>ShippedRules.ApplyFresh</c> starts every season the game starts on: rules 6, the trivia's, since its
+        /// switch-on (rules 5, the ring tower's, before it). The frozen readers of older saves keep their own copies of the
+        /// value their schema froze with, so moving this moves none of them. Never a behaviour.
         /// </summary>
-        public const int Current = RingTower;
+        public const int Current = Trivia;
 
         /// <summary>
         /// The newest rules a season may be played under: the live validation's bound. Above <see cref="Current"/>
-        /// while a level is defined and not yet enrolled. Never a behaviour.
+        /// while a level is defined and not yet enrolled; equal to it since the trivia's switch-on. Never a behaviour.
         /// </summary>
         public const int Newest = Trivia;
 

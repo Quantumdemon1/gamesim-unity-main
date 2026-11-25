@@ -139,6 +139,9 @@ namespace Gamesim.House
         }
 
         public bool TryReserveAndPath(string reservationId, Vector3 requested)
+            => TryReserveAndPath(reservationId, requested, null);
+
+        internal bool TryReserveAndPath(string reservationId, Vector3 requested, StageArrival arrival)
         {
             if (!IsBound || paused || string.IsNullOrWhiteSpace(reservationId) || reservationId.Length > 128
                 || !HouseRoomQuery.Finite(requested) || !ValidateOwnedComponents(out _)) return false;
@@ -148,12 +151,18 @@ namespace Gamesim.House
             { LastRouteFailure = "no floor within 0.25 m of " + requested.ToString("F2") + (rooms.LastFailure != null ? " (" + rooms.LastFailure + ")" : ""); return false; }
             if (!rooms.HasCapsuleClearance(sampled, capsule.radius, capsule.height, transform))
             { LastRouteFailure = "no room to stand at " + sampled.ToString("F2") + (rooms.LastFailure != null ? " (" + rooms.LastFailure + ")" : ""); return false; }
-            if (!ownedAgent.CalculatePath(sampled, candidatePath) || candidatePath.status != NavMeshPathStatus.PathComplete)
+            if (arrival != null)
+            {
+                if (!arrival.TryRoute(ownedAgent, sampled, transform, capsule.radius, capsule.height, out _))
+                { LastRouteFailure = "no short, clear approach to " + sampled.ToString("F2"); return false; }
+            }
+            else if (!ownedAgent.CalculatePath(sampled, candidatePath) || candidatePath.status != NavMeshPathStatus.PathComplete)
             { LastRouteFailure = "no complete path from " + transform.position.ToString("F2") + " to " + sampled.ToString("F2") + " (" + candidatePath.status + ")"; return false; }
-            if (!ownedAgent.SetPath(candidatePath)) { LastRouteFailure = "the agent refused the path"; return false; }
+            if (arrival == null && !ownedAgent.SetPath(candidatePath)) { LastRouteFailure = "the agent refused the path"; return false; }
             LastRouteFailure = null;
             leaseId = reservationId; destination = sampled; requestedDestination = requested; destinationRoom = room;
             arrivalFrames = 0; state = HouseNpcMotionState.Walking;
+            if (arrival != null) SetSpeed(0f);
             ownedAgent.updateRotation = true; ownedAgent.isStopped = false;
             return true;
         }

@@ -29,6 +29,10 @@ namespace Gamesim.House
 
         /// <summary>Presentation can borrow idle actors only. Meeting leases and saved conversations win.</summary>
         public bool BeginCompetitionStage(IReadOnlyList<string> ids,IReadOnlyList<HouseInteractionAnchor> anchors,out string reason)
+            => BeginCompetitionStage(ids, anchors, null, out reason);
+
+        internal bool BeginCompetitionStage(IReadOnlyList<string> ids, IReadOnlyList<HouseInteractionAnchor> anchors,
+            StageArrival arrival, out string reason)
         {
             reason=null;
             EndWandering();
@@ -52,7 +56,7 @@ namespace Gamesim.House
                 var actor=actors[ids[i]];var anchor=anchors[i];
                 string token="competition:"+i+":"+System.Guid.NewGuid().ToString("N");
                 actor.motion.SetPaused(false);
-                if(!actor.motion.TryReserveAndPath(token,anchor.Approach))
+                if(!actor.motion.TryReserveAndPath(token,anchor.Approach,arrival))
                 {
                     actor.motion.SetPaused(paused);EndCompetitionStage();
                     reason="The arena route for "+actor.npc.DisplayName+" is unavailable. The eligible field remains listed.";

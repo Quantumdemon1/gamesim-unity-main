@@ -61,9 +61,9 @@ namespace Gamesim.Tests.PlayMode
             var before=director.Snapshot;
             if(houseSize>0)InstallRepresentativeYardSolids();
             beforeEntry?.Invoke();
-            Vector3 start=player.transform.position;float radius=player.Agent.radius,height=player.Agent.height;
+            float radius=player.Agent.radius,height=player.Agent.height;
             ButtonWithCaption(ranked?CompetitionMiniGames.EnterCaption(CompetitionMiniGames.For(category)):"Practice this competition").onClick.Invoke();
-            Assert.That(player.transform.position,Is.EqualTo(start),"Opening the apparatus claims a route and does not warp the body.");
+            AssertShortStageWalk(player.Agent, "apparatus " + category + " entrance", allowCoveredStart: true);
             var instrument=PlayerInstrument();
             Assert.That(instrument.GetComponentsInChildren<Collider>(true),Is.Empty);
             yield return null;
@@ -843,13 +843,13 @@ namespace Gamesim.Tests.PlayMode
                 yield return null;Canvas.ForceUpdateCanvases();yield return lens.MakeSureTheCanvasesAreDrawn();
                 if(screen.Paused && resumeBeforeInput)yield return PressKey(Key.P);
                 yield return play();yield return null;
-                if (!signal) ReadInputFrame();
+                if (!handContact) ReadInputFrame();
                 else
                 {
                     // The coroutine resumes before LateUpdate writes the actual native hand pose.
                     // Sample the bone and both camera views on the same rendered input frame.
                     var activeBody = player.GetComponentsInChildren<Animator>().FirstOrDefault(animator => animator.isHuman && animator.isActiveAndEnabled);
-                    LogSignalContact("coroutine", activeBody, player.GetComponent<CompetitionInstrumentPose>(), instrument);
+                    if (signal) LogSignalContact("coroutine", activeBody, player.GetComponent<CompetitionInstrumentPose>(), instrument);
                     int inputFrame = Time.frameCount, sampledFrame = -1;
                     Exception captureError = null;
                     var probe = player.gameObject.AddComponent<FrameFootProbe>();

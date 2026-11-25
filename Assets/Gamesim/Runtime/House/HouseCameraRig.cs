@@ -712,6 +712,24 @@ namespace Gamesim.House
             if (IsTravelling) roomsTravelFrom = before;
         }
 
+        /// <summary>Takes an authored shot on this frame, including its live lens and boom occlusion.</summary>
+        internal void CutToShot(in Shot shot)
+        {
+            MoveTo(shot);
+            travelSeconds = 0f;
+            transform.position = desiredFocus;
+            distance = desiredDistance;
+            pitch = shot.Pitch;
+            ApplyCameraImmediately();
+            if (ViewCamera != null)
+            {
+                appliedDistance = OccludedDistance(distance);
+                viewCamera.transform.localPosition = new Vector3(0f, 0f, -appliedDistance);
+                ApplyLens(1f, true);
+            }
+            ResolveRooms();
+        }
+
         /// <summary>
         /// Whether the shot holding the camera took it straight from the view <paramref name="takeovers"/> was read
         /// on (<see cref="ViewTakeovers"/> just after a free move): nothing else took the view between them.
@@ -1100,7 +1118,7 @@ namespace Gamesim.House
         /// to the camera's own when nothing holds. The morph blends the two projection matrices and
         /// is recomputed every frame from the live aspect, so a resized window never keeps a stale one.
         /// </summary>
-        private void ApplyLens(float blend)
+        private void ApplyLens(float blend, bool immediate = false)
         {
             if (defaultFieldOfView < 0f)
             {
@@ -1116,7 +1134,7 @@ namespace Gamesim.House
 
             // The lens eases slower than the pivot: a field of view that lands in a tenth of a
             // second reads as a cut, and the overview's morph should ride most of the dolly.
-            float lensBlend = reducedMotion ? 1f : 1f - Mathf.Exp(-smoothing * 0.3f * Time.unscaledDeltaTime);
+            float lensBlend = immediate || reducedMotion ? 1f : 1f - Mathf.Exp(-smoothing * 0.3f * Time.unscaledDeltaTime);
             lensFieldOfView = Settle(Mathf.Lerp(lensFieldOfView, wantedFieldOfView, lensBlend), wantedFieldOfView, 0.01f);
             lensOrthographic = Settle(Mathf.Lerp(lensOrthographic, wantedOrthographic, lensBlend), wantedOrthographic, 0.002f);
             lensOrthographicSize = Mathf.Lerp(lensOrthographicSize, wantedSize, lensBlend);

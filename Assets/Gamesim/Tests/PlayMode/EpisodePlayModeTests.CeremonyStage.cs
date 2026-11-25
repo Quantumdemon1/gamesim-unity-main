@@ -10,6 +10,7 @@ using Gamesim.Simulation;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using UnityEngine.AI;
 using UnityEngine.TestTools;
 
 namespace Gamesim.Tests.PlayMode
@@ -128,7 +129,7 @@ namespace Gamesim.Tests.PlayMode
         }
 
         /// <summary>Submits the house's next legal decisions until a ceremony is staged, or the cards play unstaged.</summary>
-        private IEnumerator PlayUntilTheCeremony(int steps = 12)
+        private IEnumerator PlayUntilTheCeremony(int steps = 12, System.Action observeSummons = null)
         {
             for (int i = 0; i < steps && !director.IsCeremonyStaged; i++)
             {
@@ -137,6 +138,7 @@ namespace Gamesim.Tests.PlayMode
                 if ((keys != null && keys.IsPlaying) || (vote != null && vote.IsPlaying)) yield break;
                 var result = director.Submit(NextCommand(director.Snapshot));
                 Assert.That(result.accepted, Is.True, result.reason);
+                if (director.IsCeremonyStaged) observeSummons?.Invoke();
                 yield return null;
             }
         }
@@ -186,13 +188,30 @@ namespace Gamesim.Tests.PlayMode
             return new Vector2(low, high);
         }
 
+        private void AssertShortCeremonyRoutes()
+        {
+            var meetings = NpcRead<HouseMeetingCoordinator>("npcMeetings");
+            var walkers = SceneComponents<HouseNpc>().Where(npc => meetings.CeremonyActorHolds(npc.Id)).ToArray();
+            Assert.That(walkers, Is.Not.Empty);
+            Assert.That(player.IsRunning, Is.False);
+            AssertShortStageWalk(player.Agent, "player's assigned ceremony approach", allowCoveredStart: true);
+            foreach (var npc in walkers)
+            {
+                var agent = npc.GetComponent<NavMeshAgent>();
+                AssertShortStageWalk(agent, npc.Id, allowCoveredStart: true);
+                Assert.That(Vector3.Distance(agent.destination, meetings.CeremonyPlace(npc.Id).Approach), Is.LessThan(.25f));
+                Assert.That(npc.GetComponent<CharacterPresentation>().IsRunning, Is.False, npc.Id);
+            }
+        }
+
         [UnityTest]
         public IEnumerator CeremonyStage_TheNominationGathersTheHouseToTheTableAndPlaysTheKeysOnTheScreen()
         {
             yield return InstallStagedSeason(51, AtNomination);
             var state = director.Snapshot;
             string hoh = state.hohId;
-            yield return PlayUntilTheCeremony();
+            float summonedAt = 0f;
+            yield return PlayUntilTheCeremony(observeSummons: () => { summonedAt = Time.unscaledTime; AssertShortCeremonyRoutes(); });
             Assert.That(director.IsCeremonyStaged, Is.True, "The nomination is staged in the house.");
             Assert.That(director.CeremonyStageKind, Is.EqualTo(CeremonySting.NominationKind));
             Assert.That(director.CeremonyStagePhase, Is.EqualTo(EpisodeDirector.CeremonyStageStep.Summons), "The house is summoned first.");
@@ -201,9 +220,11 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(keys.IsPlaying, Is.False, "The card waits for the house to gather.");
             Assert.That(Hud.IsHeldForReveal, Is.True, "The chrome steps aside from the summons: it is drawn from the committed result.");
             Assert.That(cameraRig.HasShot, Is.True, "The camera is on the stage's wide.");
+            Assert.That(cameraRig.IsTravelling, Is.False, "The stock wide came in on the concealed cut.");
 
             yield return WaitFor(() => director.CeremonyStagePhase == EpisodeDirector.CeremonyStageStep.Playing,
                 EpisodeDirector.SummonsHardSeconds(CeremonyPace.Suspenseful) + 6f, "the card plays once the seats have filled or the summons has run its course");
+            Debug.LogFormat("[Gamesim short arrivals] nomination starts after {0:F2} s", Time.unscaledTime - summonedAt);
             Assert.That(keys.IsPlaying, Is.True, "The key ceremony plays.");
             var screen = director.CeremonyStageScreen;
             Assert.That(screen, Is.Not.Null, "The stage has the nomination room's screen.");
@@ -402,11 +423,25 @@ namespace Gamesim.Tests.PlayMode
             yield return InstallStagedSeason(52, AtEviction);
             var state = director.Snapshot;
             var block = state.nominees.ToList();
-            yield return PlayUntilTheCeremony();
+            float summonedAt = 0f;
+            yield return PlayUntilTheCeremony(observeSummons: () => { summonedAt = Time.unscaledTime; AssertShortCeremonyRoutes(); });
             Assert.That(director.IsCeremonyStaged, Is.True, "The eviction is staged in the living room.");
             Assert.That(director.CeremonyStageKind, Is.EqualTo(CeremonySting.EvictionKind));
             var vote = SceneComponents<VoteReveal>().Single();
             Assert.That(vote.IsPlaying, Is.False, "The reveal waits for the house to take its seats.");
+
+            // Seed 52 recreates the departure candidate that originally rebound in the yard.
+            const string reboundId = "taylor-kim";
+            Assert.That(director.DepartingId, Is.EqualTo(reboundId));
+            var meetings = NpcRead<HouseMeetingCoordinator>("npcMeetings");
+            var departingBody = SceneComponents<HouseNpc>().Single(npc => npc.Id == reboundId);
+            var departingAgent = departingBody.GetComponent<NavMeshAgent>();
+            yield return WaitFor(() => meetings.CeremonyActorHolds(reboundId), 5f, "the rebound departure candidate gets a short entrance");
+            var assignedChair = meetings.CeremonyPlace(reboundId);
+            Assert.That(assignedChair, Is.Not.Null);
+            Assert.That(assignedChair.VenueId, Is.EqualTo(CeremonySeating.HotSeat));
+            AssertShortStageWalk(departingAgent, "rebound Taylor's hot-seat entrance", allowCoveredStart: true);
+            Assert.That(Vector3.Distance(departingAgent.destination, assignedChair.Approach), Is.LessThan(.25f));
 
             yield return WaitFor(() => director.CeremonyStagePhase == EpisodeDirector.CeremonyStageStep.Playing,
                 EpisodeDirector.SummonsHardSeconds(CeremonyPace.Suspenseful) + 6f, "the reveal plays once the nominees have taken the hot seats");
@@ -414,6 +449,10 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(vote.Surface, Is.Not.Null, "on the living room's screen");
             Assert.That(vote.Surface.Room, Is.EqualTo("Living"));
             Assert.That(StageReport(), Does.Not.Contain("The house is not free"), "The summons sent the house; nobody waited for the retry.");
+            Debug.LogFormat("[Gamesim short arrivals] eviction starts after {0:F2} s", Time.unscaledTime - summonedAt);
+            Assert.That(meetings.CeremonyActorArrived(reboundId), Is.True, "The unskipped vote waits for Taylor at the assigned hot seat.");
+            Assert.That(departingBody.GetComponent<HouseSeatPresentation>()?.Active, Is.True);
+            Assert.That(Vector3.Distance(departingBody.transform.position, assignedChair.Approach), Is.LessThan(.4f));
 
             var hot = CeremonySeating.Anchors(director.gameObject.scene, CeremonySeating.HotSeat);
             Assert.That(hot.Count, Is.EqualTo(2), "Two hot seats face the screen.");

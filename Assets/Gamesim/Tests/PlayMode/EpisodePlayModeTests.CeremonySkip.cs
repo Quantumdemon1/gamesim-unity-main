@@ -108,6 +108,10 @@ namespace Gamesim.Tests.PlayMode
             yield return PressKey(Key.Enter);
             Assert.That(vote.IsPlaying, Is.False, "The next press closes it,");
             yield return Frames(2);
+            // A skipped summons can leave the departing houseguest dressing in another room: the vote shot holds
+            // until that body can appear in the goodbye.
+            yield return WaitFor(() => director.CeremonyStagePhase != EpisodeDirector.CeremonyStageStep.Playing,
+                CharacterPresentation.AssemblyTimeoutSeconds, "the vote hands off when the departing body is ready");
             // PACK8-PASS-PLAN C2: the evicted stand to say goodbye before they walk out.
             Assert.That(director.CeremonyStagePhase, Is.EqualTo(EpisodeDirector.CeremonyStageStep.Goodbye), "the evicted stand to say goodbye,");
             Assert.That(director.DepartingId, Is.EqualTo(evicted));

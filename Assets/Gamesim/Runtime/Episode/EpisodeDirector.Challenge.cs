@@ -364,7 +364,6 @@ namespace Gamesim.Episode
             challengeCommandId = Guid.NewGuid().ToString("N");
             if (!BeginCompetitionArena(state))
             { challengeActive = false; challengeOrigin = null; message = competitionArenaStatus; BeginSystemNotice(); Render(); return; }
-            FrameCompetition();
             var kind = timingBarForDiagnostics ? CompetitionMiniGames.Kind.Precision
                 : CompetitionGame(state);
             challengeRun = kind == CompetitionMiniGames.Kind.Precision ? null : new MiniGameRun(kind,
@@ -650,18 +649,30 @@ namespace Gamesim.Episode
             });
         }
 
+        private void FrameCompetitionEntrance(Vector3 station)
+        {
+            if (cameraRig == null || cameraRig.ReducedMotion) return;
+            // The 12 m yard wide covers the whole nearby approach at the far stations.
+            // Begin on the station from the open apron, with room beyond the sides of the
+            // image for a short entrance. Widen only once the presentation can use the marks.
+            cameraRig.CutToShot(new HouseCameraRig.Shot
+            {
+                Focus = station + Vector3.up * .95f,
+                Distance = 4.2f, Pitch = 18f, Yaw = 12f, FieldOfView = 38f, Rooms = CompetitionRooms,
+            });
+            competitionEntranceFramed = true;
+            if (competitionShow == null) competitionFramed = true;
+        }
+
         private void FrameCompetition()
         {
             if (cameraRig == null || cameraRig.ReducedMotion) return;
             // The ring tower frames its three stacks instead (EpisodeDirector.RingTower.cs).
             if (FrameRingTower()) return;
-            // On its way it draws what the view drew as it left - the briefing's whole house, read before
-            // the shot makes the competition the view's source - with the yard, and the yard alone landed (RS6a).
-            cameraRig.MoveTo(new HouseCameraRig.Shot
+            cameraRig.CutToShot(new HouseCameraRig.Shot
             {
                 Focus = StationPosition + Vector3.up, Distance = CompetitionShotDistance, Pitch = CompetitionShotPitch, Yaw = 0f,
-                FieldOfView = CompetitionShotFieldOfView, Seconds = CompetitionShotSeconds, Rooms = CompetitionRooms,
-                TravelFromRooms = ViewedRooms,
+                FieldOfView = CompetitionShotFieldOfView, Rooms = CompetitionRooms,
             });
             competitionFramed = true;
         }

@@ -25,6 +25,9 @@ namespace Gamesim.House
         }
         private readonly Dictionary<string, CeremonyLease> ceremonyLeases = new Dictionary<string, CeremonyLease>();
 
+        internal StageArrival CeremonyEntrance(Camera camera, System.Action conceal)
+            => new StageArrival(rooms, camera, conceal);
+
         public bool HasCeremonyStage => ceremonyLeases.Count > 0;
         public int CeremonyStageCount => ceremonyLeases.Count;
 
@@ -47,6 +50,10 @@ namespace Gamesim.House
         /// opening has the house.
         /// </summary>
         public int BeginCeremonyStage(IReadOnlyList<string> ids, IReadOnlyList<HouseInteractionAnchor> places, out string reason)
+            => BeginCeremonyStage(ids, places, null, out reason);
+
+        internal int BeginCeremonyStage(IReadOnlyList<string> ids, IReadOnlyList<HouseInteractionAnchor> places,
+            StageArrival arrival, out string reason)
         {
             reason = null;
             EndCeremonyStage();
@@ -70,7 +77,7 @@ namespace Gamesim.House
                 if (actor.motion.LeaseId != null) { left.Add(actor.npc.DisplayName + " (in a conversation)"); continue; }
                 string token = "ceremony:" + i + ":" + System.Guid.NewGuid().ToString("N");
                 actor.motion.SetPaused(false);
-                if (!actor.motion.TryReserveAndPath(token, place.Approach))
+                if (!actor.motion.TryReserveAndPath(token, place.Approach, arrival))
                 {
                     actor.motion.SetPaused(paused);
                     left.Add(actor.npc.DisplayName + " (no route to " + place.VenueId + " " + place.Slot
@@ -89,6 +96,9 @@ namespace Gamesim.House
         /// they were about to walk - is asked again once the house has moved.
         /// </summary>
         public bool JoinCeremonyStage(string id, HouseInteractionAnchor place, out string reason)
+            => JoinCeremonyStage(id, place, null, out reason);
+
+        internal bool JoinCeremonyStage(string id, HouseInteractionAnchor place, StageArrival arrival, out string reason)
         {
             reason = null;
             if (!Usable || HasCompetitionStage || HasOpeningStage || id == null || place == null || !place.isActiveAndEnabled
@@ -100,7 +110,7 @@ namespace Gamesim.House
             if (actor.motion.LeaseId != null) { reason = actor.npc.DisplayName + " is in a conversation."; return false; }
             string token = "ceremony:" + ceremonyLeases.Count + ":" + System.Guid.NewGuid().ToString("N");
             actor.motion.SetPaused(false);
-            if (!actor.motion.TryReserveAndPath(token, place.Approach))
+            if (!actor.motion.TryReserveAndPath(token, place.Approach, arrival))
             {
                 actor.motion.SetPaused(paused);
                 reason = actor.npc.DisplayName + " has no route to " + place.VenueId + " " + place.Slot

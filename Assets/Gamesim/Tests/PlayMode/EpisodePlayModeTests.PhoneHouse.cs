@@ -48,7 +48,8 @@ namespace Gamesim.Tests.PlayMode
         public IEnumerator PhoneHouse_QuickMenuTapAndCancelledContactCannotChooseAFloor()
         {
             yield return CameraInputInTheRoomView();
-            var touch = player.GetComponent<HouseTouchInput>() ?? player.gameObject.AddComponent<HouseTouchInput>();
+            var touch = player.GetComponent<HouseTouchInput>();
+            if (touch == null) touch = player.gameObject.AddComponent<HouseTouchInput>();
             var screen = TestPhoneScreen();
             int moves = 0, clicks = 0;
             void Moved() => moves++;
@@ -123,7 +124,8 @@ namespace Gamesim.Tests.PlayMode
         public IEnumerator PhoneHouse_PinchZoomsWithoutWalkingOnRelease()
         {
             yield return CameraInputInTheRoomView();
-            var touch = player.GetComponent<HouseTouchInput>() ?? player.gameObject.AddComponent<HouseTouchInput>();
+            var touch = player.GetComponent<HouseTouchInput>();
+            if (touch == null) touch = player.gameObject.AddComponent<HouseTouchInput>();
             var screen = TestPhoneScreen();
             int moves = 0;
             void Moved() => moves++;

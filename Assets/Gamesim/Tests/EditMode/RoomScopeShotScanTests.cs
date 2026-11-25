@@ -261,7 +261,7 @@ namespace Gamesim.Sample
                 if (close < 0) continue;
                 string kind = match.Groups["kind"].Value;
                 Enclosing(code, at, out string member, out int bodyStart);
-                if (rigFile && (member == "MoveTo" || member == "CutTo" || member == "FocusSubject")) continue;
+                if (rigFile && (member == "MoveTo" || member == "CutTo" || member == "FocusSubject" || member == "CutToShot")) continue;
                 int line = 1;
                 for (int i = 0; i < at; i++) if (code[i] == '\n') line++;
                 int lineEnd = code.IndexOf('\n', at);

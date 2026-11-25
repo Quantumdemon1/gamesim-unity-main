@@ -332,6 +332,8 @@ namespace Gamesim.Episode
             /// <summary>The eviction's evicted and its survivor, once the result is read.</summary>
             private string leavingId, survivorId;
             private float goodbyeUntil;
+            private bool goodbyeAwaitingBody;
+            private float goodbyeBodyReadyBy;
             /// <summary>Whether the goodbye awaits its owned two-party noncontact gesture, and until when.</summary>
             private bool farewellAtGoodbye;
             private float farewellAtGoodbyeBy;
@@ -361,6 +363,7 @@ namespace Gamesim.Episode
             public string StandingId { get; private set; }
             public bool Active => begun && !ended;
             public bool Narrating => Active && Step != CeremonyStageStep.Release;
+            public bool CanSkipGoodbye => Step == CeremonyStageStep.Goodbye || goodbyeAwaitingBody;
             /// <summary>
             /// Whether a press on the devices is the stage's: while it narrates, and while the
             /// evicted walk out under it. The skip chip is up exactly then, naming that press, and
@@ -532,7 +535,15 @@ namespace Gamesim.Episode
                 endBy = now + CeremonyStageSeconds;
                 pressGuardUntil = now + PressGuard;
                 director.cameraRig.ControlsEnabled = false;
-                Move(Wide(1.2f));
+                StageArrival entrance = null;
+                if (UsesShortSummons)
+                {
+                    var shot = Wide(0f);
+                    shot.Rooms = ShotRooms;
+                    entrance = SummonsEntrance();
+                    director.cameraRig.CutToShot(shot);
+                }
+                else Move(Wide(1.2f));
                 holdsCamera = true;
                 if (director.sting != null) director.sting.Play(Kind, SummonsLine(Kind), director.reducedMotion);
 
@@ -542,7 +553,7 @@ namespace Gamesim.Episode
                     if (pair.Key == state.playerId) continue;
                     ids.Add(pair.Key); anchors.Add(pair.Value);
                 }
-                int sent = director.npcMeetings.BeginCeremonyStage(ids, anchors, out var left);
+                int sent = director.npcMeetings.BeginCeremonyStage(ids, anchors, entrance, out var left);
                 summonsRefusals = left;
                 if (left != null) Debug.Log("Ceremony stage (" + Kind + "): " + sent + " sent to their places. " + left);
 
@@ -554,7 +565,7 @@ namespace Gamesim.Episode
                 if (placeOf.TryGetValue(state.playerId, out var mine) && director.player != null)
                 {
                     director.player.ReleaseActivityMove(playerOwner);
-                    if (director.player.TryBeginActivityMove(playerOwner, mine.Approach, out var reason))
+                    if (director.player.TryBeginActivityMove(playerOwner, mine.Approach, entrance, out var reason))
                     {
                         playerPlace = mine;
                         longest = Mathf.Max(longest, Flat(director.player.transform.position, mine.Approach) * 1.3f);
@@ -562,11 +573,20 @@ namespace Gamesim.Episode
                     else Debug.Log("Ceremony stage (" + Kind + "): you stay where you are: " + reason);
                 }
                 summonsHardBy = now + SummonsHardSecondsFor(director.ceremonyPace, longest);
-                // The people the card is about get the pace's whole patience, whatever the routes
-                // said: the evicted, re-bound the frame the stage was made, is sent by a retry and
-                // walks thirty metres from the yard, and no eviction plays to an empty hot seat.
+                // The principals get the full patience window. In particular, the evicted can
+                // still be rebinding when the first summons goes out and gets their entrance on retry.
                 summonsPatienceBy = now + SummonsHardSeconds(director.ceremonyPace);
                 Subscribe(true);
+            }
+
+            private bool UsesShortSummons => Kind == CeremonySting.NominationKind || Kind == CeremonySting.EvictionKind;
+
+            private StageArrival SummonsEntrance()
+            {
+                System.Action conceal = Step == CeremonyStageStep.Summons ? director.CoverStageArrival : null;
+                var entrance = director.npcMeetings.CeremonyEntrance(director.cameraRig.ViewCamera, conceal);
+                foreach (var pair in places) entrance.Protect(pair.Value.Approach);
+                return entrance;
             }
 
             private void Subscribe(bool on)
@@ -706,7 +726,14 @@ namespace Gamesim.Episode
                         break;
                     case CeremonyStageStep.Playing:
                         RunCues(now);
-                        if (!CardPlaying) Release();
+                        if (goodbyeAwaitingBody)
+                        {
+                            if (director.departingId != leavingId || director.BodyFor(leavingId) == null) Release();
+                            else if (now >= pressGuardUntil && CeremonyTakeover.SkipPressed()) director.SkipWalkOut();
+                            else if (Visual(leavingId)?.IsBodyAssembling == false) BeginGoodbye(leavingId);
+                            else if (now >= goodbyeBodyReadyBy) Release();
+                        }
+                        else if (!CardPlaying) Release();
                         break;
                     case CeremonyStageStep.Goodbye:
                         RunCues(now);
@@ -738,12 +765,14 @@ namespace Gamesim.Episode
             {
                 var meetings = director.npcMeetings;
                 if (meetings == null) return;
+                StageArrival entrance = null;
                 foreach (var pair in places)
                 {
                     string id = pair.Key;
-                    if (id == state.playerId || arrived.Contains(id) || meetings.CeremonyActorHolds(id) || LetGo(id)) continue;
+                    if (id == state.playerId || stoodUp.Contains(id) || arrived.Contains(id) || meetings.CeremonyActorHolds(id) || LetGo(id)) continue;
                     if (meetings.CeremonyPlace(id) != null) continue;
-                    if (meetings.JoinCeremonyStage(id, pair.Value, out var why))
+                    if (UsesShortSummons && entrance == null) entrance = SummonsEntrance();
+                    if (meetings.JoinCeremonyStage(id, pair.Value, entrance, out var why))
                     {
                         refusals.Remove(id); refusalCounts.Remove(id);
                         // Sent late, they get their walk: the cap stretches to their route, within the patience.
@@ -757,9 +786,12 @@ namespace Gamesim.Episode
                         refusalCounts[id] = refusalCounts.TryGetValue(id, out int count) ? count + 1 : 1;
                     }
                 }
-                if (playerPlace == null && placeOf.TryGetValue(state.playerId, out var mine) && director.player != null && !playerSeatedRequested
-                    && !director.player.HasActivityOwner && director.player.TryBeginActivityMove(playerOwner, mine.Approach, out _))
-                    playerPlace = mine;
+                if (playerPlace == null && placeOf.TryGetValue(state.playerId, out var mine) && director.player != null
+                    && !playerSeatedRequested && !director.player.HasActivityOwner)
+                {
+                    if (UsesShortSummons && entrance == null) entrance = SummonsEntrance();
+                    if (director.player.TryBeginActivityMove(playerOwner, mine.Approach, entrance, out _)) playerPlace = mine;
+                }
             }
 
             private bool CardPlaying =>
@@ -1088,7 +1120,17 @@ namespace Gamesim.Episode
                             && placeOf.ContainsKey(evicted) && !LetGo(evicted) && director.BodyFor(evicted) != null
                             && director.isActiveAndEnabled && director.cameraRig != null)
                         {
-                            BeginGoodbye(evicted);
+                            var visual = Visual(evicted);
+                            if (visual != null && visual.IsBodyAssembling && director.WalkerRoomOf(visual.transform) != Room)
+                            {
+                                // The provider is already assembling this body. Keep the current shot
+                                // until the off-room subject can draw, or hand over to the walk on timeout.
+                                StandUp(evicted);
+                                goodbyeAwaitingBody = true;
+                                goodbyeBodyReadyBy = Time.unscaledTime + CharacterPresentation.AssemblyTimeoutSeconds;
+                                pressGuardUntil = Time.unscaledTime + PressGuard;
+                            }
+                            else BeginGoodbye(evicted);
                             break;
                         }
                         // A skip can close the card before the result's cues ran: the evicted still
@@ -1303,12 +1345,16 @@ namespace Gamesim.Episode
             private void BeginGoodbye(string id)
             {
                 leavingId = id;
+                goodbyeAwaitingBody = false;
                 Step = CeremonyStageStep.Goodbye;
                 float now = Time.unscaledTime;
                 goodbyeUntil = now + GoodbyeSeconds;
                 pressGuardUntil = now + PressGuard;
                 // The selected shorter goodbye is a NONCONTACT gesture over the original roots.
                 farewellAtGoodbye = PrepareTheGoodbyeFarewell(id);
+                // The solo cut is framed from the approach root. Clear the hot-seat offset before
+                // the cut so the chair back cannot hide the actor during the stand cross-fade.
+                if (!farewellAtGoodbye) SeatOf(id)?.End();
                 StandUp(id, farewellAtGoodbye);
                 if (farewellAtGoodbye)
                 {
@@ -1354,11 +1400,22 @@ namespace Gamesim.Episode
                         Focus = face, Distance = 3.1f, Pitch = 10f, Yaw = facing + 180f,
                         FieldOfView = Lens, Seconds = CutSeconds, DepthOfFieldWeight = 0.5f,
                     };
-                    Cut(close);
+                    // A skipped summons can leave the evictee in another room. Frame their
+                    // actual walker room at both marks, just as the subject's root supplies the focus.
+                    void FrameStanding(HouseCameraRig.Shot shot, bool entryCut = false)
+                    {
+                        if (body == null) return;
+                        shot.Focus = body.position + Vector3.up * StandingFace;
+                        string room = director.WalkerRoomOf(body);
+                        // The off-room cut must land before the next cue can replace it, even
+                        // when this frame is shorter than the normal ceremony cut duration.
+                        Move(shot, rooms: RoomSet.Of(room), immediate: entryCut && !farewellAtGoodbye && room != Room);
+                    }
+                    FrameStanding(close, entryCut: true);
                     var closer = close;
                     closer.Distance = 2.4f;
                     closer.Seconds = 2f;
-                    if (!farewellAtGoodbye || farewellPrimitive) Schedule(0.05f, () => Move(closer));
+                    if (!farewellAtGoodbye || farewellPrimitive) Schedule(0.05f, () => FrameStanding(closer));
                 }
                 // Their line, worded for where they are: standing before the house, not at the door
                 // (UI-UX-PASS-PLAN W0). The walk out does not say it again.
@@ -1373,7 +1430,7 @@ namespace Gamesim.Episode
             /// <summary>The goodbye over, from the director's side: a press that went straight to the shut door.</summary>
             public void EndTheGoodbye()
             {
-                if (Active && Step == CeremonyStageStep.Goodbye) Release();
+                if (Active && CanSkipGoodbye) Release();
             }
 
             // ------------------------------------------------------------ the walk out, watched
@@ -1438,16 +1495,18 @@ namespace Gamesim.Episode
             /// makes the stage the view's source, so the summons' wide leaves free play's whole house
             /// whole until it lands (RS6a).
             /// </summary>
-            private void Move(HouseCameraRig.Shot shot, ReactionLighting lighting = ReactionLighting.None)
+            private void Move(HouseCameraRig.Shot shot, ReactionLighting lighting = ReactionLighting.None,
+                RoomSet rooms = default, bool immediate = false)
             {
                 if (lighting != ReactionLighting.None) LightReaction(shot, lighting);
                 else if (reactionFill != null) reactionFill.enabled = false;
-                shot.Rooms = ShotRooms;
-                shot.TravelFromRooms = director.ViewedRooms;
-                director.cameraRig.MoveTo(shot);
+                shot.Rooms = rooms.IsEmpty ? ShotRooms : rooms;
+                shot.TravelFromRooms = rooms.IsEmpty ? director.ViewedRooms : rooms;
+                if (immediate) director.cameraRig.CutToShot(shot);
+                else director.cameraRig.MoveTo(shot);
             }
 
-            /// <summary>A low, neutral fill from the viewing side keeps a seated face readable under the coloured room practicals.</summary>
+            /// <summary>A low, soft fill from the camera side keeps a seated face readable under the coloured room practicals.</summary>
             private void LightReaction(HouseCameraRig.Shot shot, ReactionLighting lighting)
             {
                 if (reactionFill == null)
@@ -1661,6 +1720,7 @@ namespace Gamesim.Episode
             {
                 if (!Active || Step == CeremonyStageStep.Release) return;
                 EndTheGoodbyeFarewell("the goodbye released");
+                goodbyeAwaitingBody = false;
                 Step = CeremonyStageStep.Release;
                 releasedAt = Time.unscaledTime;
                 Debug.Log(Report("release"));

@@ -1,6 +1,9 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Text;
 using Gamesim.Episode;
 using Gamesim.House;
 using Gamesim.Presentation;
@@ -12,6 +15,7 @@ using UnityEngine.AI;
 using UnityEngine.InputSystem;
 using UnityEngine.SceneManagement;
 using UnityEngine.TestTools;
+using Object = UnityEngine.Object;
 
 namespace Gamesim.Tests.PlayMode
 {
@@ -470,14 +474,13 @@ namespace Gamesim.Tests.PlayMode
         [UnityTest]
         public IEnumerator StagedExit_CapturesTheGoodbyeTheDoorAndTheShutDoor()
         {
-            if (!Application.isBatchMode) yield break;
+            if (!Application.isBatchMode) Assert.Ignore("This stock-camera capture requires the batch qualification viewport.");
             yield return InstallStagedSeason(52, AtEviction);
             yield return PlayUntilTheCeremony();
             Assert.That(director.IsCeremonyStaged, Is.True, "The eviction is staged in the living room.");
             director.SkipCeremonySummons();
             yield return WaitFor(() => director.CeremonyStagePhase == EpisodeDirector.CeremonyStageStep.Playing, 3f, "the vote plays");
-            yield return SkipReveals();
-            Assert.That(director.CeremonyStagePhase, Is.EqualTo(EpisodeDirector.CeremonyStageStep.Goodbye), "The goodbye.");
+            yield return SkipVoteToGoodbye();
             string evicted = director.DepartingId;
             var sting = SceneComponents<CeremonySting>().Single();
             // Past the push-in (2.05 s), inside the goodbye. The strip says what the picture shows -
@@ -490,8 +493,8 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(words, Has.Some.EqualTo("GOODBYE"), "saying goodbye,");
             Assert.That(words, Has.Some.EqualTo(EpisodeDirector.GoodbyeLine(director.Snapshot, evicted, EpisodeDirector.GoodbyeMoment.Standing)),
                 "with the words for where they are: standing, not at the door.");
-            // The goodbye is the stage's (RS6a): its room. The walk out is the whole house (ROOM-SCOPE-PLAN D6, RS6b).
-            Rs6aAssertTheStageDrawsItsRoom("The goodbye");
+            // The goodbye belongs to the stage and frames the named subject's room; the walk out draws the whole house.
+            AssertGoodbyeRoom(HouseguestBody(evicted), "The goodbye");
             yield return CaptureFraming("walk-out-goodbye", settle: false);
             yield return WaitFor(() => director.WalkOutAtTheDoor, EpisodeDirector.GoodbyeSeconds + EpisodeDirector.WalkOutSeconds, "the door opens for them");
             yield return RealSeconds(0.6f);
@@ -504,6 +507,371 @@ namespace Gamesim.Tests.PlayMode
             yield return CaptureFraming("walk-out-shut", settle: false);
             yield return WaitFor(() => !director.StagedExitRunning, EpisodeDirector.WalkOutSeconds, "the exit ends");
             yield return WaitFor(() => !director.IsCeremonyStaged, 3f, "the house gets up");
+        }
+
+        private IEnumerator SkipVoteToGoodbye()
+        {
+            string evicted = director.DepartingId;
+            Assert.That(evicted, Is.Not.Null.And.Not.Empty);
+            yield return SkipReveals();
+            // A skipped summons can leave the departing houseguest dressing in another room.
+            // The director keeps the vote shot until that actor can appear in the goodbye.
+            yield return WaitFor(() => director.CeremonyStagePhase != EpisodeDirector.CeremonyStageStep.Playing,
+                CharacterPresentation.AssemblyTimeoutSeconds, "the vote hands off when the departing body is ready");
+            Assert.That(director.CeremonyStagePhase, Is.EqualTo(EpisodeDirector.CeremonyStageStep.Goodbye), "The goodbye.");
+            Assert.That(director.DepartingId, Is.EqualTo(evicted), "The goodbye belongs to the evicted houseguest.");
+        }
+
+        // The normal close shot draws Living. With a skipped summons the shot owns only
+        // the named evictee's actual room; the gathering record remains where the actor was.
+        private void AssertGoodbyeRoom(HouseNpc leaving, string when)
+        {
+            string room = director.WalkerRoomOf(leaving.transform);
+            Assert.That(room, Is.Not.Null.And.Not.Empty, when);
+            if (room == EpisodeDirector.CeremonyStageRoom(CeremonySting.EvictionKind))
+                Rs6aAssertTheStageDrawsItsRoom(when);
+            else
+            {
+                Assert.That(director.IsCeremonyStaged && cameraRig.HasShot, Is.True, when);
+                Assert.That(director.CurrentRoomScopeSource, Is.EqualTo(EpisodeDirector.RoomScopeSource.Ceremony), when);
+                var actual = RoomSet.Of(room);
+                Assert.That(cameraRig.Rooms, Is.EqualTo(actual), when + ": the close shot names the evictee's room.");
+                Rs6aAssertTheViewIs(actual, when);
+            }
+            Assert.That(director.IsBodyDrawn(leaving.transform), Is.True, when + ": the evictee is included by the body pass.");
+        }
+
+        [UnityTest]
+        public IEnumerator StagedExit_TheSeatedEvicteeIsVisibleThroughTheGoodbyeAndHandback()
+        {
+            yield return CheckGoodbyeTake(false);
+        }
+
+        [UnityTest]
+        public IEnumerator StagedExit_TheOffRoomEvicteeIsVisibleThroughTheGoodbyeAndHandback()
+        {
+            yield return CheckGoodbyeTake(true);
+        }
+
+        private IEnumerator CheckGoodbyeTake(bool skipSummons)
+        {
+            if (!Application.isBatchMode) Assert.Ignore("This stock-camera capture requires the batch qualification viewport.");
+            yield return InstallStagedSeason(52, AtEviction);
+            yield return PlayUntilTheCeremony();
+            string id = director.DepartingId;
+            var leaving = HouseguestBody(id);
+            Assert.That(id, Is.EqualTo("taylor-kim"));
+            Assert.That(director.Snapshot.Find(id).name, Does.StartWith("Taylor"));
+            if (skipSummons) director.SkipCeremonySummons();
+            yield return WaitFor(() => director.CeremonyStagePhase == EpisodeDirector.CeremonyStageStep.Playing,
+                EpisodeDirector.SummonsHardSeconds(CeremonyPace.Suspenseful) + 6f, "the vote card opens");
+            HouseSeatPresentation CurrentSeat() => leaving.GetComponent<HouseSeatPresentation>();
+            var hot = CeremonySeating.Anchors(director.gameObject.scene, CeremonySeating.HotSeat);
+            Assert.That(hot.Count, Is.EqualTo(2));
+            if (!skipSummons)
+            {
+                yield return WaitFor(() => CurrentSeat() != null && CurrentSeat().Settled, 8f, "the named evictee sits in red on the unskipped summons");
+                var hips = HipsOf(leaving);
+                Vector3 seatedAt = hips != null ? hips.position : CurrentSeat().VisualFeet;
+                int assigned = director.Snapshot.nominees.IndexOf(id);
+                Assert.That(assigned, Is.InRange(0, hot.Count - 1));
+                Assert.That(Flat(seatedAt, hot[assigned].Position), Is.LessThan(.5f), "Taylor sits in their assigned red chair.");
+            }
+            var visual = Presentation(leaving);
+            string stageRoom = EpisodeDirector.CeremonyStageRoom(CeremonySting.EvictionKind);
+            bool located = HouseRoomQuery.TryCreate(director.gameObject.scene, out var floors, out var floorReason);
+            Assert.That(located, Is.True, floorReason);
+            string voteRoom = director.WalkerRoomOf(leaving.transform);
+            bool seatedAtVote = CurrentSeat() != null && CurrentSeat().Active;
+            bool drawnAtVote = director.IsBodyDrawn(leaving.transform);
+            if (skipSummons)
+            {
+                Assert.That(seatedAtVote, Is.False, "This take requires the actual skipped, unseated evictee.");
+                Assert.That(RoomSet.Of(voteRoom).IsEmpty, Is.False);
+                Assert.That(voteRoom, Is.Not.EqualTo(stageRoom));
+                Assert.That(floors.TryLocate(leaving.transform.position, .05f, out var floorAtVote), Is.True);
+                Assert.That(floorAtVote, Is.EqualTo(voteRoom), "Taylor's actual feet and the room tracker agree before the skipped goodbye.");
+            }
+            else Assert.That(voteRoom, Is.EqualTo(EpisodeDirector.CeremonyStageRoom(CeremonySting.EvictionKind)));
+
+            string folder = GoodbyeTakeFolder(skipSummons);
+            var rows = new StringBuilder("frame\twhen\tunscaledSeconds\tgoodbyeSeconds\tid\tname\tstatus\tvoteRoom\tseatedAtVote\tdrawnAtVote\tactorRoom\tviewRooms\tscopeSource\tcullingMask\tstage\tshot\tdip\troot\teye\theadViewport\theadChanged\theadTested\ttorsoChanged\ttorsoTested\tmeshRenderers\tmaskIncluded\tactorDrawn\thudHeld\n");
+            var cameraTrace = new StringBuilder("frame\tgoodbyeSeconds\ttrackerRoom\tfloorRoom\tseatActive\tvisualSeated\trequestedBoomM\tappliedBoomM\ttravelling\tviewRooms\tcullingMask\tactorDrawn\n");
+            var handback = new StringBuilder("frame\tunscaledSeconds\tsource\tphase\tstagedExit\tstageActive\thudHeld\tdip\tshot\ttravelling\tcameraControl\tplayerInput\tpanel\tweeklyRecap\treturnButtonFrame\n");
+            string lastHandoffState = null;
+            int recapFrame = -1, returnButtonFrame = -1;
+            var pictures = new List<(string path, Texture2D image)>();
+            var issues = new List<string>();
+            var host = new GameObject("Stock eviction goodbye observer");
+            var probe = host.AddComponent<FrameFootProbe>();
+            var camera = cameraRig.ViewCamera;
+            var lens = new CaptureLens(camera, 960, 540);
+            float began = -1f;
+            int portraits = 0, entryFrame = -1, cutLanded = -1, pushBegan = -1, pushMoving = -1, pushLanded = -1;
+            bool released = false, free = false, lostOffRoom = false;
+            Exception observerFailure = null;
+            try
+            {
+                yield return null;
+                yield return lens.MakeSureTheCanvasesAreDrawn();
+                var sting = SceneComponents<CeremonySting>().Single();
+                string standing = EpisodeDirector.GoodbyeLine(director.Snapshot, id, EpisodeDirector.GoodbyeMoment.Standing);
+                string[] moments = { "early", "held", "late" };
+                float[] at = { .20f, 2.10f, 3.45f };
+                void Sample(string moment, bool portrait)
+                {
+                    int frame = Time.frameCount;
+                    var image = lens.Read();
+                    pictures.Add((Path.Combine(folder, moment + "-frame-" + frame + ".png"), image));
+                    var root = leaving.transform;
+                    var room = director.WalkerRoomOf(root);
+                    var head = visual.HeadBone;
+                    var parts = visual.VisualRoot == null ? Array.Empty<Renderer>()
+                        : visual.VisualRoot.GetComponentsInChildren<Renderer>().Where(r => (r is MeshRenderer || r is SkinnedMeshRenderer)
+                            && r.enabled && !r.forceRenderingOff && r.gameObject.activeInHierarchy).ToArray();
+                    int included = parts.Count(r => (camera.cullingMask & (1 << r.gameObject.layer)) != 0);
+                    var headPoint = head != null ? head.position : parts.FirstOrDefault(r => r.name == "Face")?.bounds.center;
+                    Vector2? headView = headPoint.HasValue ? InTheFrame(camera, headPoint.Value) : null;
+                    var headCounts = (changed: 0, tested: 0);
+                    var torsoCounts = (changed: 0, tested: 0);
+                    if (portrait)
+                    {
+                        if (skipSummons && (!floors.TryLocate(root.position, .05f, out var floorRoom)
+                            || floorRoom != voteRoom || room != voteRoom || room == stageRoom || visual.IsSeated || CurrentSeat()?.Active == true))
+                            issues.Add(moment + ": Taylor was not the original standing, off-room subject in both room observations.");
+                        if (skipSummons && moment == "early" && (pushBegan < 0 || !cameraRig.IsTravelling))
+                            issues.Add("The early portrait did not show the timed push to 2.4 m.");
+                        if (skipSummons && moment != "early" && (pushLanded < 0 || cameraRig.IsTravelling || Mathf.Abs(cameraRig.AppliedDistance - 2.4f) > .07f))
+                            issues.Add(moment + ": the room-correct goodbye push had not landed at 2.4 m.");
+                        if (director.DepartingId != id || visual.CharacterId != id || director.CeremonyStagePhase != EpisodeDirector.CeremonyStageStep.Goodbye)
+                            issues.Add(moment + ": the named subject or active goodbye changed.");
+                        if (moment != "late" && (!sting.IsPlaying || !sting.GetComponentsInChildren<TMP_Text>(false).Any(t => t.text == standing)))
+                            issues.Add(moment + ": Taylor's standing goodbye was absent from the strip.");
+                        try { AssertGoodbyeRoom(leaving, moment); }
+                        catch (AssertionException ex) { issues.Add(ex.Message); }
+                        var chest = visual.VisualRoot != null ? visual.VisualRoot.GetComponentInChildren<Animator>() : null;
+                        var upper = chest != null && chest.isInitialized && chest.isHuman
+                            ? chest.GetBoneTransform(HumanBodyBones.Chest) ?? chest.GetBoneTransform(HumanBodyBones.Spine) : null;
+                        Vector3? torsoPoint = upper != null ? upper.position : parts.FirstOrDefault(r => r.name == "Torso")?.bounds.center;
+                        Texture2D without = null;
+                        try
+                        {
+                            foreach (var part in parts) part.forceRenderingOff = true;
+                            without = lens.Read();
+                            var actual = image.GetPixels32();
+                            var masked = without.GetPixels32();
+                            if (headPoint.HasValue)
+                                headCounts = GoodbyeContribution(camera, image.width, image.height, actual, masked, headPoint.Value, .068f);
+                            if (torsoPoint.HasValue)
+                                torsoCounts = GoodbyeContribution(camera, image.width, image.height, actual, masked, torsoPoint.Value, .10f);
+                        }
+                        finally
+                        {
+                            foreach (var part in parts) if (part != null) part.forceRenderingOff = false;
+                            if (without != null) Object.Destroy(without);
+                        }
+                        if (headCounts.tested < 25 || headCounts.changed < .4f * headCounts.tested
+                            || torsoCounts.tested < 25 || torsoCounts.changed < .4f * torsoCounts.tested || Time.frameCount != frame)
+                            issues.Add(moment + ": the named actor did not supply the required head and torso pixels.");
+                    }
+                    if (moment == "first-free-camera")
+                    {
+                        var playerRoom = director.WalkerRoomOf(player.transform);
+                        if (cameraRig.FocusedSubject != null && cameraRig.FocusedSubject != player.transform
+                            || !director.ViewedRooms.Contains(playerRoom) || !director.IsBodyDrawn(player.transform))
+                            issues.Add("The first normal view did not return to the player's room and body.");
+                        var pixels = image.GetPixels32();
+                        int darkest = 765, brightest = 0;
+                        for (int y = image.height / 4; y < image.height * 3 / 4; y += 7)
+                            for (int x = image.width / 4; x < image.width * 3 / 4; x += 7)
+                            {
+                                var c = pixels[y * image.width + x];
+                                int lit = c.r + c.g + c.b;
+                                darkest = Math.Min(darkest, lit); brightest = Math.Max(brightest, lit);
+                            }
+                        if (brightest - darkest < 35) issues.Add("The first normal view had no readable scene contrast.");
+                    }
+                    rows.AppendLine(FormattableString.Invariant($"{frame}\t{moment}\t{Time.unscaledTime:F5}\t{Time.unscaledTime - began:F5}\t{id}\t{director.Snapshot.Find(id).name}\t{director.Snapshot.Find(id).status}\t{voteRoom}\t{seatedAtVote}\t{drawnAtVote}\t{room}\t{director.ViewedRooms}\t{director.CurrentRoomScopeSource}\t{camera.cullingMask}\t{director.CeremonyStagePhase}\t{cameraRig.HasShot}\t{director.IsTravelDipShowing}\t{root.position:F3}\t{camera.transform.position:F3}\t{headView}\t{headCounts.changed}\t{headCounts.tested}\t{torsoCounts.changed}\t{torsoCounts.tested}\t{parts.Length}\t{included}\t{director.IsBodyDrawn(root)}\t{Hud.IsHeldForReveal}"));
+                }
+                probe.Foot = () =>
+                {
+                    if (observerFailure != null || free) return;
+                    try
+                    {
+                        if (director.CeremonyStagePhase == EpisodeDirector.CeremonyStageStep.Goodbye)
+                        {
+                            float requested = cameraRig.DesiredDistance, applied = cameraRig.AppliedDistance;
+                            bool travelling = cameraRig.IsTravelling;
+                            string room = director.WalkerRoomOf(leaving.transform);
+                            bool onFloor = floors.TryLocate(leaving.transform.position, .05f, out var floor);
+                            bool seated = CurrentSeat()?.Active == true;
+                            if (began < 0f)
+                            {
+                                began = Time.unscaledTime;
+                                entryFrame = Time.frameCount;
+                                if (!cameraRig.HasShot || Mathf.Abs(requested - 3.1f) > .025f)
+                                    issues.Add("The first authored goodbye frame did not request the 3.1 m standing cut.");
+                                if (skipSummons && (seated || visual.IsSeated))
+                                    issues.Add("Taylor was seated when the skipped goodbye began.");
+                            }
+                            float elapsed = Time.unscaledTime - began;
+                            cameraTrace.AppendLine(FormattableString.Invariant($"{Time.frameCount}\t{elapsed:F5}\t{room}\t{floor}\t{seated}\t{visual.IsSeated}\t{requested:F5}\t{applied:F5}\t{travelling}\t{director.ViewedRooms}\t{camera.cullingMask}\t{director.IsBodyDrawn(leaving.transform)}"));
+                            if (skipSummons && !lostOffRoom && (!onFloor || floor != voteRoom || room != voteRoom || room == stageRoom || seated || visual.IsSeated))
+                            {
+                                lostOffRoom = true;
+                                issues.Add($"Taylor left the off-room, standing fallback on goodbye frame {Time.frameCount}.");
+                            }
+                            if (cutLanded < 0 && pushBegan < 0 && !travelling && Mathf.Abs(requested - 3.1f) <= .025f && Mathf.Abs(applied - 3.1f) <= .07f)
+                            {
+                                cutLanded = Time.frameCount;
+                                try { AssertGoodbyeRoom(leaving, "standing goodbye cut at frame " + cutLanded); }
+                                catch (AssertionException ex) { issues.Add("Standing goodbye cut: " + ex.Message); }
+                            }
+                            // On a gathered humanoid farewell the director can take the pair shot.
+                            // The unseated off-room subject gets the standing push 0.05 s after the cut.
+                            if (skipSummons && Mathf.Abs(requested - 2.4f) <= .025f)
+                            {
+                                if (pushBegan < 0)
+                                {
+                                    pushBegan = Time.frameCount;
+                                    if (cutLanded < entryFrame || pushBegan <= cutLanded || elapsed < .045f || elapsed > .20f)
+                                        issues.Add("The 2.4 m push did not follow a completed 3.1 m cut on its scheduled cue.");
+                                }
+                                if (travelling && applied > 2.47f && applied < 3.03f) pushMoving = Time.frameCount;
+                                if (!travelling && pushLanded < 0 && Mathf.Abs(applied - 2.4f) <= .07f)
+                                {
+                                    pushLanded = Time.frameCount;
+                                    if (elapsed < 1.85f || elapsed > 2.35f || pushMoving <= pushBegan || pushLanded <= pushMoving)
+                                        issues.Add("The two-second goodbye push did not travel between its two physical boom marks on time.");
+                                }
+                            }
+                            if (portraits < at.Length && elapsed >= at[portraits])
+                            {
+                                if (elapsed > at[portraits] + .35f) issues.Add(moments[portraits] + ": the capture missed its part of the hold.");
+                                Sample(moments[portraits++], true);
+                            }
+                        }
+                        else if (began >= 0f)
+                        {
+                            string state = $"{director.CurrentRoomScopeSource}\t{director.CeremonyStagePhase}\t{director.StagedExitRunning}\t{director.IsCeremonyStaged}\t{Hud.IsHeldForReveal}\t{director.IsTravelDipShowing}\t{cameraRig.HasShot}\t{cameraRig.IsTravelling}\t{cameraRig.ControlsEnabled}\t{player.InputEnabled}\t{director.IsPanelOpen}\t{director.IsWeeklyRecapOpen}\t{returnButtonFrame}";
+                            if (lastHandoffState != state)
+                            {
+                                handback.AppendLine(FormattableString.Invariant($"{Time.frameCount}\t{Time.unscaledTime:F5}\t{state}"));
+                                lastHandoffState = state;
+                            }
+                            if (cameraRig.HasShot || director.CurrentRoomScopeSource != EpisodeDirector.RoomScopeSource.FreePlay) return;
+                            if (!released) { released = true; Sample("ownership-return", false); }
+                            if (director.IsWeeklyRecapOpen && recapFrame < 0)
+                            {
+                                recapFrame = Time.frameCount;
+                                Sample("weekly-recap", false);
+                            }
+                            if (!director.StagedExitRunning && !director.IsCeremonyStaged && !Hud.IsHeldForReveal
+                                && !director.IsTravelDipShowing && !cameraRig.IsTravelling && cameraRig.ControlsEnabled
+                                && !director.IsPanelOpen && player.InputEnabled)
+                            { free = true; Sample("first-free-camera", false); }
+                        }
+                    }
+                    catch (Exception ex) { observerFailure = ex; }
+                };
+                yield return SkipReveals();
+                // An eviction can open its weekly recap after the walkout. Its own Return button
+                // restores input. Keep observing across the click, including the first eligible LateUpdate.
+                // Keep the timeout in this iterator so its finally block flushes the frames on failure.
+                float deadline = Time.realtimeSinceStartup + EpisodeDirector.GoodbyeSeconds + EpisodeDirector.WalkOutSeconds + 8f;
+                while (!free && observerFailure == null && Time.realtimeSinceStartup < deadline)
+                {
+                    if (recapFrame >= 0 && returnButtonFrame < 0 && director.IsWeeklyRecapOpen)
+                    {
+                        var back = ButtonWithCaption(WeeklyRecapScreen.ContinueCaption);
+                        Assert.That(back.IsInteractable(), Is.True, "The displayed weekly recap offers Return to the house.");
+                        returnButtonFrame = Time.frameCount;
+                        back.onClick.Invoke();
+                    }
+                    yield return null;
+                }
+                Assert.That(observerFailure, Is.Null, observerFailure?.ToString());
+                Assert.That(free, Is.True, "The first ordinary stock frame after the exit releases the camera, dip and chrome. Last handback state: " + lastHandoffState);
+                Assert.That(portraits, Is.EqualTo(3));
+                Assert.That(entryFrame, Is.GreaterThanOrEqualTo(0));
+                if (skipSummons)
+                    Assert.That(cutLanded >= entryFrame && pushBegan > cutLanded && pushMoving > pushBegan && pushLanded > pushMoving,
+                        Is.True, "The off-room take needs an actual cut, moving boom and landing on separate production frames.");
+                Assert.That(released && free, Is.True);
+                Assert.That(issues, Is.Empty);
+            }
+            finally
+            {
+                probe.Foot = null;
+                // The stock reads already own their pixels. Write each item independently before
+                // releasing the lens so a rejected later frame or a teardown problem cannot discard them.
+                var writeFailures = new List<Exception>();
+                void WriteRows(string name, StringBuilder lines)
+                {
+                    try
+                    {
+                        using (var file = new FileStream(Path.Combine(folder, name), FileMode.CreateNew, FileAccess.Write))
+                        using (var log = new StreamWriter(file)) log.Write(lines.ToString());
+                    }
+                    catch (Exception ex) { writeFailures.Add(new IOException(name, ex)); }
+                }
+                try
+                {
+                    WriteRows("handback.tsv", handback);
+                    WriteRows("goodbye-boom.tsv", cameraTrace);
+                    WriteRows("stock-camera.tsv", rows);
+                    foreach (var picture in pictures)
+                    {
+                        try
+                        {
+                            var png = picture.image.EncodeToPNG();
+                            using (var file = new FileStream(picture.path, FileMode.CreateNew, FileAccess.Write))
+                                file.Write(png, 0, png.Length);
+                        }
+                        catch (Exception ex) { writeFailures.Add(new IOException(picture.path, ex)); }
+                    }
+                    if (writeFailures.Count > 0) throw new AggregateException("Incomplete stock goodbye evidence.", writeFailures);
+                }
+                finally
+                {
+                    foreach (var picture in pictures) Object.Destroy(picture.image);
+                    Object.Destroy(host);
+                    lens.Dispose();
+                }
+            }
+        }
+
+        private static (int changed, int tested) GoodbyeContribution(Camera camera, int width, int height,
+            Color32[] plate, Color32[] masked, Vector3 point, float halfSize)
+        {
+            var middle = InTheFrame(camera, point);
+            var edge = InTheFrame(camera, point + camera.transform.up * halfSize);
+            if (!middle.HasValue || !edge.HasValue) return (0, 0);
+            int radius = Mathf.Max(1, Mathf.RoundToInt(Mathf.Abs(edge.Value.y - middle.Value.y) * height));
+            int x = Mathf.RoundToInt(middle.Value.x * (width - 1)), y = Mathf.RoundToInt(middle.Value.y * (height - 1));
+            if (x - radius < 0 || x + radius >= width || y - radius < 0 || y + radius >= height) return (0, 0);
+            int changed = 0, tested = 0;
+            for (int row = y - radius; row <= y + radius; row++)
+                for (int column = x - radius; column <= x + radius; column++)
+                {
+                    int i = row * width + column;
+                    var a = plate[i]; var b = masked[i]; tested++;
+                    if (Math.Abs(a.r - b.r) + Math.Abs(a.g - b.g) + Math.Abs(a.b - b.b) >= 24) changed++;
+                }
+            return (changed, tested);
+        }
+
+        private static string GoodbyeTakeFolder(bool skipped)
+        {
+            var args = Environment.GetCommandLineArgs();
+            int index = Array.IndexOf(args, "--gamesim-save-root");
+            string run = index >= 0 && index + 1 < args.Length ? args[index + 1]
+                : Path.Combine(Application.temporaryCachePath, "gamesim-goodbye-" + Guid.NewGuid().ToString("N"));
+            string folder = Path.GetFullPath(Path.Combine(run, skipped ? "staged-goodbye-skipped" : "staged-goodbye-normal"));
+            Assert.That(Directory.Exists(folder), Is.False, "Use a fresh run root to preserve the previous camera take.");
+            Directory.CreateDirectory(folder);
+            Debug.Log("[Gamesim] stock goodbye camera evidence -> " + folder);
+            return folder;
         }
 
         // ---------------------------------------------------------------- the living room's door (M23)
@@ -658,8 +1026,7 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(evicted, Is.Not.Null, "A houseguest is evicted.");
             director.SkipCeremonySummons();
             yield return WaitFor(() => director.CeremonyStagePhase == EpisodeDirector.CeremonyStageStep.Playing, 3f, "the vote plays");
-            yield return SkipReveals();
-            Assert.That(director.CeremonyStagePhase, Is.EqualTo(EpisodeDirector.CeremonyStageStep.Goodbye), "The goodbye.");
+            yield return SkipVoteToGoodbye();
             if (director.WalkOutDoorInUse != EpisodeDirector.WalkOutDoor.Living)
             {
                 var planter = PlanterInTheLivingDoorway();
@@ -736,8 +1103,7 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(director.IsCeremonyStaged, Is.True, "The eviction is staged in the living room.");
             director.SkipCeremonySummons();
             yield return WaitFor(() => director.CeremonyStagePhase == EpisodeDirector.CeremonyStageStep.Playing, 3f, "the vote plays");
-            yield return SkipReveals();
-            Assert.That(director.CeremonyStagePhase, Is.EqualTo(EpisodeDirector.CeremonyStageStep.Goodbye), "The goodbye.");
+            yield return SkipVoteToGoodbye();
             Assert.That(director.WalkOutDoorInUse, Is.EqualTo(EpisodeDirector.WalkOutDoor.Yard), "The living room's door is refused with its doorway taken,");
             Assert.That(DoorSetUp(), Is.False, "and nothing goes up in the living room.");
             Object.Destroy(blocker);

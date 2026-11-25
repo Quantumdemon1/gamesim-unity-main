@@ -206,6 +206,43 @@ namespace Gamesim.Tests.PlayMode
             yield return null;
         }
 
+#if GAMESIM_UMA
+        [UnityTest]
+        public IEnumerator Travel_ACompletedFloorWalkSettlesWithoutAnotherTravellingStep()
+        {
+            director.ClosePanels();
+            director.SuspendNpcAutonomyForDiagnostics();
+            yield return SettleCast();
+            Time.captureDeltaTime = 1f / 60f;
+            WarpPlayer(new Vector3(-8.86f, .03f, -3.93f));
+            cameraRig.CutTo(player.transform);
+            yield return Frames(90);
+            var animator = player.GetComponentsInChildren<Animator>().Single(a => a.isActiveAndEnabled && a.isInitialized && a.isHuman);
+            var ray = new Ray(new Vector3(-5.33f, 1.6f, -6.08f), Vector3.down);
+            Assert.That(player.TryPointAt(ray, out var hit) && hit.collider.name == "Living room floor", Is.True);
+            player.DispatchClick(ray, Vector2.zero);
+            Assert.That(player.RouteMetres, Is.InRange(3f, 5f));
+            Assert.That(player.IsRunning, Is.False);
+            bool walked = false;
+            float arrived = -1f;
+            for (int frame = 0; frame < 360; frame++)
+            {
+                yield return null;
+                var state = animator.GetCurrentAnimatorStateInfo(0);
+                walked |= state.IsName("Walk") && player.Agent.velocity.magnitude > 1f;
+                if (!walked) continue;
+                Assert.That(state.IsName("WalkStop") || animator.IsInTransition(0) && animator.GetNextAnimatorStateInfo(0).IsName("WalkStop"),
+                    Is.False, "A floor arrival must not start the take's two extra travelling steps.");
+                if (arrived < 0 && player.HasArrived) arrived = Time.time;
+                if (arrived < 0 || Time.time - arrived < .5f) continue;
+                Assert.That(state.IsName("Idle") && !animator.IsInTransition(0), Is.True, "The body settled within half a second of arrival.");
+                Assert.That(Vector3.Distance(player.transform.position, hit.point), Is.LessThan(.35f));
+                yield break;
+            }
+            Assert.Fail("The player did not walk to and settle on the clicked floor.");
+        }
+#endif
+
         /// <summary>
         /// Chrome that only says something takes no click. The lower third spans the middle of the
         /// frame over the floor the player walks on, and it ate every click on that floor.

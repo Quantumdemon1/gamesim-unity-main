@@ -567,6 +567,17 @@ namespace Gamesim.Presentation
         /// <summary>Whether the body has come to a stop - its movement blend all but gone.</summary>
         public bool IsStill => movementBlend < .1f;
 
+        // The stop take contains two travelling steps. At the end of a free-roam floor walk
+        // the agent has already covered that ground. Blend the current stride into standing.
+        internal void SettleFloorWalk()
+        {
+            if (running || seated || talking || arguing || activity != BodyActivity.None || pendingReaction >= 0 ||
+                animator == null || !animator.isActiveAndEnabled || !animator.isInitialized || !animator.HasState(0, IdleStateHash)) return;
+            if (animator.GetCurrentAnimatorStateInfo(0).shortNameHash != WalkStateHash ||
+                animator.IsInTransition(0) && !animator.GetNextAnimatorStateInfo(0).IsName("WalkStop")) return;
+            animator.CrossFadeInFixedTime(IdleStateHash, .18f, 0);
+        }
+
         /// <summary>Which pose this body strikes when it is <see cref="BodyActivity.Posing"/>.</summary>
         public void SetPose(Pose value) => pose = value;
         public Pose HeldPose => pose;

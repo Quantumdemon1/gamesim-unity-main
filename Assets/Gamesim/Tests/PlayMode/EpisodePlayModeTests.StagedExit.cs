@@ -480,8 +480,7 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(director.IsCeremonyStaged, Is.True, "The eviction is staged in the living room.");
             director.SkipCeremonySummons();
             yield return WaitFor(() => director.CeremonyStagePhase == EpisodeDirector.CeremonyStageStep.Playing, 3f, "the vote plays");
-            yield return SkipReveals();
-            Assert.That(director.CeremonyStagePhase, Is.EqualTo(EpisodeDirector.CeremonyStageStep.Goodbye), "The goodbye.");
+            yield return SkipVoteToGoodbye();
             string evicted = director.DepartingId;
             var sting = SceneComponents<CeremonySting>().Single();
             // Past the push-in (2.05 s), inside the goodbye. The strip says what the picture shows -
@@ -508,6 +507,19 @@ namespace Gamesim.Tests.PlayMode
             yield return CaptureFraming("walk-out-shut", settle: false);
             yield return WaitFor(() => !director.StagedExitRunning, EpisodeDirector.WalkOutSeconds, "the exit ends");
             yield return WaitFor(() => !director.IsCeremonyStaged, 3f, "the house gets up");
+        }
+
+        private IEnumerator SkipVoteToGoodbye()
+        {
+            string evicted = director.DepartingId;
+            Assert.That(evicted, Is.Not.Null.And.Not.Empty);
+            yield return SkipReveals();
+            // A skipped summons can leave the departing houseguest dressing in another room.
+            // The director keeps the vote shot until that actor can appear in the goodbye.
+            yield return WaitFor(() => director.CeremonyStagePhase != EpisodeDirector.CeremonyStageStep.Playing,
+                CharacterPresentation.AssemblyTimeoutSeconds, "the vote hands off when the departing body is ready");
+            Assert.That(director.CeremonyStagePhase, Is.EqualTo(EpisodeDirector.CeremonyStageStep.Goodbye), "The goodbye.");
+            Assert.That(director.DepartingId, Is.EqualTo(evicted), "The goodbye belongs to the evicted houseguest.");
         }
 
         // The normal close shot draws Living. With a skipped summons the shot owns only
@@ -1014,8 +1026,7 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(evicted, Is.Not.Null, "A houseguest is evicted.");
             director.SkipCeremonySummons();
             yield return WaitFor(() => director.CeremonyStagePhase == EpisodeDirector.CeremonyStageStep.Playing, 3f, "the vote plays");
-            yield return SkipReveals();
-            Assert.That(director.CeremonyStagePhase, Is.EqualTo(EpisodeDirector.CeremonyStageStep.Goodbye), "The goodbye.");
+            yield return SkipVoteToGoodbye();
             if (director.WalkOutDoorInUse != EpisodeDirector.WalkOutDoor.Living)
             {
                 var planter = PlanterInTheLivingDoorway();
@@ -1092,8 +1103,7 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(director.IsCeremonyStaged, Is.True, "The eviction is staged in the living room.");
             director.SkipCeremonySummons();
             yield return WaitFor(() => director.CeremonyStagePhase == EpisodeDirector.CeremonyStageStep.Playing, 3f, "the vote plays");
-            yield return SkipReveals();
-            Assert.That(director.CeremonyStagePhase, Is.EqualTo(EpisodeDirector.CeremonyStageStep.Goodbye), "The goodbye.");
+            yield return SkipVoteToGoodbye();
             Assert.That(director.WalkOutDoorInUse, Is.EqualTo(EpisodeDirector.WalkOutDoor.Yard), "The living room's door is refused with its doorway taken,");
             Assert.That(DoorSetUp(), Is.False, "and nothing goes up in the living room.");
             Object.Destroy(blocker);

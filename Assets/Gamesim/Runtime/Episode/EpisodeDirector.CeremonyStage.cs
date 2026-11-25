@@ -1331,6 +1331,9 @@ namespace Gamesim.Episode
                 pressGuardUntil = now + PressGuard;
                 // The selected shorter goodbye is a NONCONTACT gesture over the original roots.
                 farewellAtGoodbye = PrepareTheGoodbyeFarewell(id);
+                // The solo cut is framed from the approach root. Clear the hot-seat offset before
+                // the cut so the chair back cannot hide the actor during the stand cross-fade.
+                if (!farewellAtGoodbye) SeatOf(id)?.End();
                 StandUp(id, farewellAtGoodbye);
                 if (farewellAtGoodbye)
                 {

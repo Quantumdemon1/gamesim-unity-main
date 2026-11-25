@@ -680,15 +680,63 @@ namespace Gamesim.Tests.EditMode
         }
 
         private const string TargetArcId = "the-target-on-their-back";
+        private static readonly Lazy<EpisodeState> TargetEvictionNight = new Lazy<EpisodeState>(PlayToTargetEvictionNight);
+
+        private static ContestantState[] RankTargetWinners(EpisodeState s)
+        {
+            var winners = s.Active.Where(c => !c.isPlayer && StoryPeople.IsRealPerson(c) && Lore.SheetIn(s, c.id)?.wonSeason == true)
+                .OrderBy(c => c.id, StringComparer.Ordinal).ToArray();
+            for (int i = 0; i < winners.Length; i++)
+                s.relationships.Single(r => r.fromId == s.playerId && r.toId == winners[i].id).score = 90 - i;
+            return winners;
+        }
 
         private static EpisodeState TargetSeason(bool shipped)
         {
-            var s = shipped ? SeasonBuilder.Create(new SeasonBuilder.Choice { HouseSize = 12, Roster = CastTemplates.Roster.AllStars }, 23)
-                : StorySeasonTests.StorySeason(23, 12, CastTemplates.Roster.AllStars);
-            if (shipped) ShippedRules.ApplyFresh(s);
+            if (shipped) return TargetEvictionNight.Value.Clone();
+            var s = StorySeasonTests.StorySeason(23, 12, CastTemplates.Roster.AllStars);
             s.phase = EpisodePhase.Social;
             s.evictionResolved = true;
             return s;
+        }
+
+        private static EpisodeState PlayToTargetEvictionNight()
+        {
+            // In a shipped season only the reveal can create this week's power row and ballot archive.
+            // Keep the real social window following it, with the cast and the two source ledgers as played.
+            for (uint seed = 23; seed < 55; seed++)
+            {
+                var fresh = SeasonBuilder.Create(new SeasonBuilder.Choice { HouseSize = 12, Roster = CastTemplates.Roster.AllStars }, seed);
+                ShippedRules.ApplyFresh(fresh);
+                var engine = new EpisodeEngine(fresh);
+                var s = engine.Snapshot;
+                for (int step = 0; step < 80 && !(s.phase == EpisodePhase.Social && s.evictionResolved); step++)
+                {
+                    var command = EpisodeEngineTests.NextCommand(s);
+                    var result = engine.Apply(command);
+                    Assert.That(result.accepted, Is.True, $"Seed {seed}, week {s.week}, {s.phase}, {command.kind}: {result.reason}");
+                    s = result.state;
+                }
+                Assert.That(s.phase == EpisodePhase.Social && s.evictionResolved && s.week == 1, Is.True, "Reach the first post-eviction social window.");
+                Assert.That(s.ledger.power.Any(p => p.week == s.week && !string.IsNullOrEmpty(p.evicteeId)) &&
+                    s.unifiedVoteReveals.Any(r => r.week == s.week), Is.True, "The week's completed eviction owns its published reveal.");
+                string winner = CastAt(s, TargetArcId, StoryAnchors.EvictionNight)?.headliner;
+                if (winner == null) continue;
+                // The alternate-winner cases rank these two ordinal winners first. Prove each can
+                // headline this exact window before introducing a cooldown. Preserve the played scores.
+                var probe = s.Clone();
+                var ranked = RankTargetWinners(probe);
+                if (ranked.Length < 2 || CastAt(probe, TargetArcId, StoryAnchors.EvictionNight)?.headliner != ranked[0].id) continue;
+                probe.relationships.Single(r => r.fromId == probe.playerId && r.toId == ranked[1].id).score = 91;
+                if (CastAt(probe, TargetArcId, StoryAnchors.EvictionNight)?.headliner != ranked[1].id) continue;
+                if (CommitmentReferences.Promises(s).Any(p => p.kind == PromiseKind.Safety && p.status == PromiseStatus.Active &&
+                    p.fromId == s.playerId && p.toId == winner)) continue;
+                if (CommitmentReferences.Deals(s).Any(d => d.type == DealKind.VoteTogether && DealStatus.Binds(d.status) &&
+                    ((d.proposerId == s.playerId && d.recipientId == winner) || (d.proposerId == winner && d.recipientId == s.playerId)))) continue;
+                Assert.That(EpisodeValidation.TryValidate(s, out var error), Is.True, error);
+                return s;
+            }
+            throw new InvalidOperationException("No first eviction left the Target card available with two past winners and an uncommitted headliner.");
         }
 
         [TestCase("protect", "created")]
@@ -831,11 +879,8 @@ namespace Gamesim.Tests.EditMode
         public void TargetStoryCastsTheNextEligibleWinnerInScoreOrder(string prefix)
         {
             var s = TargetSeason(shipped: true);
-            var winners = s.Active.Where(c => !c.isPlayer && StoryPeople.IsRealPerson(c) && Lore.SheetIn(s, c.id)?.wonSeason == true)
-                .OrderBy(c => c.id, StringComparer.Ordinal).ToArray();
+            var winners = RankTargetWinners(s);
             Assert.That(winners.Length, Is.GreaterThanOrEqualTo(2));
-            for (int i = 0; i < winners.Length; i++)
-                s.relationships.Single(r => r.fromId == s.playerId && r.toId == winners[i].id).score = 90 - i;
             Assert.That(CastAt(s, TargetArcId, StoryAnchors.EvictionNight)?.headliner, Is.EqualTo(winners[0].id));
             s.story.cooldowns.Add(new StoryCooldownState { key = prefix + winners[0].id, untilWeek = s.week + 1 });
             Assert.That(EpisodeEngine.StartStory(s, TargetArcId, StoryAnchors.EvictionNight), Is.True);

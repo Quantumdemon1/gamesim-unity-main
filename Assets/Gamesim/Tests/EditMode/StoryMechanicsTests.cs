@@ -815,6 +815,8 @@ namespace Gamesim.Tests.EditMode
                 Assert.That(StoryText.Log(state, line), Does.Contain(expected).And.Contain(state.Find(winner).name));
             }
             Check(after);
+#if UNITY_5_3_OR_NEWER
+            // The save file is written by Unity's save store; the Unity-free subset checks the card and log only.
             string dir = Path.Combine(Path.GetTempPath(), "GamesimTargetStory-" + Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(dir);
             try
@@ -828,8 +830,11 @@ namespace Gamesim.Tests.EditMode
                 Assert.That(replay.state.unifiedCommitments.Count, Is.EqualTo(restored.unifiedCommitments.Count));
             }
             finally { Directory.Delete(dir, true); }
+#endif
         }
 
+#if UNITY_5_3_OR_NEWER
+        // About the save file itself, which Unity's save store writes: Unity runs it, the Unity-free subset does not.
         [TestCase("protect", "You gave a houseguest your word you would not be the one.")]
         [TestCase("numbers", "You and a houseguest agreed to vote together. Two targets are harder to hit than one.")]
         public void TargetStoryBeforeReceiptsRetainsItsSavedWordsAndDisplaysOnlyTheOffer(string option, string historical)
@@ -873,6 +878,7 @@ namespace Gamesim.Tests.EditMode
             }
             finally { Directory.Delete(dir, true); }
         }
+#endif
 
         [TestCase("star:")]
         [TestCase("once:the-target-on-their-back:")]

@@ -17,6 +17,101 @@ namespace Gamesim.Presentation
     {
         private TMP_Text cardSummary, bioCount, cardAge;
         private bool rebuildSoon;
+        private PhoneMenuPage phoneIdentity;
+        private string phoneIdentityStep;
+        private bool phoneQuickLook;
+        public bool UsePhoneIdentityLayout { get; set; }
+
+        private void BuildPhoneIdentity()
+        {
+            bool quick = studioPage == QuickPageCaption;
+            phoneIdentityStep = studioPage;
+            var page = phoneIdentity = PhoneMenuPage.Create(transform, studioPage, fontScale);
+            if (editingCastSlot)
+            {
+                float inset = WayOut.Inset(fontScale);
+                page.AddCorner((frame, press) => BuildSlotCancel(frame, inset, inset, fontScale, press), Leave);
+                page.Copy(EditingCastLine);
+            }
+            page.Copy(resumeError);
+            page.Copy("Age " + draft.Age + " · " + draft.Pronouns);
+            Button start = null;
+            CreatorSteps.Problem problem = null;
+            var status = page.StatusLink(ProblemLinkName, () => FollowPhoneProblem(problem));
+            void RefreshValidation()
+            {
+                bool ready = draft.TryValidate(out string error);
+                problem = ready ? null : CreatorSteps.First(draft, quick);
+                string words = ready ? "Ready." : error;
+                if (problem != null) words += " " + CreatorSteps.LinkCaption(problem);
+                status(words, problem != null);
+                page.SetActionEnabled(start, ready);
+            }
+
+            void Edit(string caption, string value, int limit, Action<string> write, bool multiline = false, bool required = false)
+            {
+                page.LabelledInput(caption + " field", RequiredLabel(caption, required), value, limit, multiline, written =>
+                {
+                    write(written);
+                    RefreshValidation();
+                });
+            }
+
+            Edit("Name", draft.Name, CharacterDraft.NameLimit, value => draft.Name = value, required: true);
+            if (!quick)
+            {
+                Edit("Occupation", draft.Occupation, CharacterDraft.ShortLimit, value => draft.Occupation = value);
+                Edit("Hometown", draft.Hometown, CharacterDraft.ShortLimit, value => draft.Hometown = value);
+                Edit("Bio", draft.Bio, CharacterDraft.BioLimit, value => draft.Bio = value, multiline: true);
+            }
+
+            void ChangeAge(int delta)
+            {
+                draft.Age = Mathf.Clamp(draft.Age + delta, CharacterDraft.MinimumAge, CharacterDraft.MaximumAge);
+                Rebuild();
+            }
+            page.ActionRow("Younger", () => ChangeAge(-1), enabled: draft.Age > CharacterDraft.MinimumAge);
+            page.ActionRow("Older", () => ChangeAge(1), enabled: draft.Age < CharacterDraft.MaximumAge);
+            foreach (string option in CharacterDraft.PronounOptions)
+                page.ActionRow(option, () => { draft.Pronouns = option; Rebuild(); }, selected: option == draft.Pronouns);
+
+            string next = ActivePages[PageIndex + 1];
+            page.ActionRow(NextCaption(next), () => GoTo(next), primary: true).name = NextButtonName;
+            start = page.ActionRow(editingCastSlot ? ApplySlotCaption : StartCaption, StartSeason);
+            RefreshValidation();
+            if (quick)
+            {
+                page.ActionRow("Starting look and body", () => { phoneQuickLook = true; Rebuild(); });
+                page.ActionRow(CreatorSteps.Identity, () => GoTo(CreatorSteps.Identity));
+                page.ActionRow(DetailedCaption, () => SwitchMode(EntryMode.Detailed));
+            }
+            else
+            {
+                page.ActionRow(CreatorSteps.Appearance, () => GoTo(CreatorSteps.Appearance));
+                page.ActionRow(CreatorSteps.Review, () => GoTo(CreatorSteps.Review));
+            }
+            page.ActionRow(CreatorSteps.Library, OpenLibrary);
+            if (openSettings != null) page.ActionRow(SettingsCaption, OpenSettingsFromGear);
+            if (!editingCastSlot) page.AddBack(DraftBackCaption, Leave);
+        }
+
+        private void FollowPhoneProblem(CreatorSteps.Problem problem)
+        {
+            if (problem == null) return;
+            if (problem.Step != studioPage) GoTo(problem.Step);
+            if (phoneIdentity == null) { FocusNamed(problem.Field); return; }
+            if (studioPage == QuickPageCaption && problem.Field == null &&
+                ((draft.Appearance != null && !draft.Appearance.TryValidate(out _)) || (draft.SourceTemplateId?.Length ?? 0) > 100))
+            {
+                phoneQuickLook = true;
+                Rebuild();
+                return;
+            }
+            string target = problem.Field == CreatorSteps.AgeField
+                ? (draft.Age < CharacterDraft.MinimumAge ? "Older" : "Younger")
+                : problem.Field ?? CharacterDraft.PronounOptions[0];
+            phoneIdentity.FocusControl(target);
+        }
 
         /// <summary>A field left, with the page to catch up on the next frame - see <see cref="Field"/>.</summary>
         private void RebuildIfAsked()

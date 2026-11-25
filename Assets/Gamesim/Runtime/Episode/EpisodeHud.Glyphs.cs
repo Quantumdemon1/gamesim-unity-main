@@ -71,7 +71,7 @@ namespace Gamesim.Episode
         {
             if (pad == padHints) return;
             padHints = pad;
-            if (helpText != null) helpText.text = Localisation.Text(InputGlossary.HelpCard(pad));
+            if (helpText != null) helpText.text = Localisation.Text(InputGlossary.HelpCard(pad, PhoneDisplay.Active));
             RewordPanelHint();
         }
 

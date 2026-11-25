@@ -20,26 +20,68 @@ namespace Gamesim.Uma.Tests
             var catalog = new UmaAppearanceCatalog();
             Assert.That(catalog.Bodies.Count, Is.EqualTo(2));
             Assert.That(catalog.Items.Count, Is.GreaterThan(40));
+            int checkedGarments = 0;
             foreach (string id in UmaCastLibrary.AppearanceIds)
             {
                 var snapshot = catalog.Materialize(CharacterAppearance.Preset(id));
                 Assert.That(snapshot.TryValidate(out var error), Is.True, id + ": " + error);
                 Assert.That(snapshot.dna.Count, Is.GreaterThan(15), "Persist actual DNA, not just a seed.");
                 Assert.That(snapshot.colors.Count, Is.GreaterThanOrEqualTo(4));
-                Assert.That(snapshot.outfits.Single().wardrobe.Count, Is.GreaterThan(3));
-                // The look's dyes are saved with the outfit, as a dye picked in the creator is.
-                UmaCastLibrary.TryGet(id, out var look);
+                var outfit = snapshot.outfits.Single();
+                Assert.That(outfit.wardrobe.Count, Is.GreaterThan(3));
+                Assert.That(UmaCastLibrary.TryGet(id, out var look), Is.True, id);
+                Assert.That(snapshot.bodyId, Is.EqualTo(look.Race), id);
+                var expectedDyes = new List<string>();
                 foreach (var tint in look.Fabric)
                 {
-                    Assert.That(AppearanceEditing.TryFabric(snapshot.outfits.Single(), tint.Key, out var saved), Is.True, id + " " + tint.Key);
-                    Assert.That(Mathf.Abs(saved.r - tint.Value.r) + Mathf.Abs(saved.g - tint.Value.g) + Mathf.Abs(saved.b - tint.Value.b),
-                        Is.LessThan(.01f), id + "'s " + tint.Key + " is the colour in their photo.");
+                    string slot = tint.Key;
+                    string context = id + " " + slot;
+                    var expected = ExpectedFabricItem(catalog, id, look, slot);
+                    Assert.That(expected, Is.Not.Null, context + " needs an installed garment.");
+                    var worn = outfit.wardrobe.Where(entry => entry.slot == slot).ToArray();
+                    Assert.That(worn, Has.Length.EqualTo(1), context);
+                    Assert.That(worn[0].itemId, Is.EqualTo(expected.Id), context);
+                    var recipe = UMAAssetIndexer.Instance.GetAsset<UMAWardrobeRecipe>(catalog.ResolveRecipeName(expected.Id));
+                    Assert.That(recipe, Is.Not.Null, context + " " + expected.Id);
+                    Assert.That(recipe.wardrobeSlot, Is.EqualTo(slot), context);
+                    Assert.That(recipe.compatibleRaces, Does.Contain(look.Race), context);
+
+                    checkedGarments++;
+                    bool hasDye = AppearanceEditing.TryFabric(outfit, slot, out var saved);
+                    if (expected.Tags.Contains(LookPieces.WornBy + id))
+                    {
+                        Assert.That(hasDye, Is.False, context + " keeps " + expected.Id + "'s own colours.");
+                    }
+                    else
+                    {
+                        expectedDyes.Add(AppearanceEditing.FabricChannel(slot));
+                        Assert.That(hasDye, Is.True, context);
+                        Assert.That(Mathf.Abs(saved.r - tint.Value.r) + Mathf.Abs(saved.g - tint.Value.g) + Mathf.Abs(saved.b - tint.Value.b),
+                            Is.LessThan(.01f), id + "'s " + slot + " is the colour in their photo.");
+                    }
                 }
+                Assert.That(outfit.colors.Where(color => AppearanceEditing.IsFabricChannel(color.id)).Select(color => color.id),
+                    Is.EquivalentTo(expectedDyes), id + "'s saved garment dyes.");
                 var again = catalog.Materialize(snapshot);
                 Assert.That(again.ContentKey(), Is.EqualTo(snapshot.ContentKey()), "Resolving cannot mutate a saved recipe.");
                 again.dna[0].value = .991f;
                 Assert.That(snapshot.dna[0].value, Is.Not.EqualTo(.991f));
             }
+            Assert.That(checkedGarments, Is.GreaterThan(0), "The cast library must exercise its garment dye contract.");
+        }
+
+        private static AppearanceItem ExpectedFabricItem(UmaAppearanceCatalog catalog, string id, UmaCastLook look, string slot)
+        {
+            var tagged = catalog.Items.Where(item => item.Slot == slot && item.Fits(look.Race)
+                && item.Tags.Contains(LookPieces.WornBy + id)).ToArray();
+            // A conditional layer depends on the rest of the dressed look. Use the wardrobe selector for that case.
+            var wardrobe = look.Wardrobe;
+            if (tagged.Any(item => item.Tags.Any(tag => tag.StartsWith(LookPieces.Over, System.StringComparison.Ordinal))))
+                wardrobe = catalog.LookWardrobe(id, look.Race, wardrobe);
+            else if (tagged.Length > 0)
+                return tagged.OrderBy(item => item.Id, System.StringComparer.Ordinal).First();
+
+            return wardrobe.Select(line => AppearanceEditing.Find(catalog, line)).SingleOrDefault(item => item?.Slot == slot);
         }
 
         [UnityTest]

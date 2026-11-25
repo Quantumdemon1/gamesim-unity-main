@@ -163,8 +163,10 @@ namespace Gamesim.Presentation
         /// button named the way its row is: X talks, Y is the diary, the sticks move and turn the
         /// camera, the shoulders follow, B closes and Start pauses.
         /// </summary>
-        public static string HelpCard(bool pad)
+        public static string HelpCard(bool pad, bool touch = false)
         {
+            if (!pad && touch)
+                return "Tap the floor to walk or a houseguest to talk.\nDrag to turn the camera.\nPinch to zoom. Move two fingers together to pan.";
             if (!pad) return KeyboardHelpCard;
             return PadOf("Shortcuts", "Interact") + ": talk · " + PadOf("Shortcuts", "Diary") + ": diary\n"
                 + PadOf("Camera", "Pan") + ": pan · " + PadOf("Camera", "Recenter") + ": recenter\n"
@@ -185,8 +187,9 @@ namespace Gamesim.Presentation
         /// neither of which a player may rebind - and, where the panel scrolls, that more lies below:
         /// moving down to it brings it into view, as the pad has no wheel.
         /// </summary>
-        public static string PanelHint(bool pad, bool scrolls)
+        public static string PanelHint(bool pad, bool scrolls, bool touch = false)
         {
+            if (!pad && touch) return scrolls ? "Tap to choose · Swipe to scroll" : "Tap to choose";
             if (!pad) return scrolls ? KeyboardPanelHintScroll : KeyboardPanelHint;
             string hint = PadKey(KeyBindings.PanelMap, KeyBindings.PanelNavigate) + " select · " + PadKey(KeyBindings.PanelMap, KeyBindings.PanelSubmit) + " confirm";
             return scrolls ? hint + " · More below" : hint;
@@ -205,7 +208,7 @@ namespace Gamesim.Presentation
         }
 
         /// <summary>The tour's controls line for the device last used.</summary>
-        public static string TourLine(bool pad) => !pad ? KeyboardTourLine
+        public static string TourLine(bool pad, bool touch = false) => !pad && touch ? "Tap the floor to walk or a houseguest to talk." : !pad ? KeyboardTourLine
             : "Press " + PadOf("Shortcuts", "Interact") + " near a houseguest to talk. " + PadOf("Shortcuts", "Back") + " closes this tour.";
 
         /// <summary>The key or button the house prompt names: "E  ·  Talk to Maya", or X on a pad.</summary>
@@ -215,9 +218,11 @@ namespace Gamesim.Presentation
         /// The house prompt in the device's words: on a pad, the leading E of "E  ·  Open episode
         /// screen" is the pad's button; on the keyboard it is the prompt, unchanged.
         /// </summary>
-        public static string PromptFor(string prompt, bool pad)
+        public static string PromptFor(string prompt, bool pad, bool touch = false)
         {
             string key = PromptKey(false);
+            if (!pad && touch && !string.IsNullOrEmpty(prompt) && prompt.StartsWith(key + "  ", StringComparison.Ordinal))
+                return prompt.Substring(key.Length).TrimStart(' ', '·');
             if (!pad || string.IsNullOrEmpty(prompt) || !prompt.StartsWith(key + "  ", StringComparison.Ordinal)) return prompt;
             return PromptKey(true) + prompt.Substring(key.Length);
         }
@@ -323,7 +328,7 @@ namespace Gamesim.Presentation
         }
 
         /// <summary>The tour's episode-screen step, the part naming the keys: Interact opens the screen and Back closes it on a pad.</summary>
-        public static string StationStepKeys(bool pad) => !pad ? KeyboardStationStepKeys
+        public static string StationStepKeys(bool pad, bool touch = false) => !pad && touch ? "tap the prompt to open it and Close to leave." : !pad ? KeyboardStationStepKeys
             : "press " + PadKey("Shortcuts", "Interact") + " to open it and " + PadKey("Shortcuts", "Back") + " to close it.";
 
         /// <summary>

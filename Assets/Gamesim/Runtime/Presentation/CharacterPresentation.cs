@@ -682,6 +682,38 @@ namespace Gamesim.Presentation
             }
         }
 
+        /// <summary>The ceremony clip the animator actually entered, with its elapsed seconds and crossfade weight.</summary>
+        public bool TryGetFacialReaction(out Reaction kind, out float seconds, out float weight)
+        {
+            kind = default;
+            seconds = weight = 0f;
+            if (reducedMotion || animator == null || !animator.isActiveAndEnabled || !animator.isInitialized
+                || animator.runtimeAnimatorController == null) return false;
+            var state = animator.GetCurrentAnimatorStateInfo(0);
+            weight = 1f;
+            if (animator.IsInTransition(0))
+            {
+                var next = animator.GetNextAnimatorStateInfo(0);
+                float fade = Mathf.Clamp01(animator.GetAnimatorTransitionInfo(0).normalizedTime);
+                if (FacialReactionFor(next, out _)) { state = next; weight = fade; }
+                else weight = 1f - fade;
+            }
+            if (!FacialReactionFor(state, out kind)) return false;
+            seconds = Mathf.Max(0f, state.normalizedTime * state.length);
+            return true;
+        }
+
+        private static readonly int SitClapState = Animator.StringToHash("SitClap"), SitVictoryState = Animator.StringToHash("SitVictory");
+
+        private static bool FacialReactionFor(AnimatorStateInfo state, out Reaction kind)
+        {
+            if (state.shortNameHash == SitClapState) { kind = Reaction.Cheered; return true; }
+            if (state.shortNameHash == SitVictoryState) { kind = Reaction.Won; return true; }
+            int index = state.IsTag(ReactionStateTag) ? System.Array.IndexOf(ReactionParams, state.shortNameHash) : -1;
+            kind = index >= 0 ? (Reaction)index : default;
+            return index >= 0;
+        }
+
         /// <summary>
         /// Stops whatever beat the body is acting or waiting to act: every reaction trigger the
         /// controller declares is reset, and a beat under way cross-fades to idle in 0.2 s.

@@ -227,7 +227,7 @@ namespace Gamesim.Episode
             var hint = modal != null ? modal.Find(PanelHintName) : null;
             if (hint != null && hint.GetComponent<TMP_Text>() is TMP_Text words)
             {
-                string said = Localisation.Text(InputGlossary.PanelHint(padHints, panelScrolls));
+                string said = Localisation.Text(InputGlossary.PanelHint(padHints, panelScrolls, PhoneDisplay.Active));
                 if (words.text != said) words.text = said;
             }
             RewordFollowChip();

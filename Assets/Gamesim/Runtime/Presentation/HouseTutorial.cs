@@ -117,7 +117,8 @@ namespace Gamesim.Presentation
 
         /// <summary>A step's words, with the controls line and the episode screen's keys in the device's words.</summary>
         private string BodyFor(Step current) =>
-            PadLine ? current.Body.Replace(ControlsLine, InputGlossary.TourLine(true)).Replace(StationStepKeys, InputGlossary.StationStepKeys(true))
+            PadLine || PhoneDisplay.Active ? current.Body.Replace(ControlsLine, InputGlossary.TourLine(PadLine, PhoneDisplay.Active))
+                .Replace(StationStepKeys, InputGlossary.StationStepKeys(PadLine, PhoneDisplay.Active))
                 : current.Body;
 
         /// <summary>A press on the other kind of device rewords the step on screen, in place.</summary>

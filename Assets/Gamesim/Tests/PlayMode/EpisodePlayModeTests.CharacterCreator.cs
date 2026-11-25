@@ -4,6 +4,7 @@ using System.Linq;
 using Gamesim.Presentation;
 using Gamesim.Simulation;
 using NUnit.Framework;
+using TMPro;
 using UnityEngine.InputSystem;
 using UnityEngine.InputSystem.LowLevel;
 using UnityEngine.TestTools;
@@ -21,6 +22,150 @@ namespace Gamesim.Tests.PlayMode
     public sealed partial class EpisodePlayModeTests
     {
         private CharacterCreator Creator() => director.GetComponentInChildren<CharacterCreator>(true);
+
+        private TMP_InputField PhoneIdentityField(string caption) =>
+            Creator().GetComponentsInChildren<TMP_InputField>().Single(input => input.name == caption + " field");
+
+        [UnityTest]
+        public IEnumerator Creator_PhoneCreateKeepsTheQuickDraftThroughLookAndCast()
+        {
+            var creator = Creator();
+            creator.UsePhoneIdentityLayout = true;
+            CastScreen().GetComponent<FrameScaler>().UsePhoneUnits = true;
+            string session = director.Snapshot.sessionId;
+            yield return OpenCastScreen();
+            CastButtons("Season setup").Single().onClick.Invoke();
+            CastButtons(CharacterCreator.CreateCaption).Single().onClick.Invoke();
+            yield return null;
+            Assert.That(creator.Mode, Is.EqualTo(CharacterCreator.EntryMode.Quick));
+            Assert.That(creator.GetComponent<FrameScaler>().UsePhoneUnits, Is.True);
+            var name = PhoneIdentityField("Name");
+            Assert.That(name.characterLimit, Is.EqualTo(CharacterDraft.NameLimit));
+            Assert.That(name.restoreOriginalTextOnEscape, Is.False);
+            Assert.That(name.shouldActivateOnSelect, Is.False);
+            name.Select();
+            yield return null;
+            Assert.That(name.isFocused, Is.False, "Selection alone must leave the native keyboard closed.");
+            Assert.That(CastButtons(CharacterCreator.StartCaption), Is.Empty);
+            var correction = creator.GetComponentsInChildren<UnityEngine.UI.Button>().Single(button => button.name == CharacterCreator.ProblemLinkName);
+            var status = correction.GetComponent<TMP_Text>();
+            Assert.That(status.text, Does.Contain("Give your houseguest a name."));
+            Assert.That(correction.IsInteractable(), Is.True);
+            UnityEngine.Canvas.ForceUpdateCanvases();
+            Assert.That(((UnityEngine.RectTransform)name.transform).rect.height, Is.GreaterThanOrEqualTo(48f));
+            Assert.That(PressAt(ScreenCentre(name)), Is.SameAs(name.gameObject));
+            yield return null;
+            Assert.That(name.isFocused, Is.True);
+            name.text = "Robin Vale";
+            Assert.That(PhoneIdentityField("Name"), Is.SameAs(name));
+            Assert.That(CastButtons(CharacterCreator.StartCaption), Has.Length.EqualTo(1));
+            Assert.That(status.text, Is.EqualTo("Ready."));
+            Assert.That(correction.IsInteractable(), Is.False);
+            name.text = " ";
+            name.DeactivateInputField();
+            Assert.That(status.text, Does.Contain("Give your houseguest a name."));
+            correction.onClick.Invoke();
+            yield return null;
+            Assert.That(name.isFocused, Is.True, "The validation link should take the player straight to the name.");
+            name.text = "Robin Vale";
+            CastButtons("Older").Single().onClick.Invoke();
+            CastButtons("she/her").Single().onClick.Invoke();
+            CastButtons("Starting look and body").Single().onClick.Invoke();
+            yield return null;
+            Assert.That(creator.GetComponent<FrameScaler>().UsePhoneUnits, Is.False);
+            Assert.That(CastButtons("Next starting look"), Has.Length.EqualTo(1));
+            CastButtons(CreatorSteps.Identity).Single().onClick.Invoke();
+            yield return null;
+            Assert.That(PhoneIdentityField("Name").text, Is.EqualTo("Robin Vale"));
+            var stale = PhoneIdentityField("Name");
+            var back = PhoneMenuTouchTests.PhoneExit(creator, WayOut.BackObjectName, WayOut.BackToKeeping("season setup", "draft"));
+            back.onClick.Invoke();
+            stale.onValueChanged.Invoke("Hidden field");
+            Assert.That(creator.Draft.Name, Is.EqualTo("Robin Vale"));
+            Assert.That(director.Snapshot.sessionId, Is.EqualTo(session));
+            CastButtons("Resume setup").Single().onClick.Invoke();
+            yield return null;
+            Assert.That(creator.Mode, Is.EqualTo(CharacterCreator.EntryMode.Quick));
+            Assert.That(PhoneIdentityField("Name").text, Is.EqualTo("Robin Vale"));
+            Assert.That(creator.Draft.Age, Is.EqualTo(CharacterDraft.DefaultAge + 1));
+            Assert.That(creator.Draft.Pronouns, Is.EqualTo("she/her"));
+            CastButtons(CharacterCreator.NextCaption(CreatorSteps.Review)).Single().onClick.Invoke();
+            yield return null;
+            Assert.That(creator.Page, Is.EqualTo(CreatorSteps.Review));
+            Assert.That(creator.GetComponent<FrameScaler>().UsePhoneUnits, Is.False);
+        }
+
+        [UnityTest]
+        public IEnumerator Creator_PhoneSlotIdentityCancelsOrAppliesOnlyTheEditedCopy()
+        {
+            var creator = Creator();
+            creator.UsePhoneIdentityLayout = true;
+            var cast = CastScreen();
+            cast.GetComponent<FrameScaler>().UsePhoneUnits = true;
+            string session = director.Snapshot.sessionId;
+            var original = CharacterDraft.FromAppearance(CastTemplates.Find("emma-brown"));
+            original.Name = "Library guest";
+            var profile = CharacterProfile.FromDraft(System.Guid.NewGuid().ToString("N"), original);
+            Assert.That(cast.ProfileStore.Save(profile, out var error), Is.True, error);
+            yield return OpenCastScreen();
+            CastButtons("Season setup").Single().onClick.Invoke();
+            CastButtons(CastSelect.SeasonHouseguestsCaption).Single().onClick.Invoke();
+            CastButtons("Add Library guest to the cast").Single().onClick.Invoke();
+            CastButtons("Add Library guest to the cast").Single().onClick.Invoke();
+            string editSlot = CastSelect.EditSeasonHouseguestCaption(1);
+            CastButtons(editSlot).Single().onClick.Invoke();
+            CastButtons(CreatorSteps.Identity).Single().onClick.Invoke();
+            yield return null;
+            Assert.That(PhoneIdentityField("Name").text, Is.EqualTo(original.Name));
+            PhoneIdentityField("Name").text = "Discarded edit";
+            var cancel = PhoneMenuTouchTests.PhoneExit(creator, CharacterCreator.CancelSlotCaption, CharacterCreator.CancelSlotCaption);
+            Assert.That(creator.GetComponentsInChildren<UnityEngine.UI.Button>().Any(item => item.name == WayOut.BackObjectName), Is.False);
+            Assert.That(PressAt(ScreenCentre(cancel)), Is.SameAs(cancel.gameObject));
+            yield return null;
+            Assert.That(cast.IsShowing, Is.True);
+            Assert.That(UnityEngine.EventSystems.EventSystem.current.currentSelectedGameObject, Is.SameAs(CastButtons(editSlot).Single().gameObject));
+            Assert.That(cast.GetComponentsInChildren<TMP_Text>().Any(label => label.text == "1. Library guest"), Is.True);
+            CastButtons(editSlot).Single().onClick.Invoke();
+            CastButtons(CreatorSteps.Identity).Single().onClick.Invoke();
+            yield return null;
+            Assert.That(PhoneIdentityField("Name").text, Is.EqualTo(original.Name));
+            var bio = PhoneIdentityField("Bio");
+            string appearance = creator.Draft.Appearance.ContentKey();
+            Assert.That(bio.lineType, Is.EqualTo(TMP_InputField.LineType.MultiLineNewline));
+            Assert.That(bio.characterLimit, Is.EqualTo(CharacterDraft.BioLimit));
+            Assert.That(PhoneIdentityField("Occupation").characterLimit, Is.EqualTo(CharacterDraft.ShortLimit));
+            Assert.That(PhoneIdentityField("Hometown").characterLimit, Is.EqualTo(CharacterDraft.ShortLimit));
+            PhoneIdentityField("Name").text = "Rey";
+            PhoneIdentityField("Occupation").text = "Librarian";
+            PhoneIdentityField("Hometown").text = "Oakland";
+            bio.text = "First line\nSecond line";
+            CastButtons(CharacterCreator.ApplySlotCaption).Single().onClick.Invoke();
+            yield return null;
+            Assert.That(cast.IsShowing, Is.True);
+            Assert.That(UnityEngine.EventSystems.EventSystem.current.currentSelectedGameObject, Is.SameAs(CastButtons(editSlot).Single().gameObject));
+            Assert.That(director.Snapshot.sessionId, Is.EqualTo(session));
+            var slots = cast.GetComponentsInChildren<TMP_Text>();
+            Assert.That(slots.Any(label => label.text == "1. Rey"), Is.True);
+            Assert.That(slots.Any(label => label.text == "2. Library guest"), Is.True);
+            Assert.That(cast.ProfileStore.List().Single(item => item.id == profile.id).name, Is.EqualTo(original.Name));
+            CastButtons(editSlot).Single().onClick.Invoke();
+            var applied = creator.Draft;
+            Assert.That(applied.Name, Is.EqualTo("Rey"));
+            Assert.That(applied.Occupation, Is.EqualTo("Librarian"));
+            Assert.That(applied.Hometown, Is.EqualTo("Oakland"));
+            Assert.That(applied.Bio, Is.EqualTo("First line\nSecond line"));
+            Assert.That(applied.Appearance.ContentKey(), Is.EqualTo(appearance));
+            Assert.That(applied.PreserveStats, Is.True);
+
+            creator.Dismiss();
+            PhoneMenuTouchTests.PhoneExit(cast, WayOut.BackObjectName, WayOut.BackTo("season setup")).onClick.Invoke();
+            CastButtons("My Houseguests").Single().onClick.Invoke();
+            CastButtons("Choose Library guest").Single().onClick.Invoke();
+            CastButtons(CreatorSteps.Identity).Single().onClick.Invoke();
+            yield return null;
+            PhoneMenuTouchTests.PhoneExit(creator, WayOut.BackObjectName, WayOut.BackToKeeping("My Houseguests", "draft")).onClick.Invoke();
+            Assert.That(CastButtons("Choose Library guest"), Has.Length.EqualTo(1));
+        }
 
         [UnityTest]
         public IEnumerator Creator_TheDirectorSharesAnIsolatedLibraryWithCastSelection()

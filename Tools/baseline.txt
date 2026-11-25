@@ -578,7 +578,8 @@
 # 11272 = 11269 + the trivia's switch-on: CompetitionRules6Tests 3 (also in the dotnet subset), 2026-11-23.
 # 11339 = 11336 (the new main with dialogue rules 4) + the trivia switch-on's 3 (11272 - 11269 on this branch):
 # disjoint cases, so the floor is their sum (the trivia landing of 23 November 2026). Counted from the two sides.
-Gamesim.EditModeTests 11339
+# 11340 = 11339 + 1, 2026-11-23. One phone input-hint case checks the touch wording.
+Gamesim.EditModeTests 11340
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and
@@ -900,7 +901,10 @@ Gamesim.EditModeTests 11339
 # the floor is their sum (the romance landing of 22 November 2026). Counted from the two sides.
 # 1704 = 1702 (the new main of 23 November) + free talk slice 3's 2 (1688 - 1686 on this branch): disjoint cases, so
 # the floor is their sum (the romance landing of 23 November 2026). Counted from the two sides.
-Gamesim.PlayModeTests 1704
+# 1720 = 1704 + 16, 2026-11-23. Fourteen phone interaction cases and two safe-area parameter cases.
+# 1705 = 1704 + the waiting-nominee ceremony test, 2026-11-23.
+# 1721 = 1704 + 16 landscape phone cases + 1 waiting-nominee case.
+Gamesim.PlayModeTests 1721
 # The UMA build of the same assembly, read by a plan built without -WithoutUma. 1281 = the 1241 above + the
 # 40 tests that compile only under GAMESIM_UMA, as run at r1 (2026-10-16): in EpisodePlayModeTests,
 # GroundedFarewell 11, Creator 9, HouseLife 8, Emotes 3, OpeningCaptures 2, and one each in CreatorEntry,
@@ -1146,7 +1150,10 @@ Gamesim.PlayModeTests 1704
 # the floor is their sum (the romance landing of 22 November 2026). Counted from the two sides.
 # 1749 = 1747 (the new main of 23 November) + free talk slice 3's 2 (1733 - 1731 on this branch): disjoint cases, so
 # the floor is their sum (the romance landing of 23 November 2026). Counted from the two sides.
-Gamesim.PlayModeTests.UmaBuild 1749
+# 1765 = 1749 + 16, 2026-11-23. The same sixteen phone cases run with UMA enabled.
+# 1750 = 1749 + the waiting-nominee ceremony test, 2026-11-23.
+# 1766 = 1749 + 16 landscape phone cases + 1 waiting-nominee case.
+Gamesim.PlayModeTests.UmaBuild 1766
 # The UMA bodies: runs only where the GAMESIM_UMA define is set (the working tree and the D: copy).
 # 82 = the 89 run on 2026-10-15, less the 7 farewell probes moved to Gamesim.Uma.DiagnosticsPlayModeTests;
 # 85 = 82 + the 3 farewell readiness decision tests (UmaFarewellReadinessDecisionPlayModeTests, 2026-10-16);
@@ -1205,7 +1212,8 @@ Gamesim.PlayModeTests.UmaBuild 1749
 # 191 = 188 + the third looks change's 3 (UmaAllStarPiecesPlayModeTests.RachelsBuiltBodyCarriesHerFittedFace,
 # ChelsiesBuiltBodyCarriesHerFittedFace and CodysBuiltBodyCarriesHisFittedFace), 2026-11-20.
 # 192 = 191 + the fourth looks change's 1 (UmaAllStarPiecesPlayModeTests.VanessasBuiltBodyCarriesHerFittedFace), 2026-11-20.
-Gamesim.Uma.PlayModeTests 192
+# 194 = 192 + two facial expression tests, 2026-11-23.
+Gamesim.Uma.PlayModeTests 194
 # Diagnostics: feasibility and diagnostic probes, never shipping acceptance. They compile only under
 # GAMESIM_DIAGNOSTICS, which only a diagnostic run adds to the test copy (GAMESIM_DIAGNOSTICS=1 with
 # sync-and-run.sh or the locked runner); the UMA one needs GAMESIM_UMA too. The floor counts that they

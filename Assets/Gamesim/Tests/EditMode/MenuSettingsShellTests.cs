@@ -147,7 +147,8 @@ namespace Gamesim.Tests.EditMode
         private static readonly (SettingsSection section, (string file, string method)[] parts)[] SectionParts =
         {
             (SettingsSection.Saves, new[] { ("Episode/EpisodeDirector.SettingsSaves.cs", "SavesSection"),
-                ("Episode/EpisodeDirector.SettingsSaves.cs", "RunningSeasonCard"), ("Episode/EpisodeDirector.SettingsSaves.cs", "SeasonCardFor") }),
+                ("Episode/EpisodeDirector.SettingsSaves.cs", "RunningSeasonCard"), ("Episode/EpisodeDirector.SettingsSaves.cs", "SeasonCardFor"),
+                ("Episode/EpisodeDirector.SettingsSaves.cs", "AddSeasonControls") }),
             (SettingsSection.Advanced, new[] { ("Episode/EpisodeDirector.SettingsSaves.cs", "AdvancedSection"), ("Episode/EpisodeDirector.Career.cs", "CareerSettings") }),
             (SettingsSection.Sound, new[] { ("Episode/EpisodeDirector.SettingsPrefs.cs", "SoundSection") }),
             (SettingsSection.Display, new[] { ("Episode/EpisodeDirector.Display.cs", "DisplaySettings") }),

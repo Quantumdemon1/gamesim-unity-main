@@ -538,7 +538,7 @@ namespace Gamesim.Episode
                     if (EpisodeHud.IsFinalThree(projected)) hint = EpisodeHud.TalkHint;
                 }
                 else if (choice == InteractTarget.StepIn) prompt = "E  \u00b7  " + EpisodeHud.StepInCaption;
-                hud.SetPrompt(InputGlossary.PromptFor(prompt, padHints), hint);
+                hud.SetPrompt(InputGlossary.PromptFor(prompt, padHints, PhoneDisplay.Active), hint);
             }
             else { hud.SetPrompt(""); promptNamed = null; }
         }

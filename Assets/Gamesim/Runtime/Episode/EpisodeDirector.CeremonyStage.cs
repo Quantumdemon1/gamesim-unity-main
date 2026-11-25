@@ -1654,8 +1654,6 @@ namespace Gamesim.Episode
                 if (begun && !cardStarted) Debug.Log(Report("ended before the card"));
                 ended = true;
                 ClearCues();
-                // Nobody the veto meeting set talking is left mid-word by a stage ended under it.
-                Hush();
                 Subscribe(false);
                 foreach (var seat in seated.Values) if (seat != null && seat.Active) seat.RequestExit();
                 seated.Clear();

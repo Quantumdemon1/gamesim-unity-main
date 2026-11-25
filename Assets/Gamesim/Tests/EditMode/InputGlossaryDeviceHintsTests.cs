@@ -12,6 +12,17 @@ namespace Gamesim.Tests.EditMode
     /// </summary>
     public sealed class InputGlossaryDeviceHintsTests
     {
+        [Test]
+        public void PhoneHintsNameTheSameActionsWithoutKeyboardBindings()
+        {
+            Assert.That(InputGlossary.PanelHint(false, true, true), Does.Contain("Swipe"));
+            Assert.That(InputGlossary.PromptFor("E  ·  Talk to Maya", false, true), Is.EqualTo("Talk to Maya"));
+            Assert.That(InputGlossary.PromptFor("Wait for results", false, true), Is.EqualTo("Wait for results"));
+            Assert.That(InputGlossary.HelpCard(false, true), Does.Contain("Pinch"));
+            Assert.That(InputGlossary.TourLine(false, true), Does.Contain("Tap"));
+            Assert.That(InputGlossary.PanelHint(true, false, true), Is.EqualTo(InputGlossary.PanelHint(true, false)));
+        }
+
         [TearDown]
         public void ShowTheShippedBindings() => KeyBindings.Show(null);
 

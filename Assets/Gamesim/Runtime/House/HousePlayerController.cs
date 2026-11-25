@@ -18,6 +18,13 @@ namespace Gamesim.House
         private NavMeshAgent agent;
         private NavMeshPath candidatePath;
         private HouseCameraRig cameraRig;
+        private HouseTouchInput touchInput;
+        internal HouseCameraRig TouchCamera => CameraRig;
+
+        internal bool TouchAllowed(Vector2 where, int display) => isActiveAndEnabled && viewCamera != null
+            && viewCamera.targetDisplay == display && viewCamera.pixelRect.Contains(where)
+            && UnityEngine.Device.Screen.safeArea.Contains(where) && requestedInputEnabled
+            && !Gamesim.Presentation.CeremonyOverlays.OnScreen;
 
         /// <summary>
         /// The rig the view camera hangs under. Resolved through the camera rather than serialised,
@@ -114,6 +121,7 @@ namespace Gamesim.House
         {
             agent = GetComponent<NavMeshAgent>();
             candidatePath = new NavMeshPath();
+            if (Gamesim.Presentation.PhoneDisplay.Active) touchInput = gameObject.AddComponent<HouseTouchInput>();
         }
 
         private void Start()
@@ -372,6 +380,7 @@ namespace Gamesim.House
         {
             ValidateActivityOwner();
             ApplyPauseState();
+            if (touchInput != null && touchInput.HasContacts) return;
             var mouse = Mouse.current;
             TickHover(mouse);
             if (viewCamera == null || mouse == null
@@ -386,7 +395,11 @@ namespace Gamesim.House
                 return;
             }
 
-            var screen = mouse.position.ReadValue();
+            HandleWorldPointer(mouse.position.ReadValue());
+        }
+
+        internal void HandleWorldPointer(Vector2 screen)
+        {
             if (!InputEnabled)
             {
                 if (activityOwner != null && requestedInputEnabled && ActivityInterruptRequested != null)

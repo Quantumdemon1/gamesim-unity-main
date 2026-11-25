@@ -25,7 +25,7 @@ namespace Gamesim.Uma
     public sealed class UmaExpressions : MonoBehaviour
     {
         /// <summary>
-        /// A face as six numbers, in UMA's own units: −1 to 1 for the paired channels, 0 to 1 for
+        /// A face in UMA's own units: −1 to 1 for the paired channels, 0 to 1 for
         /// the ones that only go one way. Public and pure so the mapping can be asserted without
         /// waiting on UMA to assemble a body.
         /// </summary>
@@ -41,25 +41,25 @@ namespace Gamesim.Uma
             public float EyeOpen;
             /// <summary>Nose, 0 to 1. Only anger and real strain reach for it.</summary>
             public float Sneer;
-            /// <summary>Jaw. Positive opens; the lip flap rides on this one.</summary>
+            /// <summary>Positive opens the jaw.</summary>
             public float JawOpen;
+            public float MouthNarrow;
 
             /// <summary>The largest channel, for "did this face change at all" questions.</summary>
             public float Magnitude => Mathf.Max(
                 Mathf.Max(Mathf.Abs(Smile), Mathf.Abs(BrowUp)),
-                Mathf.Max(Mathf.Max(BrowsIn, Mathf.Abs(EyeOpen)), Mathf.Max(Sneer, Mathf.Abs(JawOpen))));
+                Mathf.Max(Mathf.Max(BrowsIn, Mathf.Abs(EyeOpen)), Mathf.Max(Sneer, Mathf.Max(Mathf.Abs(JawOpen), MouthNarrow))));
         }
 
         /// <summary>How fast a face settles onto a new mood. Slower than a blink, faster than a beat.</summary>
         private const float Ease = 7f;
-        /// <summary>The lip flap: a jaw that opens and closes about twice a second while speaking.</summary>
-        private const float FlapRate = 11f, FlapDepth = 0.22f, FlapFloor = 0.06f;
+        private const float SpeechPhraseSeconds = 1.62f;
 
         private CharacterPresentation presentation;
         private DynamicCharacterAvatar avatar;
         private UMAExpressionPlayer player;
         private FacePose current;
-        private float flapPhase;
+        private float speechTime;
         private bool held;
 
         /// <summary>The face this body is currently showing. For the tests and the previews.</summary>
@@ -93,7 +93,7 @@ namespace Gamesim.Uma
                     pose.Smile = 0.35f; pose.BrowUp = 0.10f;
                     break;
                 case "Happy":
-                    pose.Smile = 0.85f; pose.BrowUp = 0.30f; pose.EyeOpen = -0.20f;
+                    pose.Smile = 0.62f; pose.BrowUp = 0.22f; pose.EyeOpen = -0.12f;
                     break;
             }
 
@@ -109,8 +109,8 @@ namespace Gamesim.Uma
                     pose.BrowsIn += 0.55f; pose.BrowUp -= 0.20f; pose.EyeOpen += 0.30f; pose.Sneer += 0.20f;
                     break;
                 case "Overwhelmed":
-                    // Wide and lifted, and the jaw goes slack. Nothing subtle about it.
-                    pose.BrowsIn += 0.25f; pose.BrowUp += 0.45f; pose.EyeOpen += 0.65f; pose.JawOpen += 0.18f;
+                    // Stress can last a whole ceremony. Carry it in the brows and lids.
+                    pose.BrowsIn += 0.25f; pose.BrowUp += 0.24f; pose.EyeOpen += 0.28f;
                     break;
             }
 
@@ -123,38 +123,107 @@ namespace Gamesim.Uma
             return pose;
         }
 
+        // The presentation supplies turns, not a voice track. Give the speaker short groups of
+        // syllables with lip contact and a breath between phrases.
+        public static void AddSpeech(ref FacePose pose, float elapsed)
+        {
+            float t = Mathf.Repeat(elapsed, SpeechPhraseSeconds);
+            float first = Beat(t, 0f, .10f, .24f);
+            float rounded = Beat(t, .27f, .40f, .59f);
+            float shortBeat = Beat(t, .64f, .73f, .84f);
+            float last = Beat(t, .90f, 1.03f, 1.25f);
+            pose.JawOpen = Mathf.Max(pose.JawOpen, .16f * first + .10f * rounded + .075f * shortBeat + .13f * last);
+            pose.MouthNarrow = Mathf.Max(pose.MouthNarrow, .14f * rounded + .055f * last);
+        }
+
+        private static float Beat(float time, float start, float peak, float end)
+        {
+            float amount = time <= peak ? Mathf.InverseLerp(start, peak, time) : Mathf.InverseLerp(end, peak, time);
+            return Mathf.SmoothStep(0f, 1f, amount);
+        }
+
+        public static void AddReaction(ref FacePose pose, CharacterPresentation.Reaction kind, float seconds, float weight)
+        {
+            float beat = Beat(seconds, 0f, .18f, 1.05f) * Mathf.Clamp01(weight);
+            switch (kind)
+            {
+                case CharacterPresentation.Reaction.Shocked:
+                    pose.BrowUp = Mathf.Lerp(pose.BrowUp, .46f, beat);
+                    pose.EyeOpen = Mathf.Lerp(pose.EyeOpen, .32f, beat);
+                    pose.Smile = Mathf.Lerp(pose.Smile, 0f, beat);
+                    float breath = Beat(seconds, .07f, .26f, .75f) * Mathf.Clamp01(weight);
+                    pose.JawOpen = Mathf.Max(pose.JawOpen, .16f * breath);
+                    break;
+                case CharacterPresentation.Reaction.Evicted:
+                case CharacterPresentation.Reaction.Nominated:
+                case CharacterPresentation.Reaction.Tearful:
+                    pose.Smile = Mathf.Lerp(pose.Smile, -.21f, beat);
+                    pose.BrowUp = Mathf.Lerp(pose.BrowUp, .20f, beat);
+                    pose.BrowsIn = Mathf.Lerp(pose.BrowsIn, .24f, beat);
+                    break;
+                case CharacterPresentation.Reaction.Saved:
+                case CharacterPresentation.Reaction.Cheered:
+                case CharacterPresentation.Reaction.Won:
+                case CharacterPresentation.Reaction.Embrace:
+                    pose.Smile = Mathf.Lerp(pose.Smile, .40f, beat);
+                    pose.EyeOpen = Mathf.Lerp(pose.EyeOpen, -.10f, beat);
+                    break;
+                case CharacterPresentation.Reaction.Furious:
+                case CharacterPresentation.Reaction.StormOff:
+                    pose.BrowsIn = Mathf.Lerp(pose.BrowsIn, .48f, beat);
+                    pose.BrowUp = Mathf.Lerp(pose.BrowUp, -.35f, beat);
+                    break;
+            }
+        }
+
         private void Awake()
         {
             presentation = GetComponentInParent<CharacterPresentation>();
             avatar = GetComponent<DynamicCharacterAvatar>();
             if (avatar == null) return;
 
-            // Added now, before the avatar's own Start, because that is where UMA hands the player
-            // the race's expression set: SetExpressionSet only fills in a player that already
-            // exists unless it is asked to add one, and by the time the character is built it is
-            // too late to be found.
-            //
-            // Added asleep, though. The player's own Start subscribes to the avatar's character
-            // events, and on a body whose avatar has not run its Start yet those events do not
-            // exist - which threw a null reference out of UMA's own Initialize on every cast screen
-            // that built a season. It is woken below, once the avatar has its data.
+            // UMA assigns the race's expression set to an existing player during the build.
+            // Its player's Start also binds the bones, so keep it asleep until the rig exists.
             player = avatar.gameObject.GetComponent<UMAExpressionPlayer>();
             if (player == null)
-            {
                 player = avatar.gameObject.AddComponent<UMAExpressionPlayer>();
+            if (!HasBuiltRig())
                 player.enabled = false;
-            }
         }
 
-        /// <summary>
-        /// Whether the player has been woken. UMA's own initialisation reads the avatar's events and
-        /// its data, so it waits for a body that exists rather than one that has been asked for.
-        /// </summary>
+        private bool HasBuiltRig()
+        {
+            var data = avatar.umaData;
+            if (data == null || data.dirty || data.skeleton == null) return false;
+
+            // Match the animator sources checked by UMAExpressionPlayer.SetupBones. The jaw
+            // itself is optional and UMA resolves its unmapped name on the completed rig.
+            var rig = data.animator != null ? data.animator.avatar : null;
+            if (rig == null && player.animator != null) rig = player.animator.avatar;
+            if (rig == null) rig = GetComponentInChildren<Animator>()?.avatar;
+            return rig != null && rig.isValid && rig.isHuman;
+        }
+
         private bool Ready()
         {
             if (player == null) return false;
+            if (avatar == null || avatar.umaData == null || avatar.activeRace.racedata == null) return false;
+            if (player.enabled && player.expressionSet != null) return true;
+            if (!HasBuiltRig()) return false;
+
+            // The shipped Human 3.0 races have no expression set on their race asset. Without a
+            // set UMA ignores the expression values and the body clips take over the mandible.
+            if (player.expressionSet == null)
+            {
+                var race = avatar.activeRace.racedata;
+                var set = race.expressionSet;
+                if (set == null && (race.raceName == UmaCastLibrary.FemaleRace || race.raceName == UmaCastLibrary.MaleRace))
+                    set = Resources.Load<UmaFaceRigDefaults>("Gamesim/FaceRigDefaults")?.Expressions;
+                if (set == null) return false;
+                player.expressionSet = set;
+                if (player.enabled && player.umaData?.skeleton != null) player.Initialize();
+            }
             if (player.enabled) return true;
-            if (avatar == null || avatar.umaData == null) return false;
             player.enabled = true;
             return false;
         }
@@ -169,7 +238,7 @@ namespace Gamesim.Uma
                 // point of the setting is that this body stops asking to be looked at.
                 if (held) return;
                 current = new FacePose();
-                flapPhase = 0f;
+                speechTime = 0f;
                 Write(current);
                 held = true;
                 return;
@@ -182,14 +251,15 @@ namespace Gamesim.Uma
 
             if (presentation != null && presentation.IsSpeaking)
             {
-                flapPhase += Time.deltaTime * FlapRate;
-                wanted.JawOpen = Mathf.Clamp(
-                    wanted.JawOpen + FlapFloor + FlapDepth * (0.5f + 0.5f * Mathf.Sin(flapPhase)), -1f, 1f);
+                speechTime = Mathf.Repeat(speechTime + Time.deltaTime, SpeechPhraseSeconds);
+                AddSpeech(ref wanted, speechTime);
             }
             else
             {
-                flapPhase = 0f;
+                speechTime = 0f;
             }
+            if (presentation != null && presentation.TryGetFacialReaction(out var reaction, out float elapsed, out float weight))
+                AddReaction(ref wanted, reaction, elapsed, weight);
 
             float blend = 1f - Mathf.Exp(-Ease * Time.deltaTime);
             current.Smile = Mathf.Lerp(current.Smile, wanted.Smile, blend);
@@ -197,9 +267,8 @@ namespace Gamesim.Uma
             current.BrowsIn = Mathf.Lerp(current.BrowsIn, wanted.BrowsIn, blend);
             current.EyeOpen = Mathf.Lerp(current.EyeOpen, wanted.EyeOpen, blend);
             current.Sneer = Mathf.Lerp(current.Sneer, wanted.Sneer, blend);
-            // The flap is the one channel that must not be smoothed away; a mouth that eases open
-            // and shut at eleven hertz never opens at all.
-            current.JawOpen = wanted.JawOpen;
+            current.JawOpen = Mathf.MoveTowards(current.JawOpen, wanted.JawOpen, 2.8f * Time.deltaTime);
+            current.MouthNarrow = Mathf.MoveTowards(current.MouthNarrow, wanted.MouthNarrow, 2.8f * Time.deltaTime);
             Write(current);
         }
 
@@ -219,6 +288,7 @@ namespace Gamesim.Uma
             player.rightEyeOpen_Close = pose.EyeOpen;
             player.noseSneer = pose.Sneer;
             player.jawOpen_Close = pose.JawOpen;
+            player.mouthNarrow_Pucker = pose.MouthNarrow;
         }
     }
 }

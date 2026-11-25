@@ -245,9 +245,8 @@ namespace Gamesim.Episode
                         castSelect.SetDraft(characterCreator.Draft, characterCreator.Mode);
                         castSelect.Resume();
                     };
-                    if (castSelect.PreferredCreatorMode == CharacterCreator.EntryMode.Quick)
-                        characterCreator.ShowQuick(choice, draft, commit, returnToCast);
-                    else characterCreator.Show(choice, draft, commit, returnToCast);
+                    characterCreator.ShowFromCast(choice, draft, commit, returnToCast,
+                        castSelect.PreferredCreatorMode, castSelect.CreatorReturnPlace);
                 }, freshStart, backTo);
             // Setup is one of the screens the music rule silences, and putting one up is not a
             // render: from the finale's panel, the report or settings the season's track played

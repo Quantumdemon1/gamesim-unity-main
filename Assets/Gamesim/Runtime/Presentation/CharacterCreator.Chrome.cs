@@ -76,14 +76,14 @@ namespace Gamesim.Presentation
         /// </summary>
         private void OnRectTransformDimensionsChange()
         {
-            if (IsShowing && (Frame() - frame).sqrMagnitude > 1f) frameChanged = true;
+            if (IsShowing && phoneIdentity == null && (Frame() - frame).sqrMagnitude > 1f) frameChanged = true;
         }
 
         private void RefitToFrame()
         {
             if (!frameChanged) return;
             frameChanged = false;
-            if (IsShowing && (Frame() - frame).sqrMagnitude > 1f) Rebuild();
+            if (IsShowing && phoneIdentity == null && (Frame() - frame).sqrMagnitude > 1f) Rebuild();
         }
 
         /// <summary>The page's area, between the tabs and the footer.</summary>
@@ -144,19 +144,23 @@ namespace Gamesim.Presentation
             float inset = WayOut.Inset(1f), height = WayOut.Height(1f);
             if (editingCastSlot)
             {
-                float width = WayOut.Width(CancelSlotCaption, 1f, true) + 24f;
-                var cancel = Pill(scrim, CancelSlotCaption, new Rect(Margin, top, width, height), Tone.Secondary, Leave,
-                    icon: PackArt.KitIconCross, size: WayOut.FontSize(1f));
-                cancel.name = CancelSlotCaption;
-                return Margin + width;
+                var cancel = BuildSlotCancel(scrim, Margin, top, 1f, Leave);
+                return Margin + ((RectTransform)cancel.transform).sizeDelta.x;
             }
             // The canvas scaler already magnifies the creator for the larger text sizes, so the
             // helper draws at its own size here: a text scale passed as well would magnify twice.
             var band = new GameObject("Way back band", typeof(RectTransform)).GetComponent<RectTransform>();
             band.SetParent(scrim, false);
-            Place(band, Margin - inset, top - inset, WayOut.Width(BackCaption, 1f, true) + 2f * inset, height + 2f * inset);
-            var back = WayOut.AddBack(band, BackCaption, Leave);
+            Place(band, Margin - inset, top - inset, WayOut.Width(DraftBackCaption, 1f, true) + 2f * inset, height + 2f * inset);
+            var back = WayOut.AddBack(band, DraftBackCaption, Leave);
             return Margin + ((RectTransform)back.transform).sizeDelta.x;
+        }
+
+        private Button BuildSlotCancel(RectTransform frame, float left, float top, float scale, Action cancel)
+        {
+            float width = WayOut.Width(CancelSlotCaption, scale, true) + 24f;
+            return Pill(frame, CancelSlotCaption, new Rect(left, top, width, WayOut.Height(scale)), Tone.Secondary, cancel,
+                icon: PackArt.KitIconCross, size: WayOut.FontSize(scale));
         }
 
         /// <summary>My Houseguests, then the gear, at the top right. Returns the left edge they take.</summary>
@@ -307,13 +311,14 @@ namespace Gamesim.Presentation
         /// </summary>
         private void GoTo(string page)
         {
+            phoneQuickLook = false;
             SelectPage(page);
             comparingOriginal = false;
             pendingDeleteProfile = null;
             libraryOpen = false;
             pendingReplace = null; pendingReplaceName = null;
             Rebuild();
-            if (page == "Identity") FocusNameField();
+            if (page == "Identity" && phoneIdentity == null) FocusNameField();
         }
 
         /// <summary>The name to show for a draft that has none yet.</summary>

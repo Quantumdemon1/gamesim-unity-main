@@ -150,14 +150,16 @@ namespace Gamesim.Episode
         // A readable lock is a disabled Button in an otherwise visible/input-owned HUD, not
         // a live Button behind a cinematic, reveal or non-owning CanvasGroup. Never change the
         // row, group, focus or callbacks to obtain these facts.
+        private bool HudSurfaceOwnsInput()
+        {
+            if (canvas == null || !canvas.isActiveAndEnabled || IsCinematic || IsHeldForReveal) return false;
+            var group = canvas.GetComponent<CanvasGroup>();
+            return group == null || !group.enabled || (group.alpha > .01f && group.interactable && group.blocksRaycasts);
+        }
+
         private bool OfferControlPresentationOwned(UnityEngine.UI.Button button)
         {
-            if (canvas == null || !canvas.isActiveAndEnabled || IsCinematic || IsHeldForReveal)
-                return false;
-            var ownerGroup = canvas.GetComponent<CanvasGroup>();
-            if (ownerGroup != null && ownerGroup.enabled
-                && (!(ownerGroup.alpha > .01f) || !ownerGroup.interactable || !ownerGroup.blocksRaycasts))
-                return false;
+            if (!HudSurfaceOwnsInput()) return false;
             var renderer = button.GetComponent<CanvasRenderer>();
             if (renderer == null || !(renderer.GetInheritedAlpha() > .01f)) return false;
 
@@ -460,6 +462,8 @@ namespace Gamesim.Episode
             foreach (Transform child in canvas.transform) { child.gameObject.SetActive(false); Destroy(child.gameObject); }
             MarkChromeChanged();
             challengeMeter = null; challengeCaption = null;
+            ClosePhoneDecision();
+            if (director == null || !director.HasDiaryDecisionDraft) lastDiaryDraft = null;
             modal = null; modalScroll = null; lastSelection = null; restoreSelection = true;
             ForgetWayBack();
             fitToContent = false; pinnedAction = null; pinnedNoteHeight = 0f; pinnedExtra = 0f; contentCap = 0f; nearbyCard = null; nearbyBar = null; statusRoot = null;
@@ -627,7 +631,7 @@ namespace Gamesim.Episode
             // "Scroll for more" is said only of a panel that scrolls (FitStandardPanel).
             // In the device's words (U7); RewordPanelHint keeps it so as the panel fits and the device changes.
             panelScrolls = true;
-            var controlHint = FixedText(modal,InputGlossary.PanelHint(padHints, true),15,UiTheme.Muted,new Vector2(24,-72),new Vector2(550,26));
+            var controlHint = FixedText(modal,InputGlossary.PanelHint(padHints, true, PhoneDisplay.Active),15,UiTheme.Muted,new Vector2(24,-72),new Vector2(550,26));
             controlHint.name = PanelHintName;
             var scrollRoot = new GameObject("Episode scroll",typeof(RectTransform),typeof(ScrollRect)); scrollRoot.transform.SetParent(modal,false);
             var scrollRect = (RectTransform)scrollRoot.transform; Stretch(scrollRect,20,104,20,22);
@@ -2059,7 +2063,12 @@ namespace Gamesim.Episode
         private string promptAsked, promptHintAsked;
         /// <summary>The prompt's height, and its height with a hint line under its words: the line's 22 and the same 6 of air under it.</summary>
         private const float PromptHeight = 52f, PromptHintedHeight = 74f;
-        public void SetVisible(bool value) { if(canvas!=null) canvas.gameObject.SetActive(value); MarkChromeChanged(); }
+        public void SetVisible(bool value)
+        {
+            if (canvas != null) canvas.gameObject.SetActive(value);
+            SyncPhoneDecisionVisibility();
+            MarkChromeChanged();
+        }
         public bool IsVisible => canvas != null && canvas.gameObject.activeSelf;
 
         /// <summary>
@@ -2079,6 +2088,7 @@ namespace Gamesim.Episode
             group.alpha = on ? 0f : 1f;
             group.blocksRaycasts = !on && interactive;
             IsCinematic = on;
+            SyncPhoneDecisionVisibility();
             MarkChromeChanged();
         }
 
@@ -2105,6 +2115,7 @@ namespace Gamesim.Episode
                 group.alpha = 0f; group.blocksRaycasts = false;
             }
             else { group.alpha = heldAlpha; group.blocksRaycasts = heldRaycasts; }
+            SyncPhoneDecisionVisibility();
             MarkChromeChanged();
         }
 
@@ -2263,7 +2274,13 @@ namespace Gamesim.Episode
             return Rect.MinMaxRect(left, bottom, right, top);
         }
 
-        private void OnDestroy() { offerControls.Clear(); if(canvas!=null) Destroy(canvas.gameObject); }
+        private void OnDestroy()
+        {
+            offerControls.Clear();
+            ClosePhoneDecision();
+            if (phoneDecisionHost != null) Destroy(phoneDecisionHost.gameObject);
+            if (canvas != null) Destroy(canvas.gameObject);
+        }
 
         // Full-screen screens that sit over the HUD: the weekly recap and the season report. While
         // one is up it is the keyboard's whole world - its controls get the ring and the HUD's get

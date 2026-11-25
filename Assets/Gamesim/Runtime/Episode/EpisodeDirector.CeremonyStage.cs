@@ -1506,7 +1506,7 @@ namespace Gamesim.Episode
                 else director.cameraRig.MoveTo(shot);
             }
 
-            /// <summary>A low, neutral fill from the viewing side keeps a seated face readable under the coloured room practicals.</summary>
+            /// <summary>A low, soft fill from the camera side keeps a seated face readable under the coloured room practicals.</summary>
             private void LightReaction(HouseCameraRig.Shot shot, ReactionLighting lighting)
             {
                 if (reactionFill == null)

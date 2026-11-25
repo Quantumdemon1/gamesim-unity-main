@@ -22,6 +22,54 @@ namespace Gamesim.Tests.PlayMode
     public sealed partial class EpisodePlayModeTests
     {
         [UnityTest]
+        public IEnumerator Captions_OnlyAnAlreadyVisibleLineCanFinishInTheReadingBanner()
+        {
+            var host = new GameObject("Witnessed caption");
+            try
+            {
+                var caption = host.AddComponent<HouseConversationCaption>();
+                caption.CaptionTime = CaptionTime.Longer;
+                var camera = Camera.main;
+                var anchor = camera.ViewportToWorldPoint(new Vector3(.5f, .5f, 8f));
+                caption.Show("Maya", "Riley", "strategy", 1f, anchor);
+                var panel = host.GetComponentsInChildren<RectTransform>(true).Single(t => t.name == HouseConversationCaption.PanelName);
+                var printed = panel.GetComponentInChildren<TMPro.TMP_Text>(true);
+                caption.PairDrawn = false;
+                yield return null;
+                Assert.That(panel.gameObject.activeInHierarchy, Is.False, "Hidden before its first draw.");
+                yield return new WaitForSecondsRealtime(caption.HoldSeconds + .1f);
+                caption.PairDrawn = true;
+                yield return null;
+                yield return null;
+                Assert.That(panel.gameObject.activeInHierarchy, Is.True);
+                string witnessed = printed.text;
+                caption.PairDrawn = false;
+                caption.Release();
+                Assert.That(panel.gameObject.activeInHierarchy, Is.True, "The reading time starts with actual visibility.");
+                caption.Show("Maya", "Jamie", "gossip", 1f, anchor);
+                yield return null;
+                Assert.That(printed.text, Is.EqualTo(witnessed), "The hidden replacement cannot change the banner.");
+                Assert.That(caption.PairDrawn, Is.False);
+                caption.Release();
+                caption.PairDrawn = true;
+                yield return null;
+                Assert.That(printed.text, Is.EqualTo(witnessed), "Reopening the room after release cannot reveal a new line.");
+                caption.PairDrawn = false;
+                bool cameraEnabled = camera.enabled;
+                try
+                {
+                    camera.enabled = false;
+                    caption.Show("Maya", "Taylor", "nominations", 1f, anchor);
+                    Assert.That(printed.text, Is.EqualTo(witnessed), "A missing projection must keep the visible copy private.");
+                }
+                finally { camera.enabled = cameraEnabled; }
+                yield return new WaitForSecondsRealtime(caption.HoldSeconds + .2f);
+                Assert.That(panel.gameObject.activeInHierarchy, Is.False, "The earlier line expired and the replacement never appeared.");
+            }
+            finally { Object.Destroy(host); }
+        }
+
+        [UnityTest]
         public IEnumerator Captions_TheCaptionTimeSettingReachesTheStripAndIsAControlInTheSettings()
         {
             var sting = SceneComponents<CeremonySting>().Single();

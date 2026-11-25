@@ -14,6 +14,75 @@ namespace Gamesim.Tests.PlayMode
     /// </summary>
     public sealed partial class EpisodePlayModeTests
     {
+        [Test]
+        public void Audio_FirstEnabledSourcesRespectTheSavedMasterEffectsAndReducedSettings()
+        {
+            var originalRoot = Gamesim.Episode.EpisodeDirector.SaveRootOverride;
+            bool originalRoute = Gamesim.Episode.EpisodeDirector.PreferencesBesideSaves;
+            try
+            {
+                string root = System.IO.Path.Combine(temporaryDirectory, "audio-start");
+                System.IO.Directory.CreateDirectory(root);
+                Gamesim.Episode.EpisodeDirector.SaveRootOverride = root;
+                Gamesim.Episode.EpisodeDirector.PreferencesBesideSaves = true;
+                var prefs = Gamesim.Episode.EpisodeDirector.LaunchPreferences();
+                Assert.That(prefs, Is.TypeOf<Gamesim.Persistence.RootFileStore>());
+                foreach (var values in new[] { (0, 100, 0, 0), (70, 0, 0, 0), (70, 100, 1, 0), (70, 100, 0, 1), (70, 100, 0, 0) })
+                {
+                    prefs.SetInt("Gamesim.Volume", values.Item1);
+                    prefs.SetInt(SoundPictures.EffectsVolumeKey, values.Item2);
+                    prefs.SetInt("Gamesim.ReducedAudio", values.Item3);
+                    prefs.SetInt("Gamesim.Muted", values.Item4);
+                    prefs.Save();
+                    var host = new GameObject("First audible frame");
+                    try
+                    {
+                        var audio = host.AddComponent<HouseAudio>();
+                        bool hear = values.Item1 > 0 && values.Item2 > 0 && values.Item3 == 0 && values.Item4 == 0;
+                        Assert.That(audio.Volume, Is.EqualTo(values.Item1 / 100f).Within(.001f));
+                        Assert.That(audio.AmbiencePlaying, Is.EqualTo(hear));
+                        audio.SetRoom("Kitchen");
+                        Assert.That(audio.RoomTonePlaying, Is.EqualTo(hear));
+                        audio.enabled = false;
+                        Assert.That(audio.RoomTonePlaying, Is.False);
+                        audio.enabled = true;
+                        Assert.That(audio.RoomTonePlaying, Is.EqualTo(hear));
+                    }
+                    finally { Object.DestroyImmediate(host); }
+                }
+            }
+            finally
+            {
+                Gamesim.Episode.EpisodeDirector.SaveRootOverride = originalRoot;
+                Gamesim.Episode.EpisodeDirector.PreferencesBesideSaves = originalRoute;
+            }
+        }
+
+        [UnityTest]
+        public IEnumerator Audio_QuickBallotsKeepEachMarkerAndUseOneAttackPerFrame()
+        {
+            var audio = director.GetComponent<HouseAudio>();
+            audio.SetMuted(false);
+            audio.SetVolume(.35f);
+            audio.SetChannelVolumes(1f, 1f, 1f);
+            yield return null;
+            int attacks = audio.CueVoicesStarted;
+            var markers = new System.Collections.Generic.List<HouseAudio.Cue>();
+            audio.CueAsked += markers.Add;
+            try
+            {
+                for (int i = 0; i < 3; i++) audio.PlayCue(HouseAudio.Cue.Vote);
+                audio.PlayCue(HouseAudio.Cue.Eviction);
+                Assert.That(markers, Is.EqualTo(new[] { HouseAudio.Cue.Vote, HouseAudio.Cue.Vote, HouseAudio.Cue.Vote, HouseAudio.Cue.Eviction }));
+                Assert.That(audio.CueVoicesStarted - attacks, Is.EqualTo(2));
+                yield return null;
+                int beforeNext = audio.CueVoicesStarted;
+                audio.PlayCue(HouseAudio.Cue.Vote);
+                Assert.That(audio.CueVoicesStarted - beforeNext, Is.EqualTo(1));
+            }
+            finally { audio.CueAsked -= markers.Add; }
+        }
+
         [UnityTest]
         public IEnumerator Audio_TheRoomToneFollowsTheCamerasFocus()
         {
@@ -26,6 +95,13 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(director.RoomUnderCamera, Is.EqualTo("Kitchen"), "The camera looks into the kitchen.");
             Assert.That(audio.CurrentRoom, Is.EqualTo("Kitchen"), "and the audio hears it");
             Assert.That(audio.RoomTonePlaying, Is.True, "with the kitchen's bed playing");
+            director.OpenSettingsAt(SettingsSection.Sound);
+            yield return null;
+            PressSettingRow(SettingRowWords.MusicRow, "Off");
+            Assert.That(audio.RoomTonePlaying, Is.True, "Turning off the score keeps the kitchen under Effects.");
+            PressSettingRow(SettingRowWords.MusicRow, "On");
+            director.ClosePanels();
+            yield return null;
             // A free move is a watching view from RS5: the room view watches the kitchen and draws it alone.
             Assert.That(cameraRig.ViewRoom, Is.EqualTo(RoomLayers.IndexOf("Kitchen")), "The free move to the kitchen's marker watches the kitchen,");
             Assert.That(director.ViewedRooms, Is.EqualTo(RoomSet.Of("Kitchen")), "and the view draws it.");

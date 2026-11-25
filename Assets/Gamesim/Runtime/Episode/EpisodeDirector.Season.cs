@@ -516,7 +516,6 @@ namespace Gamesim.Episode
         {
             audioBed?.SetMuted(muted);
             audioBed?.SetVolume(volumePercent / 100f);
-            audioBed?.SetAmbienceEnabled(musicOn);
             audioBed?.SetReducedAudio(reducedAudio);
             audioBed?.SetChannelVolumes(musicVolumePercent / 100f, effectsVolumePercent / 100f, interfaceVolumePercent / 100f);
             ApplyMusic();

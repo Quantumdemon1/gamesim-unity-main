@@ -276,7 +276,8 @@ namespace Gamesim.Tests.PlayMode
         [UnityTest]
         public IEnumerator OpeningStage_AnImpossibleArrivalCannotBeSentThroughByFallback()
         {
-            var stage = director.OpeningPlan(stage: true, verification: true).Stage;
+            var plan = director.OpeningPlan(stage: true, verification: true);
+            var stage = plan.Stage;
             Assert.That(stage, Is.Not.Null, "The normal-sized cast fits the stage.");
             yield return WaitFor(() => stage.BodyReadiness >= 1f, 40f, "The bodies are built before placement.");
             Assert.That(stage.TryPlace(), Is.True);
@@ -296,6 +297,11 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(Flat(player.transform.position, arrival), Is.LessThan(0.1f),
                     "Fallback cleanup keeps an actor who never reached the reveal mark behind the leaves.");
                 Assert.That(stage.OnMark(id), Is.False);
+                player.Agent.radius = oldRadius;
+                plan.PrepareWalkIn();
+                Assert.That(plan.WalkInFraming, Is.SameAs(plan.WalkInKeys), "A lead who missed their reveal keeps the wide entry.");
+                yield return RealSeconds(.4f);
+                Assert.That(Flat(player.transform.position, arrival), Is.LessThan(.1f), "The card does not route the unrevealed actor to a yard mark.");
             }
             finally
             {
@@ -303,6 +309,12 @@ namespace Gamesim.Tests.PlayMode
                 stage.RestoreHome();
                 stage.StrikeSet();
             }
+            var home = player.transform.position;
+            plan.PrepareWalkIn();
+            Assert.That(plan.WalkInFraming, Is.SameAs(plan.WalkInKeys), "A restored stage keeps its wide entry.");
+            Assert.That(player.HasActivityOwner, Is.False, "The entry card cannot claim the restored player.");
+            yield return null;
+            Assert.That(Flat(player.transform.position, home), Is.LessThan(.1f));
         }
 
         /// <summary>

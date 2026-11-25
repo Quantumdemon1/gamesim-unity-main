@@ -41,6 +41,8 @@ namespace Gamesim.House
         [SerializeField, Min(0f)] private float occlusionRadius = 0.3f;
         [SerializeField, Min(0f)] private float occlusionMargin = 0.25f;
         private float appliedDistance;
+        private bool returningToBoomOcclusion;
+        private float appliedBoomCompression;
         private static readonly RaycastHit[] occlusionHits = new RaycastHit[16];
         private static readonly RaycastHit[] conversationSolidHits = new RaycastHit[32];
         private static readonly Collider[] conversationEyeOverlaps = new Collider[32];
@@ -73,6 +75,9 @@ namespace Gamesim.House
         // ordinary move and every input releases it, and nothing that never asks for one sees one.
         // ------------------------------------------------------------------------------------
 
+        /// <summary>Constrains this shot's interpolated pose before the lens is placed.</summary>
+        public delegate void FrameMovingSubject(ref Vector3 focus, ref float yaw, ref float pitch, ref float distance);
+
         /// <summary>A scripted framing: where, how far, how steep, which lens, and how much depth of field.</summary>
         public struct Shot
         {
@@ -85,6 +90,7 @@ namespace Gamesim.House
             /// <summary>The yaw to turn to, unless <see cref="KeepYaw"/>.</summary>
             public float Yaw;
             public bool KeepYaw;
+            public FrameMovingSubject FrameSubject;
             /// <summary>The vertical field of view; zero keeps the camera's own.</summary>
             public float FieldOfView;
             /// <summary>An orthographic lens of this half-height, for the overview.</summary>
@@ -265,6 +271,7 @@ namespace Gamesim.House
         public float Distance => distance;
         /// <summary>Whether a scripted shot holds the camera.</summary>
         public bool HasShot => activeShot.HasValue;
+        public bool FramesMovingSubject => !reducedMotion && activeShot.HasValue && activeShot.Value.FrameSubject != null;
         /// <summary>The close-up volume's weight this frame: how far the depth of field is in.</summary>
         public float DepthOfFieldWeight => depthOfFieldWeight;
         public float DesiredDepthOfFieldWeight => activeShot.HasValue ? Mathf.Clamp01(activeShot.Value.DepthOfFieldWeight) : 0f;
@@ -366,6 +373,7 @@ namespace Gamesim.House
             reducedMotion = value;
             if (value)
             {
+                returningToBoomOcclusion = false;
                 // Reduced motion stops every reframe in flight, the pitch's included: whatever angle
                 // the camera is actually at becomes the offset, so the next frame changes nothing.
                 float actual = shownPitch;
@@ -686,6 +694,10 @@ namespace Gamesim.House
                 // And which view it took the camera from, by the count of what has taken the view (RS5).
                 shotTookTheViewOn = viewTakeovers;
             }
+            // A crane leaving the authored doorway track starts at the previous physical eye.
+            // Its normal collision query resumes immediately; its correction comes in continuously.
+            returningToBoomOcclusion = FramesMovingSubject && shot.FrameSubject == null && shot.Seconds > .02f;
+            appliedBoomCompression = 0f;
             ClearSubject();
             activeShot = shot;
             travelSeconds = 0f;
@@ -735,6 +747,7 @@ namespace Gamesim.House
             if (!activeShot.HasValue) return;
             int before = ResolveRooms();
             activeShot = null;
+            returningToBoomOcclusion = false;
             twoShotHeld = false;
             twoShotArrived = false;
             yaw = shotReturnYaw;
@@ -769,6 +782,7 @@ namespace Gamesim.House
             if (!activeShot.HasValue) return;
             var shot = activeShot.Value;
             activeShot = null;
+            returningToBoomOcclusion = false;
             twoShotHeld = false;
             twoShotArrived = false;
             // A timed move still in flight would otherwise carry its clock onto whatever focus the
@@ -1044,8 +1058,26 @@ namespace Gamesim.House
                 shownPitch = Mathf.Lerp(shownPitch, pitch, blend);
                 shownYaw = Mathf.LerpAngle(shownYaw, yaw, blend);
             }
+            var frameSubject = activeShot.HasValue ? activeShot.Value.FrameSubject : null;
+            if (frameSubject != null && !reducedMotion)
+            {
+                var focus = transform.position;
+                frameSubject(ref focus, ref shownYaw, ref shownPitch, ref distance);
+                transform.position = focus;
+            }
             transform.rotation = Quaternion.Euler(shownPitch, shownYaw, 0f);
-            appliedDistance = OccludedDistance(distance);
+            // A subject-framed shot supplies its complete surveyed camera mark. Compressing
+            // its boom a second time at the house shell would cut inside the moving subject.
+            appliedDistance = FramesMovingSubject ? distance : OccludedDistance(distance);
+            if (returningToBoomOcclusion && activeShot.HasValue && !reducedMotion)
+            {
+                float wantedCompression = distance - appliedDistance;
+                float step = Mathf.Min(.075f, 3f * Time.unscaledDeltaTime);
+                appliedBoomCompression = Mathf.MoveTowards(appliedBoomCompression, wantedCompression, step);
+                appliedDistance = Mathf.Max(.4f, distance - appliedBoomCompression);
+                if (!IsTravelling && Mathf.Approximately(appliedBoomCompression, wantedCompression))
+                    returningToBoomOcclusion = false;
+            }
             viewCamera.transform.localPosition = new Vector3(0f, 0f, -appliedDistance);
             viewCamera.transform.localRotation = Quaternion.identity;
             ApplyLens(blend);

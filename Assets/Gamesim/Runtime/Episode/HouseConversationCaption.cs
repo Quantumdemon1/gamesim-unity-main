@@ -21,6 +21,7 @@ namespace Gamesim.Episode
     /// will otherwise walk under the house pill at the top of the screen, and a line of prose over
     /// the week counter is worse than a line of prose in the wrong place.</para>
     /// </summary>
+    [DefaultExecutionOrder(1100)] // The room-visibility pass finishes at order 1000.
     public sealed class HouseConversationCaption : MonoBehaviour
     {
         /// <summary>The panel's name, which the ambient-caption test finds it by.</summary>
@@ -41,7 +42,7 @@ namespace Gamesim.Episode
         private bool anchored;
         private EpisodeHud episodeHud;
 
-        public string CurrentText => root != null && root.activeSelf ? label.text : "";
+        public string CurrentText => root != null && root.activeSelf ? currentWords : "";
 
         /// <summary>
         /// The player's caption reading time (PLAN A, A10): once shown, the line stays up for the
@@ -55,6 +56,26 @@ namespace Gamesim.Episode
         private float shownAt, holdFor;
         /// <summary>Whether the line is only waiting out its reading time: let go, and down once it has had it.</summary>
         private bool releasing;
+        private string currentWords, lastReadWords, visibleCandidate;
+        private int visibleFrame = -1, currentLine, candidateLine, lastReadLine = -1;
+        private bool showingReadingCopy;
+        private float firstVisibleTime, readUntil;
+
+        // A late visibility decision can still withdraw a line during its first frame.
+        // Only a complete preceding frame establishes what the player could already read.
+        private void ConfirmVisibleFrame()
+        {
+            if (visibleFrame < 0 || visibleFrame == Time.frameCount) return;
+            if (candidateLine != lastReadLine)
+            {
+                lastReadLine = candidateLine;
+                lastReadWords = visibleCandidate;
+                readUntil = firstVisibleTime + holdFor;
+                if (currentLine == lastReadLine) shownAt = firstVisibleTime;
+            }
+            visibleCandidate = null;
+            visibleFrame = -1;
+        }
 
         /// <summary>How long the line on screen holds once shown, in seconds. A read for tests.</summary>
         public float HoldSeconds => holdFor;
@@ -72,9 +93,11 @@ namespace Gamesim.Episode
             set
             {
                 if (pairDrawn == value) return;
+                ConfirmVisibleFrame();
+                if (!value) visibleFrame = -1;
                 pairDrawn = value;
                 if (root == null || !root.activeSelf || panel == null) return;
-                if (!value) panel.gameObject.SetActive(false);
+                if (!value) PlaceReadingCopy();
                 else if (anchored) Place();
                 else { panel.gameObject.SetActive(true); PlaceBanner(); }
             }
@@ -109,7 +132,14 @@ namespace Gamesim.Episode
             Place();
         }
 
-        public void Hide() { releasing = false; if (root != null) root.SetActive(false); }
+        public void Hide()
+        {
+            releasing = false;
+            visibleFrame = -1;
+            lastReadWords = null;
+            currentWords = null;
+            if (root != null) root.SetActive(false);
+        }
 
         /// <summary>
         /// The pair is out of sight: the line goes once it has been up for its reading time, at once
@@ -118,15 +148,25 @@ namespace Gamesim.Episode
         public void Release()
         {
             if (root == null || !root.activeSelf) { releasing = false; return; }
-            if (Time.unscaledTime - shownAt >= holdFor) { Hide(); return; }
+            ConfirmVisibleFrame();
+            if (Time.unscaledTime - shownAt >= holdFor && !CanFinishReading) { Hide(); return; }
             releasing = true;
         }
 
         private void LateUpdate()
         {
             if(root==null || !root.activeSelf)return;
-            if(releasing && Time.unscaledTime - shownAt >= holdFor){Hide();return;}
-            if(anchored)Place();else PlaceBanner();
+            ConfirmVisibleFrame();
+            if (releasing && Time.unscaledTime - shownAt >= holdFor && !CanFinishReading) { Hide(); return; }
+            if (anchored) Place(); else PlaceBanner();
+            if (!releasing && CaptionTime == Gamesim.Presentation.CaptionTime.Longer && pairDrawn && panel.gameObject.activeInHierarchy
+                && (!anchored || tail.gameObject.activeSelf))
+            {
+                candidateLine = currentLine;
+                visibleCandidate = label.text;
+                visibleFrame = Time.frameCount;
+                firstVisibleTime = Time.unscaledTime;
+            }
         }
 
         private Rect SafeBounds()
@@ -141,7 +181,37 @@ namespace Gamesim.Episode
         {
             if(canvasRect==null)return;
             // A pair the room scope does not draw has no line drawn about them (RS4).
-            if(!pairDrawn){panel.gameObject.SetActive(false);return;}
+            if (!pairDrawn || ReadingOnly) { PlaceReadingCopy(); return; }
+            panel.gameObject.SetActive(true);
+            RestoreLiveWords();
+            PositionBanner();
+        }
+
+        private bool ReadingOnly => releasing && CaptionTime == Gamesim.Presentation.CaptionTime.Longer;
+
+        private bool CanFinishReading => CaptionTime == Gamesim.Presentation.CaptionTime.Longer
+            && lastReadWords != null && Time.unscaledTime < readUntil;
+
+        private void PlaceReadingCopy()
+        {
+            panel.gameObject.SetActive(CanFinishReading);
+            if (!CanFinishReading) return;
+            showingReadingCopy = true;
+            label.text = lastReadWords;
+            tail.gameObject.SetActive(false);
+            panel.pivot = new Vector2(.5f, 1f);
+            PositionBanner();
+        }
+
+        private void RestoreLiveWords()
+        {
+            if (!showingReadingCopy) return;
+            label.text = currentWords;
+            showingReadingCopy = false;
+        }
+
+        private void PositionBanner()
+        {
             var safe=SafeBounds();
             SizeForText(Mathf.Min(BannerWidth,safe.width),BannerHeight);
             panel.anchoredPosition=new Vector2(safe.center.x,safe.yMax);
@@ -157,12 +227,15 @@ namespace Gamesim.Episode
         private void Place()
         {
             var camera = Camera.main;
-            if (camera == null || canvasRect == null) return;
+            if (camera == null || canvasRect == null || !pairDrawn || ReadingOnly) { PlaceReadingCopy(); return; }
 
             var screen = camera.WorldToScreenPoint(anchorWorld);
             // Behind the lens, or over a pair the room scope does not draw (RS4): no bubble.
-            if (screen.z <= 0f || !pairDrawn) { panel.gameObject.SetActive(false); return; }
+            if (screen.z <= 0f) { PlaceReadingCopy(); return; }
             panel.gameObject.SetActive(true);
+            panel.pivot = new Vector2(.5f, 0f);
+            tail.gameObject.SetActive(true);
+            RestoreLiveWords();
 
             if (!RectTransformUtility.ScreenPointToLocalPointInRectangle(
                     canvasRect, screen, null, out var local)) return;
@@ -201,12 +274,17 @@ namespace Gamesim.Episode
             if (root == null) Create();
             string words = Describe(firstName, secondName, topic);
             // A line newly up - or a different pair, or another topic - starts its reading time (A10).
-            if (!root.activeSelf || label.text != words)
+            ConfirmVisibleFrame();
+            if (!root.activeSelf || currentWords != words)
             {
+                currentLine++;
+                visibleFrame = -1;
                 shownAt = Time.unscaledTime;
                 holdFor = (float)Gamesim.Presentation.CaptionTiming.Hold(0.0, words, CaptionTime);
             }
             releasing = false;
+            currentWords = words;
+            showingReadingCopy = false;
             label.text = words;
             // Every text size the settings offer, the largest's 1.4 among them (A8).
             label.fontSize = Mathf.RoundToInt(19 * Mathf.Clamp(fontScale, 1, Gamesim.Presentation.TextSizes.Scale(Gamesim.Presentation.TextSize.Largest)));

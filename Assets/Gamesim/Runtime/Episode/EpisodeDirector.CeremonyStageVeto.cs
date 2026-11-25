@@ -187,7 +187,7 @@ namespace Gamesim.Episode
                         if (holder != null)
                             Schedule(intro * 0.45f, () =>
                             {
-                                Cut(SeatShot(holder));
+                                CutToReactionSeat(holder);
                                 director.TurnHeads(state, holder, block);
                             });
                         Schedule(intro, () => Cut(ScreenCut()));
@@ -214,7 +214,7 @@ namespace Gamesim.Episode
                         if (saved != null && placeOf.ContainsKey(saved))
                             Schedule(decision * 0.4f, () =>
                             {
-                                Cut(SeatShot(saved));
+                                CutToReactionSeat(saved);
                                 Relieved(saved, holder);
                                 director.TurnHeads(state, saved, new[] { saved });
                             });
@@ -223,7 +223,7 @@ namespace Gamesim.Episode
                             string first = block[0], second = block[1];
                             Schedule(decision * 0.4f, () =>
                             {
-                                Cut(PairShot(first, second));
+                                Cut(PairShot(first, second), ReactionLighting.Seated);
                                 Glance(first, second, 1.2f);
                                 Glance(second, first, 1.2f);
                             });
@@ -244,13 +244,13 @@ namespace Gamesim.Episode
                         if (hoh != null)
                             Schedule(naming * 0.25f, () =>
                             {
-                                Cut(SeatShot(hoh));
+                                CutToReactionSeat(hoh);
                                 Glance(hoh, replacement, 1.5f);
                             });
                         if (replacement != null && placeOf.ContainsKey(replacement))
                             Schedule(naming * 0.55f, () =>
                             {
-                                Cut(SeatShot(replacement));
+                                CutToReactionSeat(replacement);
                                 LookDown(replacement, 4f);
                                 director.TurnHeads(state, replacement, new[] { replacement });
                             });
@@ -267,7 +267,7 @@ namespace Gamesim.Episode
             /// <summary>A nominee waiting on the holder's word, from their chair: the cut to them and a silent look to the holder.</summary>
             private void Waiting(string nominee, string holder, float seconds)
             {
-                Cut(SeatShot(nominee));
+                CutToReactionSeat(nominee);
                 var visual = Visual(nominee);
                 if (visual == null) return;
                 var towards = holder != null ? director.BodyFor(holder) : null;
@@ -279,11 +279,11 @@ namespace Gamesim.Episode
             private void PushInOnThePair(string first, string second, float seconds)
             {
                 var wide = PairShot(first, second);
-                Cut(wide);
+                Cut(wide, ReactionLighting.Seated);
                 var near = PairShot(first, second);
                 near.Distance = Mathf.Max(0.9f, wide.Distance - 0.7f);
                 near.Seconds = Mathf.Max(0.4f, seconds - 0.1f);
-                Schedule(0.05f, () => Move(near));
+                Schedule(0.05f, () => Move(near, ReactionLighting.Seated));
             }
 
             /// <summary>Relief in the red chair: a look to the holder and, where the body has it, the seated fist pump.</summary>

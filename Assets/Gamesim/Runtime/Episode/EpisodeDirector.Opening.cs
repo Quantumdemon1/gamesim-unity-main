@@ -122,6 +122,8 @@ namespace Gamesim.Episode
                 MarkBeat = MarkOpeningBeat,
                 Rig = cameraRig,
                 WalkInKeys = WalkInKeys,
+                PrepareWalkIn = openingStage == null ? null : openingStage.PrepareWalkIn,
+                StagedWalkInKeys = openingStage == null ? null : openingStage.WalkInFraming,
                 Stage = openingStage,
                 // The tour at every season's opening, as the reference build shows it in every new
                 // game's first week - to a player who has been through it before, offered rather
@@ -345,10 +347,11 @@ namespace Gamesim.Episode
             openingFramedGuest = true;
             introductionShot = shot;
             introductionFocusFromHips = shot.Focus - HipsOf(body, HumanoidHips(body));
-            introductionHeadFromFocus = head - shot.Focus;
-            introductionFraming++;
-            KeyLight(head, Quaternion.Euler(shot.Pitch, yaw, 0f), shot.Focus, shot.Distance);
             var visual = body.GetComponent<CharacterPresentation>();
+            var litHead = visual != null && visual.HeadBone != null ? visual.HeadBone.position : head;
+            introductionHeadFromFocus = litHead - shot.Focus;
+            introductionFraming++;
+            KeyLight(litHead, Quaternion.Euler(shot.Pitch, yaw, 0f), shot.Focus, shot.Distance);
             if (visual == null) return;
             visual.SetFacing(Mathf.Repeat(yaw + 180f, 360f));
             if (cameraRig.ViewCamera != null) visual.LookAtPoint(cameraRig.ViewCamera.transform, 30f);
@@ -424,13 +427,15 @@ namespace Gamesim.Episode
                 introductionLight.type = LightType.Spot;
                 introductionLight.color = new Color(1f, 0.95f, 0.88f);
                 introductionLight.intensity = 6f;
-                introductionLight.range = 9f;
+                introductionLight.range = 4.8f;
                 introductionLight.spotAngle = 34f;
                 introductionLight.innerSpotAngle = 18f;
                 introductionLight.shadows = LightShadows.None;
             }
             var eye = focus - view * Vector3.forward * distance;
-            var place = eye + Vector3.up * 0.7f + view * Vector3.right * 0.9f;
+            // The Living reaction is a full-body shot. Keep its existing spot close to the
+            // named guest so brow, cheek and shoulders separate from the dark background.
+            var place = Vector3.Lerp(head, eye, 0.68f) + Vector3.up * 0.28f + view * Vector3.right * 0.55f;
             introductionLight.transform.position = place;
             introductionLight.transform.rotation = Quaternion.LookRotation(head - place);
             introductionLight.enabled = true;

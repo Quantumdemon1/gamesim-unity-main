@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using Gamesim.Persistence;
 using Gamesim.Simulation;
 using NUnit.Framework;
 
@@ -675,6 +677,226 @@ namespace Gamesim.Tests.EditMode
             Assert.That(CastAt(s, "the-target-on-their-back", StoryAnchors.EvictionNight), Is.Not.Null);
             s.week = 4;
             Assert.That(CastAt(s, "the-target-on-their-back", StoryAnchors.EvictionNight), Is.Null, "Only early in the season.");
+        }
+
+        private const string TargetArcId = "the-target-on-their-back";
+        private static readonly Lazy<EpisodeState> TargetEvictionNight = new Lazy<EpisodeState>(PlayToTargetEvictionNight);
+
+        private static ContestantState[] RankTargetWinners(EpisodeState s)
+        {
+            var winners = s.Active.Where(c => !c.isPlayer && StoryPeople.IsRealPerson(c) && Lore.SheetIn(s, c.id)?.wonSeason == true)
+                .OrderBy(c => c.id, StringComparer.Ordinal).ToArray();
+            for (int i = 0; i < winners.Length; i++)
+                s.relationships.Single(r => r.fromId == s.playerId && r.toId == winners[i].id).score = 90 - i;
+            return winners;
+        }
+
+        private static EpisodeState TargetSeason(bool shipped)
+        {
+            if (shipped) return TargetEvictionNight.Value.Clone();
+            var s = StorySeasonTests.StorySeason(23, 12, CastTemplates.Roster.AllStars);
+            s.phase = EpisodePhase.Social;
+            s.evictionResolved = true;
+            return s;
+        }
+
+        private static EpisodeState PlayToTargetEvictionNight()
+        {
+            // In a shipped season only the reveal can create this week's power row and ballot archive.
+            // Keep the real social window following it, with the cast and the two source ledgers as played.
+            for (uint seed = 23; seed < 55; seed++)
+            {
+                var fresh = SeasonBuilder.Create(new SeasonBuilder.Choice { HouseSize = 12, Roster = CastTemplates.Roster.AllStars }, seed);
+                ShippedRules.ApplyFresh(fresh);
+                var engine = new EpisodeEngine(fresh);
+                var s = engine.Snapshot;
+                for (int step = 0; step < 80 && !(s.phase == EpisodePhase.Social && s.evictionResolved); step++)
+                {
+                    var command = EpisodeEngineTests.NextCommand(s);
+                    var result = engine.Apply(command);
+                    Assert.That(result.accepted, Is.True, $"Seed {seed}, week {s.week}, {s.phase}, {command.kind}: {result.reason}");
+                    s = result.state;
+                }
+                Assert.That(s.phase == EpisodePhase.Social && s.evictionResolved && s.week == 1, Is.True, "Reach the first post-eviction social window.");
+                Assert.That(s.ledger.power.Any(p => p.week == s.week && !string.IsNullOrEmpty(p.evicteeId)) &&
+                    s.unifiedVoteReveals.Any(r => r.week == s.week), Is.True, "The week's completed eviction owns its published reveal.");
+                string winner = CastAt(s, TargetArcId, StoryAnchors.EvictionNight)?.headliner;
+                if (winner == null) continue;
+                // The alternate-winner cases rank these two ordinal winners first. Prove each can
+                // headline this exact window before introducing a cooldown. Preserve the played scores.
+                var probe = s.Clone();
+                var ranked = RankTargetWinners(probe);
+                if (ranked.Length < 2 || CastAt(probe, TargetArcId, StoryAnchors.EvictionNight)?.headliner != ranked[0].id) continue;
+                probe.relationships.Single(r => r.fromId == probe.playerId && r.toId == ranked[1].id).score = 91;
+                if (CastAt(probe, TargetArcId, StoryAnchors.EvictionNight)?.headliner != ranked[1].id) continue;
+                if (CommitmentReferences.Promises(s).Any(p => p.kind == PromiseKind.Safety && p.status == PromiseStatus.Active &&
+                    p.fromId == s.playerId && p.toId == winner)) continue;
+                if (CommitmentReferences.Deals(s).Any(d => d.type == DealKind.VoteTogether && DealStatus.Binds(d.status) &&
+                    ((d.proposerId == s.playerId && d.recipientId == winner) || (d.proposerId == winner && d.recipientId == s.playerId)))) continue;
+                Assert.That(EpisodeValidation.TryValidate(s, out var error), Is.True, error);
+                return s;
+            }
+            throw new InvalidOperationException("No first eviction left the Target card available with two past winners and an uncommitted headliner.");
+        }
+
+        [TestCase("protect", "created")]
+        [TestCase("numbers", "created")]
+        [TestCase("protect", "existing")]
+        [TestCase("numbers", "existing")]
+        [TestCase("protect", "full")]
+        [TestCase("numbers", "full")]
+        [TestCase("numbers", "proposed")]
+        public void TargetStoryChoiceReportsTheAdmittedCommitmentAfterReload(string option, string scenario)
+        {
+            bool protect = option == "protect";
+            // A still-proposed vote on an older, raw-ledger save never records mutual consent.
+            var s = TargetSeason(shipped: scenario != "proposed");
+            Assert.That(EpisodeEngine.StartStory(s, TargetArcId, StoryAnchors.EvictionNight), Is.True);
+            var card = s.houseEvents.Single(e => !e.resolved && e.contentId == TargetArcId + ":big-name");
+            string winner = card.cast.Single(r => r.role == "BIGNAME").contestantId;
+            string origin = protect ? UnifiedCommitments.StoryPromise : UnifiedCommitments.StoryDeal;
+            string kind = protect ? "promise" : "deal";
+            var command = Command(s, EpisodeCommandKind.ProgressStoryline);
+            command.targetId = card.id;
+            command.secondTargetId = option;
+
+            if (scenario == "existing")
+            {
+                // Copy the actual row admitted by this command on a separate branch, preserving source shape and chronology.
+                var admitted = Apply(s, command);
+                var existing = admitted.unifiedCommitments.Single(r => r.origin == origin && r.makerId == s.playerId && r.beneficiaryId == winner);
+                s.unifiedCommitments.Add(existing.Clone());
+                s.nextSequence = admitted.nextSequence;
+            }
+            if (scenario == "proposed")
+            {
+                var offer = PlayerDeals.Draft(s, winner, DealKind.VoteTogether, null, "legacy-vote-offer");
+                offer.proposerId = winner; offer.recipientId = s.playerId; offer.status = DealStatus.Proposed;
+                s.deals.Add(offer);
+            }
+            if (scenario == "full")
+            {
+                // The season ceiling includes settled history, independently for the two source families.
+                if (protect)
+                    while (CommitmentReferences.PromiseCount(s) < 200)
+                        s.promises.Add(new PromiseState { id = "archived-p-" + s.promises.Count, fromId = s.playerId, toId = winner,
+                            kind = PromiseKind.Information, status = PromiseStatus.Expired, week = 1, expiresWeek = 1 });
+                else
+                    while (CommitmentReferences.DealCount(s) < 200)
+                        s.deals.Add(new DealState { id = "archived-d-" + s.deals.Count, proposerId = s.playerId, recipientId = winner,
+                            type = DealKind.InformationSharing, status = DealStatus.Expired, week = 1, trustImpact = DealTrust.Low });
+            }
+            int beforeWord = s.events.Count(e => e.kind == kind && e.audienceIds.Contains(winner) && e.audienceIds.Contains(s.playerId));
+            var after = Apply(s, command);
+            var word = after.unifiedCommitments.Where(r => r.origin == origin && r.makerId == s.playerId && r.beneficiaryId == winner).ToArray();
+            Assert.That(word.Length, Is.EqualTo(scenario == "created" || scenario == "existing" ? 1 : 0));
+            if (word.Length != 0)
+            {
+                Assert.That(word[0].status, Is.EqualTo(DealStatus.Active));
+                Assert.That(word[0].createdWeek, Is.EqualTo(s.week));
+                Assert.That(word[0].reciprocal, Is.EqualTo(!protect));
+            }
+            if (scenario == "proposed") Assert.That(after.deals.Single(d => d.id == "legacy-vote-offer").status, Is.EqualTo(DealStatus.Proposed));
+            Assert.That(after.events.Count(e => e.kind == kind && e.audienceIds.Contains(winner) && e.audienceIds.Contains(s.playerId))
+                - beforeWord, Is.EqualTo(scenario == "created" ? 1 : 0));
+            string expected = scenario == "full"
+                ? (protect ? "made no new safety promise" : "without an agreement")
+                : scenario == "existing" ? (protect ? "promise of safety still stands" : "existing agreement to vote together")
+                : scenario == "proposed" ? "offer to vote together is still on the table"
+                : protect ? "your word you would not be the one" : "agreed to vote together";
+            void Check(EpisodeState state)
+            {
+                var savedCard = state.houseEvents.Single(e => e.id == card.id);
+                var cycle = state.storylines.Single(c => c.id == card.cycleId);
+                var line = state.events.Single(e => e.sequence == cycle.path.Single().logSequence);
+                Assert.That(savedCard.outcome, Does.Contain(expected));
+                Assert.That(line.text, Is.EqualTo(savedCard.title + ": " + savedCard.outcome));
+                Assert.That(line.audienceIds, Is.EquivalentTo(new[] { s.playerId, winner }));
+                Assert.That(StoryText.Log(state, line), Does.Contain(expected).And.Contain(state.Find(winner).name));
+            }
+            Check(after);
+#if UNITY_5_3_OR_NEWER
+            // The save file is written by Unity's save store; the Unity-free subset checks the card and log only.
+            string dir = Path.Combine(Path.GetTempPath(), "GamesimTargetStory-" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(dir);
+            try
+            {
+                var file = Path.Combine(dir, "season.json");
+                new EpisodeSaveStore(file).Save(after);
+                Assert.That(new EpisodeSaveStore(file).TryLoad(out var restored, out var error), Is.True, error);
+                Check(restored);
+                var replay = new EpisodeEngine(restored).Apply(command);
+                Assert.That(replay.accepted, Is.False);
+                Assert.That(replay.state.unifiedCommitments.Count, Is.EqualTo(restored.unifiedCommitments.Count));
+            }
+            finally { Directory.Delete(dir, true); }
+#endif
+        }
+
+#if UNITY_5_3_OR_NEWER
+        // About the save file itself, which Unity's save store writes: Unity runs it, the Unity-free subset does not.
+        [TestCase("protect", "You gave a houseguest your word you would not be the one.")]
+        [TestCase("numbers", "You and a houseguest agreed to vote together. Two targets are harder to hit than one.")]
+        public void TargetStoryBeforeReceiptsRetainsItsSavedWordsAndDisplaysOnlyTheOffer(string option, string historical)
+        {
+            var s = TargetSeason(shipped: false);
+            Assert.That(EpisodeEngine.StartStory(s, TargetArcId, StoryAnchors.EvictionNight), Is.True);
+            var card = s.houseEvents.Single(e => e.contentId == TargetArcId + ":big-name");
+            var command = Command(s, EpisodeCommandKind.ProgressStoryline);
+            command.targetId = card.id; command.secondTargetId = option;
+            var prior = Apply(s, command);
+            var cycle = prior.storylines.Single(c => c.id == card.cycleId);
+            int sequence = cycle.path.Single().logSequence;
+            // Reconstruct the pre-receipt record with its original generic card, log and private choice memory.
+            cycle.vars.RemoveAll(v => v.key == "commitment-write");
+            string winner = cycle.cast.Single().contestantId;
+            var chosen = card.choices.Single(c => c.optionId == option);
+            var memory = prior.memories.Last(m => m.ownerId == s.playerId && m.subjectId == winner && m.text.StartsWith(card.title + ": "));
+            memory.text = card.title + ": " + chosen.label + ".";
+            var entry = prior.events.Single(e => e.sequence == sequence);
+            Assert.That(entry.text, Is.EqualTo(card.title + ": " + historical));
+            Assert.That(prior.houseEvents.Single(e => e.id == card.id).outcome, Is.EqualTo(historical));
+            Assert.That(EpisodeValidation.TryValidate(prior, out var reason), Is.True, reason);
+            string dir = Path.Combine(Path.GetTempPath(), "GamesimTargetHistory-" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(dir);
+            try
+            {
+                string file = Path.Combine(dir, "season.json");
+                new EpisodeSaveStore(file).Save(prior);
+                byte[] original = File.ReadAllBytes(file);
+                Assert.That(new EpisodeSaveStore(file).TryLoad(out var loaded, out var error), Is.True, error);
+                var loadedCycle = loaded.storylines.Single(c => c.id == cycle.id);
+                Assert.That(loadedCycle.vars.Any(v => v.key == "commitment-write"), Is.False);
+                var savedEntry = loaded.events.Single(e => e.sequence == sequence);
+                string name = loaded.Find(winner).name;
+                string offer = option == "protect" ? "You offered " + name + " protection." : "You offered to vote with " + name + ".";
+                Assert.That(StoryText.Log(loaded, savedEntry), Is.EqualTo(card.title + ": " + offer));
+                Assert.That(savedEntry.text, Is.EqualTo(entry.text));
+                Assert.That(savedEntry.audienceIds, Is.EquivalentTo(new[] { s.playerId, winner }));
+                Assert.That(loaded.houseEvents.Single(e => e.id == card.id).outcome, Is.EqualTo(historical));
+                Assert.That(File.ReadAllBytes(file), Is.EqualTo(original));
+            }
+            finally { Directory.Delete(dir, true); }
+        }
+#endif
+
+        [TestCase("star:")]
+        [TestCase("once:the-target-on-their-back:")]
+        public void TargetStoryCastsTheNextEligibleWinnerInScoreOrder(string prefix)
+        {
+            var s = TargetSeason(shipped: true);
+            var winners = RankTargetWinners(s);
+            Assert.That(winners.Length, Is.GreaterThanOrEqualTo(2));
+            Assert.That(CastAt(s, TargetArcId, StoryAnchors.EvictionNight)?.headliner, Is.EqualTo(winners[0].id));
+            s.story.cooldowns.Add(new StoryCooldownState { key = prefix + winners[0].id, untilWeek = s.week + 1 });
+            Assert.That(EpisodeEngine.StartStory(s, TargetArcId, StoryAnchors.EvictionNight), Is.True);
+            var card = s.houseEvents.Single(e => e.contentId == TargetArcId + ":big-name");
+            Assert.That(card.cast.Single().contestantId, Is.EqualTo(winners[1].id));
+            var command = Command(s, EpisodeCommandKind.ProgressStoryline);
+            command.targetId = card.id; command.secondTargetId = "fair";
+            var after = Apply(s, command);
+            Assert.That(after.storylines.Single(c => c.id == card.cycleId).path.Single().optionId, Is.EqualTo("fair"));
+            Assert.That(CastAt(after, TargetArcId, StoryAnchors.EvictionNight), Is.Null, "The whole template now has its own rest period.");
         }
 
         [Test]

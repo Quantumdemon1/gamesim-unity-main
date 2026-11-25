@@ -68,7 +68,8 @@ namespace Gamesim.Episode
             private readonly Dictionary<string, float> retrying = new Dictionary<string, float>();
             private const float RetrySeconds = 6f;
             private readonly object playerOwner = new object();
-            private Vector3 deck, door, mark, exit;
+            private Vector3 deck, door, mark, exit, walkInMark;
+            private bool hasWalkInMark;
             private OpeningDoorSet set;
             private bool begun, ended;
             // Who is waiting for the leaves to clear the whole body and route before walking through.
@@ -132,6 +133,13 @@ namespace Gamesim.Episode
                 if (!DoorRouteClears(door, radius, fullyOpen: true))
                 { Debug.Log("Opening stage: even fully open, the leaves cannot clear the house's bodies on the reveal route."); return false; }
 
+                // The house/yard opening is 2.8 m wide at x = 0, z = 10. The lead starts
+                // behind that opening. The other guests keep their original east-yard places.
+                foreach (var spot in new[] { new Vector3(.65f, 0f, 13.1f), new Vector3(.4f, 0f, 12.6f) })
+                    if (Accept(spot, accepted, out walkInMark, "the walk-in lead's place")
+                        && Route(exit, walkInMark) && Route(walkInMark, director.initialPlayerPosition))
+                    { hasWalkInMark = true; break; }
+
                 foreach (var spot in Grid(QueueX, QueueZ).OrderBy(spot => (spot - DeckMark).sqrMagnitude))
                     if ((spot - DeckMark).magnitude >= 1.0f && Accept(spot, accepted, out var sampled, "a place to wait") && Route(sampled, deck)) queue.Add(sampled);
                 foreach (var spot in Grid(GatherX, GatherZ).OrderBy(spot => (spot - ExitMark).sqrMagnitude))
@@ -192,6 +200,91 @@ namespace Gamesim.Episode
             /// <summary>The reference build's push-in as the door opens: a metre closer in half a second.</summary>
             public HouseCameraRig.Shot PushInShot => YardPushInShot;
 
+            private HouseCameraRig.Shot[] walkInFraming;
+            private CharacterPresentation lead;
+            private float walkInHeadHeight;
+            private Light walkInLight;
+
+            // Placed outlives a failed binding. Only a bound stage with a real player who
+            // completed their personal reveal can claim that player for another walk.
+            private bool HasWalkInLead => Active && begun && hasWalkInMark && director.projected != null
+                && director.player != null && director.player.isActiveAndEnabled && director.player.Agent != null
+                && director.player.Agent.isActiveAndEnabled && director.player.Agent.isOnNavMesh
+                && gatherFor.ContainsKey(director.projected.playerId);
+
+            // Called while the opaque house-entry card covers the yard, after every personal reveal.
+            public void PrepareWalkIn()
+            {
+                if (!HasWalkInLead) return;
+                string id = director.projected.playerId;
+                if (!Arrived(id, gatherFor[id])) return;
+                Visual(id)?.SetFacing(200f);
+                Send(id, walkInMark);
+            }
+
+            public IReadOnlyList<HouseCameraRig.Shot> WalkInFraming()
+            {
+                if (!HasWalkInLead) return null;
+                if (walkInFraming != null) return walkInFraming;
+                lead = Visual(director.projected.playerId);
+                // Advancing directly through the entry card can interrupt the setup walk.
+                // In that case the sequence keeps its established wide doorway keys.
+                if (lead == null || !Arrived(director.projected.playerId, walkInMark))
+                    return walkInFraming = WalkInKeys;
+                walkInHeadHeight = lead.HeadBone != null ? lead.HeadBone.position.y - lead.transform.position.y : 1.5f;
+                walkInFraming = (HouseCameraRig.Shot[])WalkInKeys.Clone();
+                for (int i = OpeningSequence.WalkInPushFrom; i <= OpeningSequence.WalkInDoorway; i++)
+                {
+                    walkInFraming[i].Focus = lead.transform.position + Vector3.up * (walkInHeadHeight - .26f);
+                    walkInFraming[i].FrameSubject = FrameWalkingLead;
+                }
+                return walkInFraming;
+            }
+
+            private void FrameWalkingLead(ref Vector3 focus, ref float yaw, ref float pitch, ref float distance)
+            {
+                if (!HasWalkInLead || lead == null) return;
+                // Track the real root along the western half of the doorway. At its tightest
+                // the eye passes x = -.72 between the exterior jamb and the room divider.
+                // Head-bob and glances animate inside the frame without steering the camera.
+                var root = lead.transform.position;
+                var head = root + Vector3.up * walkInHeadHeight;
+                focus = head - Vector3.up * .26f;
+                float push = director.opening.CurrentBeat == OpeningBeat.WalkIn
+                    ? Mathf.SmoothStep(0f, 1f, director.opening.WalkInSeconds) : 0f;
+                var eye = new Vector3(Mathf.Min(-.72f, root.x - .25f), head.y + .56f,
+                    root.z - Mathf.Lerp(2.55f, 2.18f, push));
+                var forward = focus - eye;
+                distance = forward.magnitude;
+                yaw = Mathf.Atan2(forward.x, forward.z) * Mathf.Rad2Deg;
+                pitch = -Mathf.Asin(forward.y / distance) * Mathf.Rad2Deg;
+
+                if (director.opening.CurrentBeat != OpeningBeat.WalkIn) return;
+                if (walkInLight == null)
+                {
+                    var lamp = new GameObject("Walk-in doorway fill");
+                    lamp.transform.SetParent(director.transform, false);
+                    walkInLight = lamp.AddComponent<Light>();
+                    walkInLight.type = LightType.Spot;
+                    walkInLight.color = new Color(1f, .95f, .89f);
+                    walkInLight.intensity = 4f;
+                    walkInLight.range = 3.5f;
+                    walkInLight.spotAngle = 38f;
+                    walkInLight.innerSpotAngle = 20f;
+                    walkInLight.shadows = LightShadows.None;
+                }
+                var place = Vector3.Lerp(head, eye, .58f) + new Vector3(.32f, .24f, 0f);
+                walkInLight.transform.SetPositionAndRotation(place, Quaternion.LookRotation(head - place));
+            }
+
+            private void ReleaseWalkInLight()
+            {
+                if (walkInLight == null) return;
+                walkInLight.enabled = false;
+                Object.Destroy(walkInLight.gameObject);
+                walkInLight = null;
+            }
+
             public float BodyReadiness
             {
                 get
@@ -240,7 +333,7 @@ namespace Gamesim.Episode
                 director.player.Agent.ResetPath();
                 Physics.SyncTransforms();
                 director.Project();
-                set = OpeningDoorSet.Build(director.gameObject.scene);
+                set = OpeningDoorSet.Build(director.gameObject.scene, DoorLayout.Yard, entranceLighting: true);
                 Placed = true;
                 return true;
             }
@@ -288,6 +381,10 @@ namespace Gamesim.Episode
 
             private void ReleaseEveryone()
             {
+                ReleaseWalkInLight();
+                walkInFraming = null;
+                lead = null;
+                gatherFor.Clear();
                 if (director.npcMeetings != null) director.npcMeetings.EndOpeningStage();
                 if (director.player != null) director.player.ReleaseActivityMove(playerOwner);
                 legs.Clear();
@@ -502,6 +599,9 @@ namespace Gamesim.Episode
             public void Tick()
             {
                 if (!Active) return;
+                if (walkInLight != null && (director.cameraRig == null || !director.cameraRig.FramesMovingSubject
+                    || director.opening.CurrentBeat != OpeningBeat.WalkIn))
+                    ReleaseWalkInLight();
                 if (begun && director.npcMeetings != null) director.npcMeetings.ResumeOpeningActors();
                 if (throughWhenClear != null && DoorClears(throughWhenClear))
                 {

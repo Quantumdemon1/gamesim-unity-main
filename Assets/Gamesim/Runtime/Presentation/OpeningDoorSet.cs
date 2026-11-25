@@ -94,8 +94,6 @@ namespace Gamesim.Presentation
         private const float BurstRamp = 0.5f;
         private const float BurstSettled = 0.2f;
         private const float BurstDecay = 2f;
-        private const float LightPeak = 5f;
-        private const float LightSettled = 1f;
         private const float DarkRate = 3f;
         private const int SparkleCount = 25;
         private const float EmblemRate = 3f;
@@ -116,6 +114,7 @@ namespace Gamesim.Presentation
         private Material burstMaterial, emblemMaterial;
         private Renderer burstRenderer;
         private Light burstLight;
+        private float peakSpill = 5f, settledSpill = 1f;
         private Sparkle[] sparkles = new Sparkle[0];
         private Texture2D radial;
         private Color burstTint, emblemDeep, emblemBright;
@@ -197,7 +196,9 @@ namespace Gamesim.Presentation
         /// Builds the set where <paramref name="where"/> puts it, closed and dark: its root at the
         /// layout's origin, every piece where the yard's would be relative to it.
         /// </summary>
-        public static OpeningDoorSet Build(Scene scene, DoorLayout where)
+        public static OpeningDoorSet Build(Scene scene, DoorLayout where) => Build(scene, where, entranceLighting: false);
+
+        public static OpeningDoorSet Build(Scene scene, DoorLayout where, bool entranceLighting)
         {
             var root = new GameObject(RootName);
             if (scene.IsValid() && scene.isLoaded && root.scene != scene)
@@ -205,7 +206,7 @@ namespace Gamesim.Presentation
             root.transform.position = where.Origin;
             var set = root.AddComponent<OpeningDoorSet>();
             set.layout = where;
-            set.Assemble();
+            set.Assemble(entranceLighting);
             return set;
         }
 
@@ -239,7 +240,7 @@ namespace Gamesim.Presentation
             jittering = false;
             openness = 1f;
             burstLevel = BurstSettled;
-            lightLevel = LightSettled;
+            lightLevel = settledSpill;
             ApplyPose(0f, 0f);
             ApplyLight();
             HideSparkles();
@@ -275,7 +276,7 @@ namespace Gamesim.Presentation
             rampFromLight = lightLevel;
             if (!reduced) return;
             burstLevel = BurstSettled;
-            lightLevel = LightSettled;
+            lightLevel = settledSpill;
             ApplyLight();
         }
 
@@ -306,17 +307,17 @@ namespace Gamesim.Presentation
             if (lit)
             {
                 burstClock += dt;
-                if (reduced) { burstLevel = BurstSettled; lightLevel = LightSettled; }
+                if (reduced) { burstLevel = BurstSettled; lightLevel = settledSpill; }
                 else if (burstClock < BurstRamp)
                 {
                     float t = burstClock / BurstRamp;
                     burstLevel = Mathf.Lerp(rampFromLevel, calm ? BurstSettled : 1f, t);
-                    lightLevel = Mathf.Lerp(rampFromLight, calm ? LightSettled : LightPeak, t);
+                    lightLevel = Mathf.Lerp(rampFromLight, calm ? settledSpill : peakSpill, t);
                 }
                 else
                 {
                     burstLevel = Approach(burstLevel, BurstSettled, BurstDecay, dt);
-                    lightLevel = Approach(lightLevel, LightSettled, BurstDecay, dt);
+                    lightLevel = Approach(lightLevel, settledSpill, BurstDecay, dt);
                 }
             }
             else if (reduced) { burstLevel = 0f; lightLevel = 0f; }
@@ -408,7 +409,7 @@ namespace Gamesim.Presentation
 
         // ---------------------------------------------------------------- building
 
-        private void Assemble()
+        private void Assemble(bool entranceLighting)
         {
             var facade = Solid("Opening facade", UiTheme.Hex("0A0F1E"), 0f, 0.3f, Color.black);
             var leaf = Solid("Opening door leaf", UiTheme.Hex("0A0A14"), 0.4f, 0.4f, Color.black);
@@ -421,8 +422,8 @@ namespace Gamesim.Presentation
             BuildLeaves(leaf, panel, gold);
             BuildSign();
             BuildEmblem();
-            BuildVestibule(facade, floor);
-            BuildBurst();
+            BuildVestibule(facade, floor, entranceLighting);
+            BuildBurst(entranceLighting);
             BuildSparkles();
 
             ApplyPose(0f, 0f);
@@ -584,7 +585,7 @@ namespace Gamesim.Presentation
                 new Vector3(0.34f * aspect, 0.34f, 1f), emblemMaterial, false);
         }
 
-        private void BuildVestibule(Material walls, Material floor)
+        private void BuildVestibule(Material walls, Material floor, bool entranceLighting)
         {
             var group = Group("Vestibule", transform);
             float length = FacadeX - VestibuleFarX;
@@ -595,9 +596,9 @@ namespace Gamesim.Presentation
             Piece("Floor", PrimitiveType.Quad, group, new Vector3((VestibuleFarX + FacadeFrontX) / 2f, 0.012f, DoorCentre.z),
                 Quaternion.Euler(90f, 0f, 0f), new Vector3(FacadeFrontX - VestibuleFarX, ApertureMaxZ - ApertureMinZ, 1f), floor, true);
 
-            // Opaque, unlit and above 1, so the bloom reads it as daylight past the door. See the class
-            // comment for why this one must hide what is behind it.
-            var outside = Lamp("Opening outside light", Hdr(Color.white, 2f));
+            // Keep the queue behind an opaque sky. The arrival lens looks directly into it throughout the portrait.
+            var outside = Lamp("Opening outside light", entranceLighting
+                ? new Color(0.53f, 0.62f, 0.72f) : Hdr(Color.white, 2f));
             Piece("Outside light", PrimitiveType.Quad, group, new Vector3(VestibuleFarX, (VestibuleCeiling + 0.05f) / 2f, DoorCentre.z),
                 FacingYard, new Vector3(2.4f, VestibuleCeiling + 0.05f, 1f), outside, false);
 
@@ -613,19 +614,30 @@ namespace Gamesim.Presentation
         /// The light over the threshold: an additive glow in the doorway, which is what the camera sees,
         /// and a point light, which is what lands on the guest walking through it.
         /// </summary>
-        private void BuildBurst()
+        private void BuildBurst(bool entranceLighting)
         {
             burstTint = Hdr(UiTheme.Hex("FFFBE6"), 1.5f);
             // The set's own radial glow rather than the pack's: that one is cyan and squarish, and
             // tinted warm it read as a green smear at the door's edge instead of daylight.
             burstMaterial = Glow("Opening door burst", Radial(), new Color(burstTint.r, burstTint.g, burstTint.b, 0f));
-            burstRenderer = Piece("Burst", PrimitiveType.Quad, transform, new Vector3(-3.1f, 1.4f, DoorCentre.z), FacingYard,
+            // Keep the entrance glow behind the first walking mark so it cannot veil the face crossing the threshold.
+            float glowX = entranceLighting ? VestibuleFarX + 0.05f : -3.1f;
+            burstRenderer = Piece("Burst", PrimitiveType.Quad, transform, new Vector3(glowX, 1.4f, DoorCentre.z), FacingYard,
                 new Vector3(3f, 3f, 1f), burstMaterial, false).GetComponent<Renderer>();
 
             var lamp = new GameObject("Burst light");
             lamp.layer = 0;
             lamp.transform.SetParent(transform, false);
-            lamp.transform.localPosition = new Vector3(-3.0f, 1.8f, DoorCentre.z);
+            // The opening holds on the entrant from the threshold through the posing mark.
+            // Put the key on the camera side, clear of both marks, with a steady fill after the flash.
+            if (entranceLighting)
+            {
+                settledSpill = 12f;
+                peakSpill = 19f;
+            }
+            lamp.transform.localPosition = entranceLighting
+                ? new Vector3(0.15f, 2.3f, DoorCentre.z + 0.85f)
+                : new Vector3(-3.0f, 1.8f, DoorCentre.z);
             burstLight = lamp.AddComponent<Light>();
             burstLight.type = LightType.Point;
             burstLight.range = 8f;

@@ -65,8 +65,13 @@ namespace Gamesim.Simulation
             ApplyStoryEffectWithPending(s, e, cycle, subjectId, key, reception, backfire, null);
 
         private static void ApplyStoryEffectWithPending(EpisodeState s, StoryEffectState e, StorylineState cycle, string subjectId,
-            string key, int reception, bool backfire, PendingDialogueCommand pending)
+            string key, int reception, bool backfire, PendingDialogueCommand pending) =>
+            ApplyStoryEffectAndReadCommitment(s, e, cycle, subjectId, key, reception, backfire, pending, out _);
+
+        private static void ApplyStoryEffectAndReadCommitment(EpisodeState s, StoryEffectState e, StorylineState cycle, string subjectId,
+            string key, int reception, bool backfire, PendingDialogueCommand pending, out StoryCommitmentWrite written)
         {
+            written = StoryCommitmentWrite.Unknown;
             if (e == null) return;
             if (e.fromId == StoryEffects.Picked || e.toId == StoryEffects.Picked || e.thirdId == StoryEffects.Picked) return;
             var from = s.Find(e.fromId);
@@ -153,10 +158,10 @@ namespace Gamesim.Simulation
                     return;
                 }
                 case StoryEffects.Promise:
-                    StoryPromiseWithPending(s, from, to, e.type, pending);
+                    written = StoryPromiseWithPending(s, from, to, e.type, pending);
                     return;
                 case StoryEffects.Deal:
-                    StoryDealWithPending(s, from, to, s.Find(e.thirdId), e.type, pending);
+                    written = StoryDealWithPending(s, from, to, s.Find(e.thirdId), e.type, pending);
                     return;
                 case StoryEffects.Fact:
                     if (StoryAt(s, StoryRules.Bonds))
@@ -328,14 +333,14 @@ namespace Gamesim.Simulation
         private static void StoryPromise(EpisodeState s, ContestantState from, ContestantState to, string kindName) =>
             StoryPromiseWithPending(s, from, to, kindName, null);
 
-        private static void StoryPromiseWithPending(EpisodeState s, ContestantState from, ContestantState to, string kindName,
+        private static StoryCommitmentWrite StoryPromiseWithPending(EpisodeState s, ContestantState from, ContestantState to, string kindName,
             PendingDialogueCommand pending)
         {
-            if (from == null || to == null || from.id == to.id || !Alive(from) || !Alive(to)) return;
-            if (!Enum.TryParse(kindName, out PromiseKind kind)) return;
+            if (from == null || to == null || from.id == to.id || !Alive(from) || !Alive(to)) return StoryCommitmentWrite.Refused;
+            if (!Enum.TryParse(kindName, out PromiseKind kind)) return StoryCommitmentWrite.Refused;
             if (UnifiedVoteStore.Promises(s)
-                .Any(p => p.status == PromiseStatus.Active && p.fromId == from.id && p.toId == to.id && p.kind == kind)) return;
-            if (UnifiedVoteStore.PromiseCount(s) >= 200) return;
+                .Any(p => p.status == PromiseStatus.Active && p.fromId == from.id && p.toId == to.id && p.kind == kind)) return StoryCommitmentWrite.Existing;
+            if (UnifiedVoteStore.PromiseCount(s) >= 200) return StoryCommitmentWrite.Refused;
             var promise = new PromiseState
             {
                 id = "promise-" + s.nextSequence, fromId = from.id, toId = to.id, kind = kind, status = PromiseStatus.Active,
@@ -343,13 +348,13 @@ namespace Gamesim.Simulation
             };
             if (UnifiedCommitments.SafetyAuthorityOn(s) && kind == PromiseKind.Safety)
             {
-                if (!UnifiedCommitmentStore.TryAddPromise(s, promise, UnifiedCommitments.StoryPromise, out _)) return;
+                if (!UnifiedCommitmentStore.TryAddPromise(s, promise, UnifiedCommitments.StoryPromise, out _)) return StoryCommitmentWrite.Refused;
             }
             // Mode 2 (vote family V3): a story's word on the vote is a canonical row with no target, as the
             // native story promise has none; refused, the story writes nothing for it and spends no id.
             else if (UnifiedVoteStore.On(s) && kind == PromiseKind.Vote)
             {
-                if (!UnifiedVoteStore.TryAddPromise(s, promise, UnifiedCommitments.StoryPromise, pending, out _)) return;
+                if (!UnifiedVoteStore.TryAddPromise(s, promise, UnifiedCommitments.StoryPromise, pending, out _)) return StoryCommitmentWrite.Refused;
             }
             else s.promises.Add(promise);
             s.nextSequence++;
@@ -357,6 +362,7 @@ namespace Gamesim.Simulation
             if (from.isPlayer || to.isPlayer)
                 Log(s, "promise", (from.isPlayer ? "You promised " + kind + " to " + to.name : from.name + " promised you " + kind) + ".",
                     from.id, to.id);
+            return StoryCommitmentWrite.Created;
         }
 
         /// <summary>
@@ -367,32 +373,34 @@ namespace Gamesim.Simulation
         private static void StoryDeal(EpisodeState s, ContestantState a, ContestantState b, ContestantState target, string type) =>
             StoryDealWithPending(s, a, b, target, type, null);
 
-        private static void StoryDealWithPending(EpisodeState s, ContestantState a, ContestantState b, ContestantState target, string type,
+        private static StoryCommitmentWrite StoryDealWithPending(EpisodeState s, ContestantState a, ContestantState b, ContestantState target, string type,
             PendingDialogueCommand pending)
         {
-            if (a == null || b == null || a.id == b.id || !Alive(a) || !Alive(b) || !DealKind.IsKnown(type)) return;
+            if (a == null || b == null || a.id == b.id || !Alive(a) || !Alive(b) || !DealKind.IsKnown(type)) return StoryCommitmentWrite.Refused;
             // A final three deal is the commitment rules' own (C9): a story strikes one only under them. A keep-the-block
             // deal is the role moments' own (ROLE-MOMENTS-PLAN R4), and the same holds.
-            if (DealKind.CommitmentRulesOnly(type) && !CommitmentRulesOn(s)) return;
-            if (DealKind.RolesOnly(type) && !RolesOn(s)) return;
-            if (DealKind.NamesATarget(type) && (target == null || !Alive(target))) return;
-            if (UnifiedVoteStore.Deals(s).Any(d => DealStatus.Binds(d.status) && d.type == type
-                                 && ((d.proposerId == a.id && d.recipientId == b.id) || (d.proposerId == b.id && d.recipientId == a.id))
-                                 && d.targetId == target?.id)) return;
-            if (UnifiedVoteStore.DealCount(s) >= 200) return;
+            if (DealKind.CommitmentRulesOnly(type) && !CommitmentRulesOn(s)) return StoryCommitmentWrite.Refused;
+            if (DealKind.RolesOnly(type) && !RolesOn(s)) return StoryCommitmentWrite.Refused;
+            if (DealKind.NamesATarget(type) && (target == null || !Alive(target))) return StoryCommitmentWrite.Refused;
+            var existing = UnifiedVoteStore.Deals(s).Where(d => DealStatus.Binds(d.status) && d.type == type
+                && ((d.proposerId == a.id && d.recipientId == b.id) || (d.proposerId == b.id && d.recipientId == a.id))
+                && d.targetId == target?.id).ToList();
+            if (existing.Count > 0) return existing.Any(d => d.status != DealStatus.Proposed)
+                ? StoryCommitmentWrite.Existing : StoryCommitmentWrite.Proposed;
+            if (UnifiedVoteStore.DealCount(s) >= 200) return StoryCommitmentWrite.Refused;
             var deal = PlayerDeals.Draft(s, b.id, type, target?.id, "deal-story-" + s.nextSequence);
             deal.proposerId = a.id;
             deal.recipientId = b.id;
             deal.status = DealStatus.Active;
             if (UnifiedCommitments.SafetyAuthorityOn(s) && type == DealKind.SafetyAgreement)
             {
-                if (!UnifiedCommitmentStore.TryAddDeal(s, deal, UnifiedCommitments.StoryDeal, out _)) return;
+                if (!UnifiedCommitmentStore.TryAddDeal(s, deal, UnifiedCommitments.StoryDeal, out _)) return StoryCommitmentWrite.Refused;
             }
             // Mode 2 (vote family V3): a story's vote deal is a canonical row in the story's own party
             // order; refused, the story writes nothing for it and spends no id.
             else if (UnifiedVoteStore.On(s) && UnifiedVoteStore.IsVote(type))
             {
-                if (!UnifiedVoteStore.TryAddDeal(s, deal, UnifiedCommitments.StoryDeal, pending, out _)) return;
+                if (!UnifiedVoteStore.TryAddDeal(s, deal, UnifiedCommitments.StoryDeal, pending, out _)) return StoryCommitmentWrite.Refused;
             }
             else s.deals.Add(deal);
             s.nextSequence++;
@@ -401,6 +409,7 @@ namespace Gamesim.Simulation
                 var other = a.isPlayer ? b : a;
                 Log(s, "deal", "You and " + other.name + " have a " + DealKind.Title(type).ToLowerInvariant() + ".", a.id, b.id);
             }
+            return StoryCommitmentWrite.Created;
         }
 
         /// <summary>A modifier a story left: the catalogue names it, the owner is the player unless the story says otherwise.</summary>

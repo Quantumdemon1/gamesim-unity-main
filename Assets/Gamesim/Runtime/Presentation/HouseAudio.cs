@@ -24,6 +24,10 @@ namespace Gamesim.Presentation
         /// <summary>How many cues have been asked for, muted or not: what a test counts a double click by.</summary>
         public int CuesAsked { get; private set; }
 
+        // Ballots can catch up in one UI frame. Every reveal still reaches the caption and board.
+        private int lastVoteVoiceFrame = -1;
+        public int CueVoicesStarted { get; private set; }
+
         private const int SampleRate = 22050;
         private readonly Dictionary<Cue, AudioClip> clips = new Dictionary<Cue, AudioClip>();
         // The clips this component synthesised and therefore owns. A clip loaded from Resources is
@@ -170,7 +174,7 @@ namespace Gamesim.Presentation
                 roomTones[room] = clip;
             }
             if (clip == null) { roomSource.Stop(); roomSource.clip = null; }
-            else if (roomSource.clip != clip) { roomSource.clip = clip; roomSource.Play(); }
+            else if (roomSource.clip != clip) { roomSource.Stop(); roomSource.clip = clip; }
             ApplySettings();
         }
 
@@ -180,7 +184,13 @@ namespace Gamesim.Presentation
             // mute choice before the first source can play; the director may override it later.
             // The session's store, decided as the director will decide it (A13): an isolated root
             // reads its own file or the defaults, never the machine's PlayerPrefs.
-            Muted = Gamesim.Episode.EpisodeDirector.LaunchPreferences().GetInt("Gamesim.Muted", 0) == 1;
+            var saved = Gamesim.Episode.EpisodeDirector.LaunchPreferences();
+            Muted = saved.GetInt("Gamesim.Muted", 0) == 1;
+            ReducedAudio = saved.GetInt("Gamesim.ReducedAudio", 0) == 1;
+            volume = Mathf.Clamp(saved.GetInt("Gamesim.Volume", 35), 0, 100) / 100f;
+            musicShare = SoundPictures.Clamp(saved.GetInt(SoundPictures.MusicVolumeKey, SoundPictures.DefaultVolume)) / 100f;
+            effectsShare = SoundPictures.Clamp(saved.GetInt(SoundPictures.EffectsVolumeKey, SoundPictures.DefaultVolume)) / 100f;
+            interfaceShare = SoundPictures.Clamp(saved.GetInt(SoundPictures.InterfaceVolumeKey, SoundPictures.DefaultVolume)) / 100f;
         }
 
         public static HouseAudio Attach(GameObject root)
@@ -460,7 +470,15 @@ namespace Gamesim.Presentation
             if (!isActiveAndEnabled || Muted || volume <= 0f) return;
             Initialize();
             // At its channel's share of the master (A11): the source carries the master.
-            if (clips.TryGetValue(cue, out var clip)) cueSource.PlayOneShot(clip, ChannelVolume(SoundPictures.ChannelOf(cue.ToString())));
+            float gain = ChannelVolume(SoundPictures.ChannelOf(cue.ToString()));
+            if (gain <= 0f || !clips.TryGetValue(cue, out var clip)) return;
+            if (cue == Cue.Vote)
+            {
+                if (lastVoteVoiceFrame == Time.frameCount) return;
+                lastVoteVoiceFrame = Time.frameCount;
+            }
+            cueSource.PlayOneShot(clip, gain);
+            CueVoicesStarted++;
         }
 
         private void OnEnable()
@@ -537,6 +555,7 @@ namespace Gamesim.Presentation
         private void ApplySettings()
         {
             if (!initialized) return;
+            bool hearAmbience = isActiveAndEnabled && ambienceEnabled && !ReducedAudio && !Muted && volume > 0f && effectsShare > 0f;
             if (ambienceSource != null)
             {
                 ambienceSource.mute = Muted;
@@ -544,7 +563,7 @@ namespace Gamesim.Presentation
                 ambienceSource.volume = volume * effectsShare;
                 // A room's own bed replaces the generic air while it plays.
                 bool roomBed = roomSource != null && roomSource.clip != null;
-                if (isActiveAndEnabled && ambienceEnabled && !ReducedAudio && !roomBed)
+                if (hearAmbience && !roomBed)
                 {
                     if (!ambienceSource.isPlaying) ambienceSource.Play();
                 }
@@ -559,7 +578,7 @@ namespace Gamesim.Presentation
             {
                 roomSource.mute = Muted;
                 roomSource.volume = volume * 0.7f * effectsShare;
-                bool wanted = roomSource.clip != null && isActiveAndEnabled && ambienceEnabled && !ReducedAudio;
+                bool wanted = roomSource.clip != null && hearAmbience;
                 if (wanted && !roomSource.isPlaying) roomSource.Play();
                 else if (!wanted && roomSource.isPlaying) roomSource.Stop();
             }
@@ -717,6 +736,7 @@ namespace Gamesim.Presentation
         private void OnDisable()
         {
             AudioSettings.OnAudioConfigurationChanged -= OnAudioConfigurationChanged;
+            if (roomSource != null) roomSource.Stop();
             if (ambienceSource != null) ambienceSource.Stop();
             if (cueSource != null) cueSource.Stop();
             // The music too. A disabled component ticks no fades, and the bed used to play on under

@@ -38,10 +38,13 @@ namespace Gamesim.Tests.PlayMode
                 yield return null;
                 Assert.That(panel.gameObject.activeInHierarchy, Is.False, "Hidden before its first draw.");
                 yield return new WaitForSecondsRealtime(caption.HoldSeconds + .1f);
+                float witnessedHold = caption.HoldSeconds;
+                float earliestExpiry = Time.unscaledTime + witnessedHold;
                 caption.PairDrawn = true;
                 yield return null;
                 yield return null;
                 Assert.That(panel.gameObject.activeInHierarchy, Is.True);
+                float latestExpiry = Time.unscaledTime + witnessedHold;
                 string witnessed = printed.text;
                 caption.PairDrawn = false;
                 caption.Release();
@@ -63,7 +66,17 @@ namespace Gamesim.Tests.PlayMode
                     Assert.That(printed.text, Is.EqualTo(witnessed), "A missing projection must keep the visible copy private.");
                 }
                 finally { camera.enabled = cameraEnabled; }
-                yield return new WaitForSecondsRealtime(caption.HoldSeconds + .2f);
+                Assert.That(caption.HoldSeconds, Is.LessThan(witnessedHold),
+                    "The hidden replacement is shorter than the witnessed line.");
+                while (Time.unscaledTime < earliestExpiry)
+                {
+                    Assert.That(panel.gameObject.activeInHierarchy, Is.True, "The witnessed sentence keeps its full reading time.");
+                    Assert.That(printed.text, Is.EqualTo(witnessed));
+                    yield return null;
+                }
+                while (Time.unscaledTime <= latestExpiry) yield return null;
+                // Let the caption's LateUpdate apply the expired deadline before sampling the panel.
+                yield return null;
                 Assert.That(panel.gameObject.activeInHierarchy, Is.False, "The earlier line expired and the replacement never appeared.");
             }
             finally { Object.Destroy(host); }

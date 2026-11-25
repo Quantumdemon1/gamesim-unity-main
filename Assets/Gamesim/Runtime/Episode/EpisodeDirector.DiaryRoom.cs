@@ -332,6 +332,38 @@ namespace Gamesim.Episode
                 var reviewed = diaryDraft;
                 bool reflection = diaryDraft.kind == EpisodeCommandKind.ReflectDiary;
                 bool study = diaryDraft.kind == EpisodeCommandKind.StudyHouse;
+                if (hud.UsePhoneDecisionLayout)
+                {
+                    string title = ballotDraft ? "Review your eviction vote" : study ? "Review your study approach"
+                        : reflection ? "Review your private reflection" : "Review your diary decision";
+                    var page = hud.OpenPhonePanel(title);
+                    page.Copy(reviewed.summary);
+                    page.Copy(DraftWarning(reviewed));
+                    page.Copy(DraftBarLine);
+                    string confirm = study ? EpisodeHud.StudyConfirmCaption : reflection
+                        ? EpisodeHud.DiaryConfirmReflectionCaption : EpisodeHud.DiaryConfirmCaption;
+                    string cancel = study ? EpisodeHud.StudyCancelCaption : reflection
+                        ? EpisodeHud.DiaryCancelReflectionCaption : EpisodeHud.DiaryCancelCaption;
+                    page.ActionRow(confirm, () => ConfirmDiaryDecision(reviewed), primary: true);
+                    var back = page.AddBack(cancel, () => CancelDiaryDecision(reviewed));
+                    if (ballotDraft)
+                    {
+                        bool tieBreak = EpisodeEngine.NeedsPlayerTieBreak(state);
+                        foreach (string id in state.nominees)
+                        {
+                            bool selected = id == reviewed.target;
+                            string name = state.Find(id).name;
+                            page.ActionRow(selected ? name : "Choose " + name + " instead", () =>
+                            {
+                                if (ReferenceEquals(diaryDraft, reviewed) && !selected)
+                                    OfferBallot(state, true, tieBreak, id);
+                            }, selected: selected, enabled: !selected);
+                        }
+                    }
+                    page.AddClose(ClosePanels);
+                    hud.RestorePhoneDecision(reviewed, back);
+                    return;
+                }
                 if (ballotDraft)
                 {
                     // The ballot stays on screen while the choice waits to be confirmed, the chosen

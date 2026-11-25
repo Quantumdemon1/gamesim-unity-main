@@ -29,6 +29,7 @@ namespace Gamesim.Presentation
         private void SwitchMode(EntryMode mode)
         {
             if (entryMode == mode) return;
+            phoneQuickLook = false;
             if (entryMode == EntryMode.Detailed && !SharedPage(studioPage)) lastDetailedPage = studioPage;
             entryMode = mode;
             if (!SharedPage(studioPage)) studioPage = mode == EntryMode.Quick ? QuickPageCaption : lastDetailedPage;
@@ -84,6 +85,9 @@ namespace Gamesim.Presentation
             redoAppearanceButton = Pill(box, "Redo", new Rect(154f, top, 120f, 40f), Tone.Secondary, RedoAppearance, size: 15f);
             undoAppearanceButton.interactable = appearanceUndo.Count > 0;
             redoAppearanceButton.interactable = appearanceRedo.Count > 0;
+            if (phoneQuickLook)
+                Pill(box, CreatorSteps.Identity, new Rect(284f, top, 144f, 40f), Tone.Secondary,
+                    () => GoTo(QuickPageCaption), size: 15f);
             top += 52f;
             quickControls = ScrollArea(box, "Quick fields", new Rect(12f, top, form - 24f, area.height - top - 12f), 520f);
             float inner = form - 48f;

@@ -28,12 +28,10 @@ namespace Gamesim.Tests.EditMode
         public void EveryRailCaptionATourStepNames_IsARailCaption()
         {
             var captions = RailCaptions();
-            var named = new List<string>();
-            foreach (var step in TourSteps())
-                named.AddRange(RailNames(step.Body));
-            Assert.That(named.Count, Is.GreaterThanOrEqualTo(NotebookStrip.RailRows.Count - 1 + NotebookStrip.FootRows.Count + 1),
-                "The tour's rail step still lists the rail as this test reads it (the Overview, the Notebook's rows, the foot); found: "
-                + string.Join(" | ", named));
+            var railStep = TourSteps().Single(step => step.Anchors.Contains("Rail ground"));
+            var named = RailNames(railStep.Body).ToList();
+            Assert.That(named, Is.EquivalentTo(new[] { "Overview", NotebookStrip.HouseGroup, NotebookStrip.StrategyGroup,
+                NotebookStrip.RailHeading, "The story so far" }.Concat(NotebookStrip.FootRows.Select(WithoutKey))));
             var strangers = named.Where(name => !captions.Contains(name)).ToList();
             Assert.That(strangers, Is.Empty, "The tour names rail entries the rail does not have: " + string.Join(", ", strangers)
                 + ". The rail's captions: " + string.Join(", ", captions));
@@ -43,7 +41,7 @@ namespace Gamesim.Tests.EditMode
         public void TheRuleFindsARailCaptionTheRailDoesNotHave()
         {
             var captions = RailCaptions();
-            var named = RailNames("The Overview of the whole house, then your Notebook: your notes, Houseguests, The votes and Who is where. Save and Options are at its foot.").ToList();
+            var named = RailNames("Overview opens the map. Open Houseguests for people. Open The votes for choices. Who is where tracks locations. Save and Options are below.").ToList();
             Assert.That(named, Is.EqualTo(new[] { "Overview", "Houseguests", "The votes", "Who is where", "Save", "Options" }),
                 "Lowercase words are descriptions; capitalised items are captions.");
             Assert.That(named.Where(name => !captions.Contains(name)), Is.EqualTo(new[] { "The votes", "Options" }));
@@ -72,7 +70,7 @@ namespace Gamesim.Tests.EditMode
             var match = Regex.Match(Read("Episode/EpisodeHud.Chrome.cs"),
                 @"IconRail\.Entry\(\s*IconRail\.Mark\.Overview\s*,\s*EpisodeDirector\.OverviewSection\s*,\s*""([^""]+)""\s*\)");
             Assert.That(match.Success, Is.True, "The rail's first entry, the Overview, in EpisodeHud.Chrome.cs.");
-            var captions = new HashSet<string>(StringComparer.Ordinal) { match.Groups[1].Value, NotebookStrip.RailHeading };
+            var captions = new HashSet<string>(StringComparer.Ordinal) { match.Groups[1].Value, NotebookStrip.RailHeading, NotebookStrip.HouseGroup, NotebookStrip.StrategyGroup };
             foreach (var row in NotebookStrip.RailRows) captions.Add(WithoutKey(row.Caption));
             foreach (var row in NotebookStrip.FootRows) captions.Add(WithoutKey(row));
             return captions;
@@ -80,25 +78,18 @@ namespace Gamesim.Tests.EditMode
 
         private static string WithoutKey(string caption) => Regex.Replace(caption, @"\s*\[[^\]]*\]\s*$", "");
 
-        /// <summary>
-        /// The rail captions a step's words name: "The X of the whole house", the list after
-        /// "Notebook:" up to the sentence's end, and the list before "are at its foot". A listed item
-        /// that starts in lower case ("your notes") describes a row; one that starts with a capital is
-        /// a caption.
-        /// </summary>
+        /// <summary>Read each named control in the rail tip, including both links at its foot.</summary>
         private static IEnumerable<string> RailNames(string body)
         {
-            foreach (Match overview in Regex.Matches(body, @"\bThe (\w+) of the whole house"))
-                yield return overview.Groups[1].Value;
-            foreach (Match group in Regex.Matches(body, @"\b" + Regex.Escape(NotebookStrip.RailHeading) + @":\s*([^.]+)\."))
-                foreach (var item in Items(group.Groups[1].Value)) yield return item;
-            foreach (Match foot in Regex.Matches(body, @"(?:^|\.\s+)([^.]+?) are at its foot"))
-                foreach (var item in Items(foot.Groups[1].Value)) yield return item;
+            foreach (string sentence in body.Split(new[] { ". " }, StringSplitOptions.RemoveEmptyEntries))
+            {
+                var group = Regex.Match(sentence, @"^Open (.+?) for ");
+                if (group.Success) { yield return group.Groups[1].Value; continue; }
+                var route = Regex.Match(sentence, @"^(.+?) (?:opens |tracks |are below)");
+                if (!route.Success) continue;
+                foreach (string caption in Regex.Split(route.Groups[1].Value, @" and ")) yield return caption;
+            }
         }
-
-        private static IEnumerable<string> Items(string list) =>
-            Regex.Split(list, @",\s*|\s+and\s+").Select(item => item.Trim())
-                .Where(item => item.Length > 0 && char.IsUpper(item[0]));
 
         private struct TourStep
         {

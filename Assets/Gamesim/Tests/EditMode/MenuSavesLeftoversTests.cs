@@ -183,8 +183,13 @@ namespace Gamesim.Tests.EditMode
             Assert.That(shelf, Does.Match(@"InUse\s*=\s*EpisodeSaveStore\.IsHeld\("), "The list marks a held save in use.");
             string saves = Code(Read("Episode/EpisodeDirector.SettingsSaves.cs"));
             string card = Body(saves, "private void SeasonCardFor(");
-            Assert.That(card, Does.Contain("SavesWords.TryAgainCaption"), "Its card offers Try again,");
-            Assert.That(card, Does.Match(@"if \(!own && !season\.InUse\)"), "and no Delete,");
+            var phone = Code(Read("Episode/EpisodeDirector.PhoneSaves.cs"));
+            const string shared = "AddSeasonControls(season, own, controls);";
+            Assert.That(card, Does.Contain(shared));
+            Assert.That(Body(phone, "private void PhoneSeasonDetails("), Does.Contain(shared));
+            string controls = Body(saves, "private void AddSeasonControls(");
+            Assert.That(controls, Does.Contain("SavesWords.TryAgainCaption"), "Its card offers Try again,");
+            Assert.That(controls, Does.Match(@"if \(!own && !season\.InUse\)"), "and no Delete,");
             Assert.That(card, Does.Contain("SavesWords.InUseLine"), "with the line that says why.");
             Assert.That(Body(saves, "private static string Title("), Does.Match(@"season\.InUse \? SavesWords\.InUseTitle"), "Its title says in use.");
         }

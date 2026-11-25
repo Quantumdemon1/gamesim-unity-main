@@ -8,6 +8,17 @@ using UnityEngine.TestTools;
 
 namespace Gamesim.Uma.Tests
 {
+    [DefaultExecutionOrder(31000)]
+    public sealed class UmaJawMeasurement : MonoBehaviour
+    {
+        public UMA.UMASkeleton.BoneData Mandible;
+        public float Degrees { get; private set; } = float.NaN;
+        private void LateUpdate()
+        {
+            if (Mandible != null) Degrees = Quaternion.Angle(Mandible.rotation, Mandible.boneTransform.localRotation);
+        }
+    }
+
     /// <summary>
     /// The UMA face: mood and stress reaching real brows and a real mouth, a lip flap while the
     /// houseguest has the floor, and none of it moving when motion is reduced.
@@ -123,6 +134,40 @@ namespace Gamesim.Uma.Tests
             Assert.That(UmaExpressions.For("Delighted", "Fine").Magnitude, Is.EqualTo(0f).Within(0.0001f));
         }
 
+        [Test]
+        public void ListeningUnderStressKeepsTheJawAtRestAndShockHasARecovery()
+        {
+            var listener = UmaExpressions.For("Happy", "Overwhelmed");
+            Assert.That(listener.JawOpen, Is.Zero);
+            var reaction = listener;
+            UmaExpressions.AddReaction(ref reaction, CharacterPresentation.Reaction.Shocked, .25f, 1f);
+            Assert.That(reaction.JawOpen, Is.InRange(.10f, .18f));
+            Assert.That(reaction.BrowUp, Is.GreaterThan(listener.BrowUp - .03f));
+            Assert.That(reaction.EyeOpen, Is.GreaterThan(listener.EyeOpen));
+            reaction = listener;
+            UmaExpressions.AddReaction(ref reaction, CharacterPresentation.Reaction.Shocked, 1.25f, 1f);
+            Assert.That(reaction.JawOpen, Is.Zero);
+            Assert.That(reaction.BrowUp, Is.EqualTo(listener.BrowUp));
+        }
+
+        [Test]
+        public void SpeechHasContactBetweenSyllablesAndAQuietPhraseEnding()
+        {
+            var open = UmaExpressions.For("Neutral", "Normal");
+            UmaExpressions.AddSpeech(ref open, .10f);
+            Assert.That(open.JawOpen, Is.GreaterThan(.1f));
+            var rounded = new UmaExpressions.FacePose();
+            UmaExpressions.AddSpeech(ref rounded, .40f);
+            Assert.That(rounded.MouthNarrow, Is.GreaterThan(open.MouthNarrow + .08f));
+            foreach (float pause in new[] { 0f, .25f, .61f, .86f, 1.30f, 1.60f })
+            {
+                var closed = new UmaExpressions.FacePose();
+                UmaExpressions.AddSpeech(ref closed, pause);
+                Assert.That(closed.JawOpen, Is.Zero, "Contact at " + pause);
+                Assert.That(closed.MouthNarrow, Is.Zero);
+            }
+        }
+
         // ------------------------------------------------------------------ on a built body
 
         [UnityTest]
@@ -159,30 +204,43 @@ namespace Gamesim.Uma.Tests
         [UnityTest]
         public IEnumerator HavingTheFloor_OpensAndClosesTheJaw()
         {
-            yield return BuildHouseguest();
+            yield return BuildHouseguest(delayBuild: true);
             var face = Expressions();
             var presentation = actor.GetComponent<CharacterPresentation>();
 
             presentation.SetTalking(false);
             for (int i = 0; i < 10; i++) yield return null;
             Assert.That(Mathf.Abs(face.Player.jawOpen_Close), Is.LessThan(0.02f), "A silent houseguest's jaw is shut.");
+            Assert.That(face.Player.expressionSet, Is.Not.Null, "The channels need poses on the built rig.");
+            var skeleton = face.Player.umaData.skeleton;
+            var mandible = skeleton.boneHashData[UMA.UMAUtils.StringToHash("Mandible")];
+            var measurement = actor.AddComponent<UmaJawMeasurement>();
+            measurement.Mandible = mandible;
+            yield return null;
+            Assert.That(measurement.Degrees, Is.LessThan(.5f));
 
             presentation.SetTalking(true);
             presentation.SetSpeaking(true);
             float low = float.MaxValue, high = float.MinValue;
+            float actualLow = float.MaxValue, actualHigh = 0f;
             for (int i = 0; i < 60; i++)
             {
                 yield return null;
                 low = Mathf.Min(low, face.Player.jawOpen_Close);
                 high = Mathf.Max(high, face.Player.jawOpen_Close);
+                float actual = measurement.Degrees;
+                actualLow = Mathf.Min(actualLow, actual);
+                actualHigh = Mathf.Max(actualHigh, actual);
             }
             Assert.That(high, Is.GreaterThan(0.1f), "The jaw never opened.");
             Assert.That(high - low, Is.GreaterThan(0.05f), "The jaw opened and stayed open; that is a gape, not speech.");
+            Assert.That(actualHigh - actualLow, Is.GreaterThan(1f), "The rendered mandible must move, not just its input field.");
 
             // Listening is not speaking: the body without the floor keeps its mouth shut.
             presentation.SetSpeaking(false);
             for (int i = 0; i < 20; i++) yield return null;
             Assert.That(Mathf.Abs(face.Player.jawOpen_Close), Is.LessThan(0.02f));
+            Assert.That(measurement.Degrees, Is.LessThan(.5f));
         }
 
         /// <summary>
@@ -200,6 +258,8 @@ namespace Gamesim.Uma.Tests
             presentation.SetTalking(true);
             presentation.SetSpeaking(true);
             presentation.SetMood("Angry", "Overwhelmed");
+            var resting = actor.AddComponent<UmaJawMeasurement>();
+            resting.Mandible = face.Player.umaData.skeleton.boneHashData[UMA.UMAUtils.StringToHash("Mandible")];
             for (int i = 0; i < SettleFrames; i++) yield return null;
 
             Assert.That(face.Current.Magnitude, Is.EqualTo(0f).Within(0.0001f),
@@ -207,6 +267,8 @@ namespace Gamesim.Uma.Tests
             Assert.That(Mathf.Abs(face.Player.leftMouthSmile_Frown), Is.LessThan(0.0001f));
             Assert.That(Mathf.Abs(face.Player.leftBrowUp_Down), Is.LessThan(0.0001f));
             Assert.That(Mathf.Abs(face.Player.jawOpen_Close), Is.LessThan(0.0001f), "And no lip flap either.");
+            Assert.That(resting.Degrees, Is.LessThan(.5f), "Reduced motion keeps the actual mandible at rest.");
+            Assert.That(face.Player.mouthNarrow_Pucker, Is.Zero);
 
             // And it comes back when the setting does.
             presentation.SetReducedMotion(false);
@@ -216,14 +278,28 @@ namespace Gamesim.Uma.Tests
 
         private UmaExpressions Expressions() => actor.GetComponentInChildren<UmaExpressions>(true);
 
-        private IEnumerator BuildHouseguest()
+        private IEnumerator BuildHouseguest(bool delayBuild = false)
         {
             yield return null;
             Assert.That(CharacterBodySource.Provider, Is.Not.Null, "The scene should be on UMA bodies.");
             CharacterPresentation.Attach(actor, Houseguest(), Color.white);
 
+            int frame = 0;
+            if (delayBuild)
+            {
+                var face = Expressions();
+                var avatar = face.GetComponent<UMA.CharacterSystem.DynamicCharacterAvatar>();
+                avatar.BuildCharacterEnabled = false;
+                avatar.activeRace.SetRaceData();
+                Assert.That(avatar.activeRace.racedata, Is.Not.Null);
+                for (; frame < 2; frame++) yield return null;
+                Assert.That(avatar.animator == null || avatar.animator.avatar == null, Is.True);
+                Assert.That(face.Player.enabled, Is.False, "The player must wait while its rig is still queued.");
+                avatar.BuildCharacterEnabled = true;
+            }
+
             SkinnedMeshRenderer mesh = null;
-            for (int frame = 0; frame < BuildTimeoutFrames && mesh == null; frame++)
+            for (; frame < BuildTimeoutFrames && mesh == null; frame++)
             {
                 yield return null;
                 mesh = UmaMesh();

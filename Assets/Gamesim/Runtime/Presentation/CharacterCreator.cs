@@ -58,6 +58,8 @@ namespace Gamesim.Presentation
         private Action<SeasonBuilder.Choice> onStart;
         private Action onBack;
         private bool editingCastSlot;
+        private string returnPlace = WayOut.Cast;
+        private string DraftBackCaption => WayOut.BackToKeeping(returnPlace, "draft");
         private string resumeError;
 
         /// <summary>See <see cref="CastSelect.FontScale"/> — a fixed layout is magnified, not retyped.</summary>
@@ -101,6 +103,7 @@ namespace Gamesim.Presentation
 
             var screen = root.AddComponent<CharacterCreator>();
             screen.scaler = scaler;
+            screen.UsePhoneIdentityLayout = PhoneDisplay.Active;
             screen.group = root.GetComponent<CanvasGroup>();
             screen.Hide();
             return screen;
@@ -111,6 +114,7 @@ namespace Gamesim.Presentation
             group.alpha = 0f;
             group.blocksRaycasts = false;
             group.interactable = false;
+            if (phoneIdentity != null) phoneIdentity.gameObject.SetActive(false);
             if (studioPreview != null) { Destroy(studioPreview.gameObject); studioPreview = null; }
         }
 
@@ -124,22 +128,25 @@ namespace Gamesim.Presentation
         /// </summary>
         public void Show(SeasonBuilder.Choice choice, CharacterDraft start,
             Action<SeasonBuilder.Choice> commit, Action back)
-            => ShowCore(choice, start, commit, back, EntryMode.Detailed);
+            => ShowFromCast(choice, start, commit, back, EntryMode.Detailed, WayOut.Cast);
 
         /// <summary>Starts with a name, age, pronouns and a complete starting look.</summary>
         public void ShowQuick(SeasonBuilder.Choice choice, CharacterDraft start,
             Action<SeasonBuilder.Choice> commit, Action back)
-            => ShowCore(choice, start, commit, back, EntryMode.Quick);
+            => ShowFromCast(choice, start, commit, back, EntryMode.Quick, WayOut.Cast);
 
-        private void ShowCore(SeasonBuilder.Choice choice, CharacterDraft start,
-            Action<SeasonBuilder.Choice> commit, Action back, EntryMode mode)
+        internal void ShowFromCast(SeasonBuilder.Choice choice, CharacterDraft start,
+            Action<SeasonBuilder.Choice> commit, Action back, EntryMode mode, string place)
         {
             pending = choice?.Copy() ?? new SeasonBuilder.Choice();
+            returnPlace = place;
             editingCastSlot = false;
             draft = (start ?? CharacterDraft.Blank()).Copy();
             appearanceUndo.Clear(); appearanceRedo.Clear();
             initialAppearance = draft.Appearance?.Clone();
             entryMode = mode;
+            phoneQuickLook = false;
+            phoneIdentity = null;
             lastDetailedPage = "Appearance";
             studioPage = DefaultAppearancePage;
             quickScrollY = 0f;
@@ -239,6 +246,14 @@ namespace Gamesim.Presentation
 
         private void RebuildForm()
         {
+            bool showPhone = UsePhoneIdentityLayout && !libraryOpen && pendingReplace == null &&
+                (studioPage == CreatorSteps.Identity || studioPage == QuickPageCaption && !phoneQuickLook);
+            bool samePhoneStep = showPhone && phoneIdentity != null && phoneIdentityStep == studioPage;
+            float choicesPosition = samePhoneStep ? phoneIdentity.ScrollPosition : 1f;
+            float summaryPosition = samePhoneStep ? phoneIdentity.SummaryPosition : 1f;
+            string focus = samePhoneStep ? phoneIdentity.CurrentFocus : null;
+            phoneIdentity = null;
+            ((FrameScaler)scaler).UsePhoneUnits = showPhone;
             foreach (Transform child in transform)
             {
                 child.gameObject.SetActive(false);
@@ -251,6 +266,14 @@ namespace Gamesim.Presentation
             previewStatus = null; retryPreviewButton = null; cardSummary = bioCount = cardAge = null;
             rebuildSoon = false;
             undoAppearanceButton = redoAppearanceButton = null;
+            MarkVisited();
+            if (showPhone)
+            {
+                if (studioPreview != null) studioPreview.gameObject.SetActive(false);
+                BuildPhoneIdentity();
+                phoneIdentity.Restore(choicesPosition, focus, summaryPosition);
+                return;
+            }
             var scrim = HudPrimitives.Fill("Scrim", transform, new Color(.02f, .04f, .06f, .98f), 1);
             Stretch(scrim);
             // The cast screen's ground: the pack's night navy, the studio it opens from.
@@ -261,7 +284,6 @@ namespace Gamesim.Presentation
                 ground.sprite = night; ground.type = Image.Type.Simple; ground.color = Color.white;
             }
             BuildBackdrop(scrim);
-            MarkVisited();
             BuildHeader(scrim);
             // My Houseguests is a panel over the step (menu slice 2, change 4): it takes the page's
             // place, with its own Close, and the step under it stays the lit one. The step's own

@@ -65,6 +65,11 @@ namespace Gamesim.Episode
         /// <summary>The picks and failure lines go as Settings open or turn to another section.</summary>
         private void ForgetSavesPicks()
         {
+            phoneSavePath = phoneSavesFocus = null;
+            phoneSavesPage = 0;
+            phoneSavesRetryFocus = false;
+            phoneSavesView = PhoneSavesView.Shelf;
+            hud?.ForgetPhoneSettingsPage();
             savesLoadPick = savesDeletePick = null;
             savesFailurePath = savesFailure = null;
             advancedPick = AdvancedPick.None;
@@ -122,6 +127,22 @@ namespace Gamesim.Episode
         private void SeasonCardFor(SavedSeason season, bool own)
         {
             var controls = new List<EpisodeHud.SeasonControl>();
+            AddSeasonControls(season, own, controls);
+            string title = Title(season);
+            hud.SeasonCard(season.Key, title, season.Readable ? SavesWords.Details(season.Week, season.Left) : null,
+                SavedLine(season.SavedUtc), false, controls);
+            if (controls.Count > 0) drawnSeasons.Add((season.Path, controls[0].Name));
+            if (season.InUse) hud.MutedLine(SavesWords.InUseLine);
+            // Only blocked recovery lists the running slot's own save: when it cannot be opened, Advanced mends it.
+            else if (own && !season.Readable) hud.MutedLine(SavesWords.RecoveryLine);
+
+            DrawSeasonConfirmation(season, SavesConfirm);
+            if (SamePath(savesFailurePath, season.Path) && !string.IsNullOrEmpty(savesFailure))
+                hud.MutedLine(savesFailure, SavesWords.FailureLineName);
+        }
+
+        private void AddSeasonControls(SavedSeason season, bool own, List<EpisodeHud.SeasonControl> controls)
+        {
             string title = Title(season);
             string said = season.Readable ? title + ", " + SavesWords.Week(season.Week) : title;
             var shown = season;
@@ -135,30 +156,31 @@ namespace Gamesim.Episode
             if (!own && !season.InUse)
                 controls.Add(new EpisodeHud.SeasonControl { Caption = SavesWords.DeleteCaption, Name = SavesWords.ControlName(SavesWords.DeleteCaption, season.Key),
                     Description = SavesWords.DeleteCaption + " " + said, Press = () => PressDelete(shown), Danger = true });
-            hud.SeasonCard(season.Key, title, season.Readable ? SavesWords.Details(season.Week, season.Left) : null,
-                SavedLine(season.SavedUtc), false, controls);
-            if (controls.Count > 0) drawnSeasons.Add((season.Path, controls[0].Name));
-            if (season.InUse) hud.MutedLine(SavesWords.InUseLine);
-            // Only blocked recovery lists the running slot's own save: when it cannot be opened, Advanced mends it.
-            else if (own && !season.Readable) hud.MutedLine(SavesWords.RecoveryLine);
+        }
 
+        private void DrawSeasonConfirmation(SavedSeason season, Action<string, string, string, Action, string, Action> confirm)
+        {
             if (SamePath(savesLoadPick, season.Path))
-                SavesConfirm("load:" + season.Path, SavesWords.LoadQuestion(season.PlayerName, season.Week),
+                confirm("load:" + season.Path, SavesWords.LoadQuestion(season.PlayerName, season.Week),
                     SavesWords.KeepPlaying, () => { savesLoadPick = null; RenderAndFocus(SavesWords.ControlName(SavesWords.LoadCaption, season.Key)); },
-                    SavesWords.SaveAndLoad, () => LoadSeasonFromShelf(shown));
+                    SavesWords.SaveAndLoad, () => LoadSeasonFromShelf(season));
             else if (SamePath(savesDeletePick, season.Path))
-                SavesConfirm("delete:" + season.Path,
+                confirm("delete:" + season.Path,
                     season.Readable ? SavesWords.DeleteQuestion(season.PlayerName, season.Week) : SavesWords.DeleteUnreadableQuestion,
                     SavesWords.KeepIt, () => { savesDeletePick = null; RenderAndFocus(SavesWords.ControlName(SavesWords.DeleteCaption, season.Key)); },
-                    SavesWords.DeleteThisSeason, () => DeleteFromShelf(shown));
-            if (SamePath(savesFailurePath, season.Path) && !string.IsNullOrEmpty(savesFailure))
-                hud.MutedLine(savesFailure, SavesWords.FailureLineName);
+                    SavesWords.DeleteThisSeason, () => DeleteFromShelf(season));
         }
 
         /// <summary>A held save's Try again: the list looks again, with the keyboard on that card's first control as it now reads.</summary>
         private void LookAgain(SavedSeason season)
         {
             if (season == null) return;
+            if (hud.UsePhoneSettingsLayout && SamePath(season.Path, phoneSavePath))
+            {
+                phoneSavesRetryFocus = true;
+                Render();
+                return;
+            }
             Render();
             int at = drawnSeasons.FindIndex(card => SamePath(card.path, season.Path));
             if (at >= 0) hud.FocusWhenWired(drawnSeasons[at].control);
@@ -310,6 +332,7 @@ namespace Gamesim.Episode
         /// <summary>Draws the panel again, with the keyboard on the control named <paramref name="focus"/> when one is named.</summary>
         private void RenderAndFocus(string focus)
         {
+            if (hud.UsePhoneSettingsLayout && settingsSection == SettingsSection.Saves) phoneSavesFocus = focus;
             Render();
             if (!string.IsNullOrEmpty(focus)) hud.FocusWhenWired(focus);
         }

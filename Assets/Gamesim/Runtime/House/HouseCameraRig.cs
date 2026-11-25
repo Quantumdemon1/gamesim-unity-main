@@ -315,7 +315,7 @@ namespace Gamesim.House
         public bool EdgePan { get => edgePan; set => edgePan = value; }
         public bool EdgePanInWindow { get; set; }
         public float EdgePanBand => edgePanBand;
-        private bool EdgePanActive => edgePan && (Screen.fullScreen || EdgePanInWindow);
+        private bool EdgePanActive => !PhoneDisplay.Active && edgePan && (Screen.fullScreen || EdgePanInWindow);
 
         private void EnsureActions()
         {
@@ -1178,6 +1178,31 @@ namespace Gamesim.House
             if (subject != null && hit.IsChildOf(subject)) return true;
             if (conversationNpc != null && hit.IsChildOf(conversationNpc)) return true;
             return hit.GetComponentInParent<HouseNpc>() != null || hit.GetComponentInParent<HousePlayerController>() != null;
+        }
+
+        private bool TakeTouchControl()
+        {
+            if (!isActiveAndEnabled || !ControlsEnabled || IsConversationFocused || HasShot || CeremonyOverlays.OnScreen)
+                return false;
+            if (IsTravelling) travelSeconds = 0f;
+            viewTakeovers++;
+            return true;
+        }
+
+        internal void OrbitWithFinger(Vector2 delta)
+        {
+            if (delta.sqrMagnitude > 0 && TakeTouchControl()) ApplyOrbit(delta * orbitSensitivity);
+        }
+
+        internal void MoveWithFingers(Vector2 before, Vector2 now, float oldSpan, float span)
+        {
+            if (oldSpan <= 0 || span <= 0 || (before == now && Mathf.Approximately(oldSpan, span)) || !TakeTouchControl()) return;
+            if (before != now && TryCursorPoint(before, out var was) && TryCursorPoint(now, out var next))
+            {
+                ClearSubject();
+                desiredFocus = ClampFocus(desiredFocus + was - next);
+            }
+            ZoomBy(desiredDistance * (1f - oldSpan / span), now, true);
         }
 
         private void ReadInput()

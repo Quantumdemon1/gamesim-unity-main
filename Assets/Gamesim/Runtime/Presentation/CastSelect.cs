@@ -35,7 +35,7 @@ namespace Gamesim.Presentation
     /// is not a state a screen reader can report.</para>
     /// </summary>
     [DisallowMultipleComponent]
-    public sealed class CastSelect : MonoBehaviour
+    public sealed partial class CastSelect : MonoBehaviour
     {
         /// <summary>
         /// The widest the screen draws, and how it decides to draw narrower.
@@ -202,6 +202,8 @@ namespace Gamesim.Presentation
         {
             profileStore = store ?? throw new ArgumentNullException(nameof(store));
             profileBrowser.Reset();
+            profileQuery = editingProfileQuery = string.Empty;
+            profilePage = 0;
             if (IsShowing) Rebuild();
         }
 
@@ -299,6 +301,7 @@ namespace Gamesim.Presentation
 
             var screen = root.AddComponent<CastSelect>();
             screen.scaler = scaler;
+            ((FrameScaler)scaler).UsePhoneUnits = PhoneDisplay.Active;
             screen.group = root.GetComponent<CanvasGroup>();
             screen.Hide();
             return screen;
@@ -309,6 +312,7 @@ namespace Gamesim.Presentation
             group.alpha = 0f;
             group.blocksRaycasts = false;
             group.interactable = false;
+            phone?.ReleaseReader();
             // The model is only drawn while the screen is: no studio rendering behind the house.
             if (studio != null) studio.gameObject.SetActive(false);
         }
@@ -344,6 +348,7 @@ namespace Gamesim.Presentation
             castSlotsMode = false;
             customHouseguests.Clear();
             profileBrowser.Reset();
+            ResetPhoneSetup();
             retainedDraft = null;
             pendingSlotFocus = null;
             resumeError = null;
@@ -360,6 +365,7 @@ namespace Gamesim.Presentation
         public void Dismiss()
         {
             if (!IsShowing) return;
+            if (((FrameScaler)scaler).UsePhoneUnits && BackWithinPhoneSetup()) return;
             var cancel = onCancel;
             Hide();
             ReleaseStudio();
@@ -395,6 +401,11 @@ namespace Gamesim.Presentation
 
         private void Rebuild()
         {
+            if (((FrameScaler)scaler).UsePhoneUnits)
+            {
+                RebuildPhoneSetup();
+                return;
+            }
             // Where the grid was scrolled to, read before the teardown. Every press rebuilds the
             // screen, and a grid rebuilt at the top threw the player back to the first row: a card
             // picked on the third row vanished under the fold with its PLAYING AS badge. A new
@@ -1533,6 +1544,7 @@ namespace Gamesim.Presentation
         private void ToggleConversationPreview()
         {
             campaignConversations = !campaignConversations;
+            focusOnReturn = campaignConversations ? ConversationPreviewOffCaption : ConversationPreviewOnCaption;
             Rebuild();
             var events = EventSystem.current;
             if (events != null && !events.alreadySelecting && conversationChip != null)
@@ -1735,6 +1747,7 @@ namespace Gamesim.Presentation
 
         private void ResumeCastSlot(int slot)
         {
+            focusOnReturn = EditSeasonHouseguestCaption(slot + 1);
             Resume();
             pendingSlotFocus = EditSeasonHouseguestCaption(slot + 1);
             RestoreSlotFocus();

@@ -830,7 +830,7 @@ namespace Gamesim.Tests.PlayMode
 
         /// <summary>
         /// E and the mouse still open the episode screen at the station with the gate in Interact.
-        /// The rail's "Go to episode screen" warps the player there from the yard, and then the
+        /// The rail's EpisodeHud.EpisodeTravelCaption warps the player there from the yard, and then the
         /// prompt's own button, E, and the rail's button pressed again each open it. A board stood
         /// over the house is the gate: the prompt says nothing and E does nothing under it. Gone, it
         /// holds nothing - a gate that outlived what it stood for once swallowed every input in the
@@ -851,7 +851,7 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(director.IsPhasePanelOpen, Is.True, "E at the screen opens it.");
 
             yield return ToTheScreenFromTheYard();
-            ButtonWithCaption("Go to episode screen").onClick.Invoke();
+            ButtonWithCaption(EpisodeHud.EpisodeTravelCaption).onClick.Invoke();
             yield return null;
             Assert.That(director.IsPhasePanelOpen, Is.True, "The rail's button pressed again at the screen opens it.");
 
@@ -892,7 +892,7 @@ namespace Gamesim.Tests.PlayMode
             director.ClosePanels();
             WarpPlayer(new Vector3(0f, 0f, 14f));
             yield return null;
-            ButtonWithCaption("Go to episode screen").onClick.Invoke();
+            ButtonWithCaption(EpisodeHud.EpisodeTravelCaption).onClick.Invoke();
             Assert.That(director.LastTravel, Is.EqualTo(EpisodeDirector.TravelKind.Warp), "From the yard the rail's button warps the player to the screen.");
             yield return Frames(2);
             Assert.That(director.IsPhasePanelOpen, Is.False, "Arriving by the button opens nothing by itself.");

@@ -25,7 +25,7 @@ namespace Gamesim.Tests.EditMode
         {
             "Episode/EpisodeDirector.CameraSettings.cs", "Episode/EpisodeDirector.Career.cs", "Episode/EpisodeDirector.CeremonyTruth.cs",
             "Episode/EpisodeDirector.Controls.cs", "Episode/EpisodeDirector.Display.cs", "Episode/EpisodeDirector.Season.cs",
-            "Episode/EpisodeDirector.SettingsFrame.cs", "Episode/EpisodeDirector.SettingsPrefs.cs", "Episode/EpisodeDirector.SettingsSaves.cs",
+            "Episode/EpisodeDirector.PhoneSaves.cs", "Episode/EpisodeDirector.SettingsFrame.cs", "Episode/EpisodeDirector.SettingsPrefs.cs", "Episode/EpisodeDirector.SettingsSaves.cs",
             "Episode/EpisodeDirector.cs", "Episode/EpisodeHud.SeasonCards.cs", "Episode/EpisodeHud.SettingRows.cs",
             "Episode/EpisodeHud.SettingsFrame.cs", "Episode/EpisodeHud.WayOut.cs", "Episode/PortVerification.Autonomy.cs",
             "Episode/PortVerification.Creator.cs", "Episode/PortVerification.Season.cs", "Episode/PortVerification.cs",

@@ -117,7 +117,8 @@ namespace Gamesim.Presentation
 
         /// <summary>A step's words, with the controls line and the episode screen's keys in the device's words.</summary>
         private string BodyFor(Step current) =>
-            PadLine ? current.Body.Replace(ControlsLine, InputGlossary.TourLine(true)).Replace(StationStepKeys, InputGlossary.StationStepKeys(true))
+            PadLine || PhoneDisplay.Active ? current.Body.Replace(ControlsLine, InputGlossary.TourLine(PadLine, PhoneDisplay.Active))
+                .Replace(StationStepKeys, InputGlossary.StationStepKeys(PadLine, PhoneDisplay.Active))
                 : current.Body;
 
         /// <summary>A press on the other kind of device rewords the step on screen, in place.</summary>
@@ -182,11 +183,11 @@ namespace Gamesim.Presentation
                 "The week and where the house is in it, how many houseguests are left, the actions you have left this week, and who is Head of Household.",
                 "Week chip", "House pill"),
             new Step("sidemenu", "Side Rail",
-                "The Overview of the whole house, then your Notebook: your notes, Deals & promises, Houseguests, Relationships, Who is where, The vote and The story so far. Save and Settings are at its foot. After a change, the save feedback tells you when it was saved or if saving failed.",
+                "Overview opens the map. Open House for people and rooms. Open Strategy for deals and votes. Notebook opens your notes. The story so far tracks the season. Save and Settings are below.",
                 "Rail ground"),
             new Step("gamephase", "The Episode Screen",
-                "Nominations, votes and the week's other decisions happen at the living-room screen. This button walks you there; " + StationStepKeys,
-                "Go to episode screen"),
+                "Episode takes you to the Nominations Room. Competition takes you to the yard. Use the destination for the current phase; " + StationStepKeys,
+                Gamesim.Episode.EpisodeHud.EpisodeTravelCaption),
             new Step("carousel", "Cast Strip",
                 "Everyone in the house, along the bottom. Click someone's face to open their menu: talk, profile, deals or follow. Under each name is their mood; once you know them, a tag says where you stand.",
                 CastRail.StripName),

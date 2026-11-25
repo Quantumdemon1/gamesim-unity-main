@@ -615,7 +615,7 @@ namespace Gamesim.Episode
             // The card's words follow the device last used (PLAN A, A4): the keyboard's as they
             // always read, or the pad's buttons, swapped in place when the device changes.
             helpText = helpExpanded
-                ? FixedText(explorationHelp, InputGlossary.HelpCard(padHints), HelpCardFont, Paper, new Vector2(14, -HelpCardTop), new Vector2(258, HelpWordsHeight))
+                ? FixedText(explorationHelp, InputGlossary.HelpCard(padHints, PhoneDisplay.Active), HelpCardFont, Paper, new Vector2(14, -HelpCardTop), new Vector2(258, HelpWordsHeight))
                 : null;
         }
     }

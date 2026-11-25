@@ -37,6 +37,8 @@ namespace Gamesim.Presentation
         public const string LoadCaption = "Load a season";
         public const string QuitCaption = "Quit the game";
 
+        private PhoneMenuPage phonePage;
+        private float phoneTextScale = 1f;
         private CanvasGroup group;
         private CanvasScaler scaler;
 
@@ -68,6 +70,7 @@ namespace Gamesim.Presentation
             {
                 if (scaler == null) return;
                 float scale = Mathf.Clamp(value, 0.5f, 2f);
+                phoneTextScale = scale;
                 scaler.referenceResolution = new Vector2(1920f / scale, 1080f / scale);
             }
         }
@@ -92,6 +95,7 @@ namespace Gamesim.Presentation
             var menu = root.AddComponent<MainMenu>();
             menu.group = root.GetComponent<CanvasGroup>();
             menu.scaler = scaler;
+            ((FrameScaler)scaler).UsePhoneUnits = PhoneDisplay.Active;
             menu.Hide();
             return menu;
         }
@@ -101,6 +105,7 @@ namespace Gamesim.Presentation
             group.alpha = 0f;
             group.blocksRaycasts = false;
             group.interactable = false;
+            phonePage?.ReleaseReader();
         }
 
         /// <summary>
@@ -137,6 +142,23 @@ namespace Gamesim.Presentation
             {
                 child.gameObject.SetActive(false);
                 Destroy(child.gameObject);
+            }
+
+            if (((FrameScaler)scaler).UsePhoneUnits)
+            {
+                var page = phonePage = PhoneMenuPage.Create(transform, "Gamesim · The House", phoneTextScale);
+                if (canContinue) page.Copy(seasonFacts);
+                page.Copy(note);
+                if (canContinue) page.ActionRow(ContinueCaption, onContinue, primary: true);
+                page.ActionRow(NewSeasonCaption, onNewSeason, primary: !canContinue);
+                if (onLoad != null) page.ActionRow(LoadCaption, onLoad);
+                page.ActionRow(SettingsCaption, onSettings);
+                if (career != null && career.Count > 0)
+                {
+                    page.Copy(CareerStrip.Heading, true);
+                    foreach (var stat in career) page.Copy(stat.Value + " " + stat.Label);
+                }
+                return;
             }
 
             var scrim = HudPrimitives.Fill("Scrim", transform, new Color(0.02f, 0.04f, 0.06f, 0.98f), 1);

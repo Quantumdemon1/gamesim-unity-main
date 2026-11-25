@@ -320,6 +320,139 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(director.StatusMessage, Does.StartWith("Local episode loaded"), "as Reload always did.");
         }
 
+        [UnityTest]
+        public IEnumerator PhoneSaves_CancelAndStaleDeleteKeepFilesAndDeletionReturnsToAdjacentSlot()
+        {
+            HoldTheHouseForTheFixture();
+            director.ClosePanels();
+            director.SaveNow();
+            var now = DateTime.UtcNow;
+            var paths = Enumerable.Range(0, 10).Select(i => MenuSavesOtherSeason(now.AddHours(-i - 1))).ToArray();
+            var original = paths.Select(File.ReadAllBytes).ToArray();
+            Hud.UsePhoneSettingsLayout = true;
+            director.OpenSettingsAt(SettingsSection.Saves);
+            yield return Frames(2);
+            Assert.That(MenuSavesControl(SavesWords.CardName(MenuSavesKey(paths[8]))), Is.Null);
+            PhoneReviewAction("More saved seasons").onClick.Invoke();
+            string key = MenuSavesKey(paths[8]);
+            PhoneReviewAction(SavesWords.CardName(key)).onClick.Invoke();
+            PhoneMenuTouchTests.PhoneExit(director, WayOut.BackObjectName, WayOut.BackTo("saved seasons"));
+            PhoneReviewAction(SavesWords.ControlName(SavesWords.DeleteCaption, key)).onClick.Invoke();
+            yield return Frames(2);
+            Assert.That(EventSystem.current.currentSelectedGameObject.name, Is.EqualTo(SavesWords.KeepIt));
+            var oldConfirmation = PhoneReviewAction(SavesWords.DeleteThisSeason).onClick;
+            PhoneMenuTouchTests.PhoneExit(director, WayOut.CloseObjectName, WayOut.CloseCaption);
+            Hud.WayBackAction();
+            oldConfirmation.Invoke();
+            Assert.That(File.ReadAllBytes(paths[8]), Is.EqualTo(original[8]));
+            PhoneReviewAction(SavesWords.ControlName(SavesWords.DeleteCaption, key)).onClick.Invoke();
+            PhoneReviewAction(SavesWords.DeleteThisSeason).onClick.Invoke();
+            yield return Frames(2);
+            Assert.That(File.Exists(paths[8]), Is.False);
+            Assert.That(EventSystem.current.currentSelectedGameObject.name, Is.EqualTo(SavesWords.CardName(MenuSavesKey(paths[9]))));
+            for (int i = 0; i < paths.Length; i++)
+                if (i != 8) Assert.That(File.ReadAllBytes(paths[i]), Is.EqualTo(original[i]));
+        }
+
+        [UnityTest]
+        public IEnumerator PhoneSaves_LoadRequiresConfirmationAndSavesTheSeasonLeftBehind()
+        {
+            HoldTheHouseForTheFixture();
+            director.ClosePanels();
+            director.SaveNow();
+            string playing = director.SavePath;
+            string other = MenuSavesOtherSeason(DateTime.UtcNow.AddDays(-1));
+            var bytes = File.ReadAllBytes(other);
+            string key = MenuSavesKey(other);
+            Hud.UsePhoneSettingsLayout = true;
+            director.OpenSettingsAt(SettingsSection.Saves);
+            yield return Frames(2);
+            Assert.That(MenuSavesControl(SavesWords.ControlName(SavesWords.DeleteCaption, MenuSavesKey(playing))), Is.Null);
+            PhoneReviewAction(SavesWords.CardName(key)).onClick.Invoke();
+            PhoneReviewAction(SavesWords.ControlName(SavesWords.LoadCaption, key)).onClick.Invoke();
+            yield return Frames(2);
+            Assert.That(EventSystem.current.currentSelectedGameObject.name, Is.EqualTo(SavesWords.KeepPlaying));
+            Assert.That(director.SavePath, Is.EqualTo(playing));
+            var left = director.Snapshot;
+            PhoneReviewAction(SavesWords.SaveAndLoad).onClick.Invoke();
+            Assert.That(Path.GetFullPath(director.SavePath), Is.EqualTo(Path.GetFullPath(other)));
+            Assert.That(File.ReadAllBytes(other), Is.EqualTo(bytes));
+            Assert.That(new EpisodeSaveStore(playing).TryLoad(out var saved, out var why), Is.True, why);
+            AssertEquivalent(left, saved);
+        }
+
+        [UnityTest]
+        public IEnumerator PhoneSaves_PauseMenuReturnsToHouseAndRecoveryToolsStayReachable()
+        {
+            HoldTheHouseForTheFixture();
+            director.ClosePanels();
+            Hud.UsePhoneSettingsLayout = true;
+            director.OpenSettings();
+            yield return Frames(2);
+            PhoneReviewAction(EpisodeHud.GameMenuRowPrefix + SettingsWords.SaveCaption).onClick.Invoke();
+            Assert.That(File.Exists(director.SavePath), Is.True);
+            yield return Frames(2);
+            Assert.That(EventSystem.current.currentSelectedGameObject.name, Is.EqualTo(EpisodeHud.GameMenuRowPrefix + SettingsWords.SaveCaption));
+            PhoneReviewAction(EpisodeHud.GameMenuRowPrefix + SettingsWords.SettingsCaption).onClick.Invoke();
+            PhoneMenuTouchTests.PhoneExit(director, WayOut.BackObjectName, WayOut.BackTo(SettingsWords.GameMenuPlace));
+            PhoneReviewAction("Other settings").onClick.Invoke();
+            PhoneReviewAction(SettingsWords.Name(SettingsSection.Advanced)).onClick.Invoke();
+            Assert.That(director.SettingsSectionShown, Is.EqualTo(SettingsSection.Advanced));
+            director.ShowSettingsSection(SettingsSection.Saves);
+            Hud.WayBackAction();
+            Assert.That(director.IsGameMenuOpen, Is.True);
+            RenderHudForTheCurrentCanvas();
+            yield return Frames(2);
+            Assert.That(EventSystem.current.currentSelectedGameObject.name, Is.EqualTo(EpisodeHud.GameMenuRowPrefix + SettingsWords.SettingsCaption));
+            PhoneReviewAction(EpisodeHud.GameMenuRowPrefix + SettingsWords.ResumeCaption).onClick.Invoke();
+            Assert.That(director.IsPanelOpen, Is.False);
+            director.OpenSettings();
+            PhoneMenuTouchTests.PhoneExit(director, WayOut.CloseObjectName, WayOut.CloseCaption).onClick.Invoke();
+            Assert.That(director.IsPanelOpen, Is.False);
+        }
+
+        [UnityTest]
+        public IEnumerator PhoneSaves_RetryReopensTheHeldSlotAndSelectsLoad()
+        {
+            HoldTheHouseForTheFixture();
+            director.ClosePanels();
+            director.SaveNow();
+            Hud.UsePhoneSettingsLayout = true;
+            string other = MenuSavesOtherSeason(DateTime.UtcNow);
+            string key = MenuSavesKey(other);
+            using (new FileStream(other, FileMode.Open, FileAccess.Read, FileShare.None))
+            {
+                director.OpenSettingsAt(SettingsSection.Saves);
+                PhoneReviewAction(SavesWords.CardName(key)).onClick.Invoke();
+                Assert.That(MenuSavesControl(SavesWords.ControlName(SavesWords.DeleteCaption, key)), Is.Null);
+            }
+            PhoneReviewAction(SavesWords.ControlName(SavesWords.TryAgainCaption, key)).onClick.Invoke();
+            yield return Frames(2);
+            Assert.That(EventSystem.current.currentSelectedGameObject.name, Is.EqualTo(SavesWords.ControlName(SavesWords.LoadCaption, key)));
+            Assert.That(director.SavePath, Is.Not.EqualTo(other));
+        }
+
+        [UnityTest]
+        public IEnumerator PhoneSaves_RetiredImportFieldCannotChangeTheNextForm()
+        {
+            HoldTheHouseForTheFixture();
+            director.ClosePanels();
+            Hud.UsePhoneSettingsLayout = true;
+            director.OpenSettingsAt(SettingsSection.Saves);
+            PhoneReviewAction(EpisodeDirector.ImportHeading).onClick.Invoke();
+            var field = director.GetComponentInChildren<PhoneMenuPage>().GetComponentInChildren<TMP_InputField>();
+            field.text = "chosen-file.json";
+            var retired = field.onValueChanged;
+            Hud.WayBackAction();
+            PhoneReviewAction(EpisodeDirector.ImportHeading).onClick.Invoke();
+            retired.Invoke("old-file.json");
+            Hud.WayBackAction();
+            PhoneReviewAction(EpisodeDirector.ImportHeading).onClick.Invoke();
+            Assert.That(director.GetComponentInChildren<PhoneMenuPage>().GetComponentInChildren<TMP_InputField>().text,
+                Is.EqualTo("chosen-file.json"));
+            yield return null;
+        }
+
         // ---------------------------------------------------------------- helpers
 
         /// <summary>

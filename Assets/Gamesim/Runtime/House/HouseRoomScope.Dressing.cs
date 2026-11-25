@@ -79,6 +79,22 @@ namespace Gamesim.House
         /// <summary>How many pieces of the house the dressing has on a room layer.</summary>
         public int PlacedCount => placed.Count;
 
+        private readonly HashSet<Renderer> beaconDressing = new HashSet<Renderer>();
+
+        // Keep a snapshot of drawn, collider-free dressing before checking the handful of doorway projections.
+        // The authored combined shell has wall colliders, so its house-wide mesh bounds are not an occluder.
+        public void VisibleDressingBounds(Camera camera, List<Bounds> into)
+        {
+            into.Clear();
+            foreach (var renderer in beaconDressing)
+                if (DrawnBy(camera, renderer)) into.Add(renderer.bounds);
+        }
+
+        public static bool DrawnBy(Camera camera, Renderer renderer) =>
+            renderer != null && renderer.enabled && !renderer.forceRenderingOff && renderer.gameObject.activeInHierarchy &&
+            renderer.shadowCastingMode != UnityEngine.Rendering.ShadowCastingMode.ShadowsOnly &&
+            (camera.cullingMask & (1 << renderer.gameObject.layer)) != 0;
+
         /// <summary>How many pieces wait to be placed the first frame they are drawn.</summary>
         public int WaitingCount => waiting.Count;
 
@@ -177,6 +193,10 @@ namespace Gamesim.House
             if (!IsDressingKind(renderer)) return;
             var piece = renderer.gameObject;
             int layer = piece.layer;
+            if ((renderer is MeshRenderer || renderer is SkinnedMeshRenderer) && !piece.TryGetComponent<Collider>(out _) &&
+                !InShellList(renderer.transform) && !IsBody(renderer.transform))
+                beaconDressing.Add(renderer);
+            else beaconDressing.Remove(renderer);
             // A piece on a layer of its own, or a body's (RS4 draws bodies by where they walk): never the dressing's.
             if ((layer != 0 && !RoomLayers.IsRoomLayer(layer)) || IsBody(renderer.transform)) { Forget(renderer); return; }
             if (!CanPlace(renderer))
@@ -206,6 +226,7 @@ namespace Gamesim.House
         /// </summary>
         public void KeepDressingPlaced()
         {
+            if (Time.frameCount % 120 == 0) beaconDressing.RemoveWhere(renderer => renderer == null);
             for (int i = placed.Count - 1; i >= 0; i--)
             {
                 var t = placedTransforms[i];
@@ -243,6 +264,7 @@ namespace Gamesim.House
                 if (renderer == null) continue;
                 if (RoomLayers.IsRoomLayer(renderer.gameObject.layer) && !IsBody(renderer.transform)) SetPieceLayer(renderer, 0);
             }
+            beaconDressing.Clear();
             placed.Clear();
             placedTransforms.Clear();
             placedSet.Clear();

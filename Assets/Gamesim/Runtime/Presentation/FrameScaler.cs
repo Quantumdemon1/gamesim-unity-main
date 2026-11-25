@@ -15,6 +15,7 @@ namespace Gamesim.Presentation
     public sealed class FrameScaler : CanvasScaler
     {
         private Canvas own;
+        public bool UsePhoneUnits { get; set; }
 
         protected override void HandleScaleWithScreenSize()
         {
@@ -24,6 +25,11 @@ namespace Gamesim.Presentation
             int display = own != null ? own.targetDisplay : 0;
             if (display > 0 && display < Display.displays.Length)
                 size = new Vector2(Display.displays[display].renderingWidth, Display.displays[display].renderingHeight);
+            if (UsePhoneUnits)
+            {
+                SetScaleFactor(PhoneDisplay.PixelsPerUnit(Mathf.RoundToInt(size.x), Mathf.RoundToInt(size.y)));
+                return;
+            }
             float authored = m_MatchWidthOrHeight;
             m_MatchWidthOrHeight = FrameMatch.For(size.x, size.y, authored);
             try { base.HandleScaleWithScreenSize(); }

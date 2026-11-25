@@ -567,6 +567,17 @@ namespace Gamesim.Presentation
         /// <summary>Whether the body has come to a stop - its movement blend all but gone.</summary>
         public bool IsStill => movementBlend < .1f;
 
+        // The stop take contains two travelling steps. At the end of a free-roam floor walk
+        // the agent has already covered that ground. Blend the current stride into standing.
+        internal void SettleFloorWalk()
+        {
+            if (running || seated || talking || arguing || activity != BodyActivity.None || pendingReaction >= 0 ||
+                animator == null || !animator.isActiveAndEnabled || !animator.isInitialized || !animator.HasState(0, IdleStateHash)) return;
+            if (animator.GetCurrentAnimatorStateInfo(0).shortNameHash != WalkStateHash ||
+                animator.IsInTransition(0) && !animator.GetNextAnimatorStateInfo(0).IsName("WalkStop")) return;
+            animator.CrossFadeInFixedTime(IdleStateHash, .18f, 0);
+        }
+
         /// <summary>Which pose this body strikes when it is <see cref="BodyActivity.Posing"/>.</summary>
         public void SetPose(Pose value) => pose = value;
         public Pose HeldPose => pose;
@@ -680,6 +691,38 @@ namespace Gamesim.Presentation
                 if (animator.GetCurrentAnimatorStateInfo(0).IsTag(ReactionStateTag)) return true;
                 return animator.IsInTransition(0) && animator.GetNextAnimatorStateInfo(0).IsTag(ReactionStateTag);
             }
+        }
+
+        /// <summary>The ceremony clip the animator actually entered, with its elapsed seconds and crossfade weight.</summary>
+        public bool TryGetFacialReaction(out Reaction kind, out float seconds, out float weight)
+        {
+            kind = default;
+            seconds = weight = 0f;
+            if (reducedMotion || animator == null || !animator.isActiveAndEnabled || !animator.isInitialized
+                || animator.runtimeAnimatorController == null) return false;
+            var state = animator.GetCurrentAnimatorStateInfo(0);
+            weight = 1f;
+            if (animator.IsInTransition(0))
+            {
+                var next = animator.GetNextAnimatorStateInfo(0);
+                float fade = Mathf.Clamp01(animator.GetAnimatorTransitionInfo(0).normalizedTime);
+                if (FacialReactionFor(next, out _)) { state = next; weight = fade; }
+                else weight = 1f - fade;
+            }
+            if (!FacialReactionFor(state, out kind)) return false;
+            seconds = Mathf.Max(0f, state.normalizedTime * state.length);
+            return true;
+        }
+
+        private static readonly int SitClapState = Animator.StringToHash("SitClap"), SitVictoryState = Animator.StringToHash("SitVictory");
+
+        private static bool FacialReactionFor(AnimatorStateInfo state, out Reaction kind)
+        {
+            if (state.shortNameHash == SitClapState) { kind = Reaction.Cheered; return true; }
+            if (state.shortNameHash == SitVictoryState) { kind = Reaction.Won; return true; }
+            int index = state.IsTag(ReactionStateTag) ? System.Array.IndexOf(ReactionParams, state.shortNameHash) : -1;
+            kind = index >= 0 ? (Reaction)index : default;
+            return index >= 0;
         }
 
         /// <summary>

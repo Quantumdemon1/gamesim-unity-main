@@ -64,6 +64,8 @@ namespace Gamesim.Tests.PlayMode
             testMouse = null;
             if (testGamepad != null && testGamepad.added) InputSystem.RemoveDevice(testGamepad);
             testGamepad = null;
+            if (testTouchscreen != null && testTouchscreen.added) InputSystem.RemoveDevice(testTouchscreen);
+            testTouchscreen = null;
             if (director != null) director.ClosePanels();
             var episode = SceneManager.GetSceneByName(EpisodeScene);
             if (episode.IsValid() && episode.isLoaded)
@@ -751,7 +753,7 @@ namespace Gamesim.Tests.PlayMode
                 var next = NextCommand(before);
                 if (!director.IsPanelOpen)
                 {
-                    ButtonWithCaption("Go to episode screen").onClick.Invoke();
+                    ButtonWithCaption(EpisodeHud.PhaseTravelCaption(before.phase)).onClick.Invoke();
                     if (before.Find(before.playerId).status == ContestantStatus.Active)
                     {
                         var deadline = Time.realtimeSinceStartup + 12;

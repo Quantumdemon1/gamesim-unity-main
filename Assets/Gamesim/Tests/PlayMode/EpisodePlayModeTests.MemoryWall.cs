@@ -139,6 +139,7 @@ namespace Gamesim.Tests.PlayMode
         [UnityTest]
         public IEnumerator IconRail_JumpsToEverySectionOfTheNotebook()
         {
+            yield return AssertRailFolderInput();
             var sections = new[]
             {
                 EpisodeDirector.NotebookSection.People,
@@ -158,9 +159,8 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(rail, Is.Not.Null, "The HUD should carry the section rail.");
 
                 var buttons = rail.GetComponentsInChildren<UnityEngine.UI.Button>(true);
-                // Menu slice 3: the overview, then the Notebook group - the notes ("Notebook [J]"), Deals &
-                // promises and these five pages.
-                Assert.That(buttons, Has.Length.EqualTo(1 + NotebookStrip.RailRows.Count), "The rail should carry the overview and the notebook's seven rows.");
+                Assert.That(buttons.Select(row => row.name), Is.SupersetOf(new[] { "Overview", NotebookStrip.NotebookRow,
+                    "House", "Strategy", "The story so far" }), "The rail keeps its groups and direct actions.");
                 Assert.That(NotebookStrip.RailRows.Count, Is.EqualTo(7));
 
                 director.ShowNotebookSection(section);

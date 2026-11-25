@@ -27,6 +27,7 @@ namespace Gamesim.Episode
     {
         /// <summary>Whether the open Settings are showing the game menu card rather than the frame.</summary>
         private bool gameMenuShown;
+        private string phonePauseFocus;
         /// <summary>The section the frame shows.</summary>
         private SettingsSection settingsSection = SettingsSection.Saves;
         /// <summary>Whether the frame has been turned to Advanced for the blocked recovery on screen.</summary>
@@ -85,6 +86,7 @@ namespace Gamesim.Episode
             settingsOpen = true;
             gameMenuShown = section == null && !settingsFromFrontDoor && !blockedRecovery;
             gameMenuSavedAt = null; gameMenuSaveFailure = null;
+            phonePauseFocus = null;
             ForgetSavesPicks();
             settingsSection = section ?? SettingsWords.OpeningSection(blockedRecovery);
             if (blockedRecovery && section != null) recoverySectionSet = true;
@@ -113,6 +115,7 @@ namespace Gamesim.Episode
         {
             if (!settingsOpen || blockedRecovery) return;
             gameMenuShown = true;
+            phonePauseFocus = EpisodeHud.GameMenuRowPrefix + SettingsWords.SettingsCaption;
             Render();
             hud.FocusWhenWired(EpisodeHud.GameMenuRowPrefix + SettingsWords.SettingsCaption);
         }
@@ -134,6 +137,11 @@ namespace Gamesim.Episode
             // A menu, not a beat of the week: its own tall panel and its own head (mockup language:
             // the glyph, the title, the eyebrow). That the game is offline is said once, by the
             // eyebrow over the title (SettingsEyebrow).
+            if (hud.UsePhoneSettingsLayout && settingsSection == SettingsSection.Saves)
+            {
+                PhoneSaves();
+                return;
+            }
             hud.ScreenHeader(EpisodeHud.SettingsHeaderName, SettingsEyebrow(),
                 blockedRecovery ? "SAVE RECOVERY" : "SETTINGS & SAVES", UiTheme.Icon("settings"));
             hud.SettingsSections(SettingsWords.Sections, settingsSection, ShowSettingsSection);
@@ -162,6 +170,21 @@ namespace Gamesim.Episode
         /// </summary>
         private void GameMenu()
         {
+            if (hud.UsePhoneSettingsLayout)
+            {
+                var page = hud.OpenPhonePanel(SettingsWords.GameMenuTitle);
+                var close = page.AddClose(ClosePanels);
+                if (IsHouseClockHeld) page.Copy(SettingsWords.PausedLabel);
+                page.Copy(gameMenuSaveFailure ?? (gameMenuSavedAt.HasValue ? SettingsWords.SavedAtLine(gameMenuSavedAt.Value) : null));
+                page.Copy(SettingsWords.MainMenuKeepsLine);
+                page.ActionRow(SettingsWords.ResumeCaption, ClosePanels, primary: true).name = EpisodeHud.GameMenuRowPrefix + SettingsWords.ResumeCaption;
+                page.ActionRow(SettingsWords.SaveCaption, SaveFromGameMenu).name = EpisodeHud.GameMenuRowPrefix + SettingsWords.SaveCaption;
+                page.ActionRow(SettingsWords.SettingsCaption, () => ShowSettingsSection(SettingsSection.Saves)).name = EpisodeHud.GameMenuRowPrefix + SettingsWords.SettingsCaption;
+                page.ActionRow(SettingsWords.MainMenuCaption, OpenMainMenu);
+                hud.FinishPhoneSettingsPage("pause", EpisodeHud.GameMenuRowPrefix + SettingsWords.ResumeCaption, close.onClick.Invoke, phonePauseFocus);
+                phonePauseFocus = null;
+                return;
+            }
             hud.GameMenuCard(IsHouseClockHeld);
             hud.GameMenuRow(SettingsWords.ResumeCaption, ClosePanels, primary: true);
             hud.GameMenuRow(SettingsWords.SaveCaption, SaveFromGameMenu);
@@ -189,6 +212,7 @@ namespace Gamesim.Episode
                 : !string.IsNullOrEmpty(message) ? message
                 : "The season could not be saved.";
             if (!settingsOpen) return;
+            phonePauseFocus = EpisodeHud.GameMenuRowPrefix + SettingsWords.SaveCaption;
             Render();
             hud.FocusWhenWired(EpisodeHud.GameMenuRowPrefix + SettingsWords.SaveCaption);
         }

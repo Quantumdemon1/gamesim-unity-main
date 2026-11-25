@@ -18,6 +18,13 @@ namespace Gamesim.House
         private NavMeshAgent agent;
         private NavMeshPath candidatePath;
         private HouseCameraRig cameraRig;
+        private HouseTouchInput touchInput;
+        internal HouseCameraRig TouchCamera => CameraRig;
+
+        internal bool TouchAllowed(Vector2 where, int display) => isActiveAndEnabled && viewCamera != null
+            && viewCamera.targetDisplay == display && viewCamera.pixelRect.Contains(where)
+            && UnityEngine.Device.Screen.safeArea.Contains(where) && requestedInputEnabled
+            && !Gamesim.Presentation.CeremonyOverlays.OnScreen;
 
         /// <summary>
         /// The rig the view camera hangs under. Resolved through the camera rather than serialised,
@@ -51,6 +58,7 @@ namespace Gamesim.House
         private const float DoubleClickPixels = 24f;
         private float lastFloorClickTime = float.NegativeInfinity;
         private Vector2 lastFloorClickScreen;
+        private Vector3? floorWalkEnd;
 
         /// <summary>
         /// Whether this controller still owns the agent's speed.
@@ -114,6 +122,7 @@ namespace Gamesim.House
         {
             agent = GetComponent<NavMeshAgent>();
             candidatePath = new NavMeshPath();
+            if (Gamesim.Presentation.PhoneDisplay.Active) touchInput = gameObject.AddComponent<HouseTouchInput>();
         }
 
         private void Start()
@@ -202,6 +211,7 @@ namespace Gamesim.House
         /// </summary>
         public void StopHere()
         {
+            floorWalkEnd = null;
             var currentAgent = Agent;
             if (currentAgent != null && currentAgent.enabled && currentAgent.isOnNavMesh)
                 currentAgent.ResetPath();
@@ -237,6 +247,7 @@ namespace Gamesim.House
             if (!InputEnabled || !TryPlanPath(position, destinationSampleRadius, out var landing, out _)) return false;
             var currentAgent = Agent;
             if (!currentAgent.Warp(landing)) return false;
+            floorWalkEnd = null;
             currentAgent.ResetPath();
             currentAgent.velocity = Vector3.zero;
             RouteMetres = 0f;
@@ -301,6 +312,7 @@ namespace Gamesim.House
             }
 
             RouteMetres = metres;
+            floorWalkEnd = null;
             currentAgent.isStopped = false;
             return true;
         }
@@ -372,6 +384,19 @@ namespace Gamesim.House
         {
             ValidateActivityOwner();
             ApplyPauseState();
+            if (floorWalkEnd.HasValue && InputEnabled && HasArrived)
+            {
+                var visual = GetComponent<Gamesim.Presentation.CharacterPresentation>();
+                // Wait for the animation's own walk-exit threshold; a paused or superseded path
+                // never asks a different movement owner to settle.
+                if (visual == null || visual.IsStill)
+                {
+                    if (visual != null && Vector3.Distance(transform.position, floorWalkEnd.Value) <= Agent.stoppingDistance + .12f)
+                        visual.SettleFloorWalk();
+                    floorWalkEnd = null;
+                }
+            }
+            if (touchInput != null && touchInput.HasContacts) return;
             var mouse = Mouse.current;
             TickHover(mouse);
             if (viewCamera == null || mouse == null
@@ -386,7 +411,11 @@ namespace Gamesim.House
                 return;
             }
 
-            var screen = mouse.position.ReadValue();
+            HandleWorldPointer(mouse.position.ReadValue());
+        }
+
+        internal void HandleWorldPointer(Vector2 screen)
+        {
             if (!InputEnabled)
             {
                 if (activityOwner != null && requestedInputEnabled && ActivityInterruptRequested != null)
@@ -483,6 +512,7 @@ namespace Gamesim.House
                 if (TryMoveTo(hit.point))
                 {
                     ApplyGait(again || RouteMetres > RunRouteMetres);
+                    if (!IsRunning) floorWalkEnd = Agent.destination;
                     // Raised only once the move is actually taken. A click on a patch of floor with
                     // no route to it changes nothing the player can see, and an errand let go of on
                     // the strength of a move that never happened would leave them standing where

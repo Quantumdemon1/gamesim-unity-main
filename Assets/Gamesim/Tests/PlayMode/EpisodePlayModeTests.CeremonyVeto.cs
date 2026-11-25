@@ -56,6 +56,39 @@ namespace Gamesim.Tests.PlayMode
             .Where(rect => rect.name == "Meeting face").ToList();
 
         [UnityTest]
+        public IEnumerator CeremonyStage_WaitingNomineesListenThroughoutTheVetoQuestion()
+        {
+            yield return InstallStagedSeason(71, state => AtVetoMeeting(state, playerHolds: false));
+            var block = director.Snapshot.nominees.ToArray();
+            string holder = director.Snapshot.vetoHolderId;
+            var takeover = SceneComponents<CeremonyTakeover>().Single();
+            yield return PlayUntilTheVetoMeeting();
+            Assert.That(director.IsCeremonyStaged, Is.True);
+            director.SkipCeremonySummons();
+            yield return WaitFor(() => director.IsCeremonyStaged && takeover.Page == CeremonyTakeover.MeetingPage.Question,
+                18f, "the live meeting reached the veto question");
+            var nominees = block.Select(id => SceneComponents<HouseNpc>().Single(npc =>
+                npc.Id == id && npc.gameObject.activeInHierarchy).GetComponent<CharacterPresentation>()).ToArray();
+            Assert.That(nominees.Length, Is.GreaterThan(0));
+            Assert.That(nominees.All(npc => npc != null), Is.True);
+            var holderBody = SceneComponents<HouseNpc>().Single(npc => npc.Id == holder && npc.gameObject.activeInHierarchy).transform;
+            bool sawNomineeLook = false;
+            int frames = 0;
+            float deadline = Time.realtimeSinceStartup + 20f;
+            while (director.IsCeremonyStaged && takeover.Page == CeremonyTakeover.MeetingPage.Question)
+            {
+                sawNomineeLook |= nominees.Any(npc => npc.LookTarget == holderBody);
+                Assert.That(nominees.Any(npc => npc.IsTalking), Is.False, "The veto question put a waiting nominee into conversation.");
+                Assert.That(nominees.Any(npc => npc.IsSpeaking), Is.False, "A cut to a waiting nominee gave them a line.");
+                Assert.That(Time.realtimeSinceStartup, Is.LessThan(deadline), "The question did not finish.");
+                frames++;
+                yield return null;
+            }
+            Assert.That(sawNomineeLook, Is.True, "A waiting nominee looked at the veto holder during the question.");
+            Assert.That(frames, Is.GreaterThan(1));
+        }
+
+        [UnityTest]
         public IEnumerator CeremonyStage_TheVetoMeetingSeatsTheBlockInTheRedChairsAndPlaysOnTheLivingScreen()
         {
             yield return InstallStagedSeason(71, state => AtVetoMeeting(state, playerHolds: false));

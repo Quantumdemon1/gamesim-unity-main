@@ -207,7 +207,6 @@ namespace Gamesim.Episode
                     case CeremonyBeatKind.VetoDecided:
                     {
                         ClearCues();
-                        Hush();
                         Cut(ScreenCut());
                         if (beat.Skipped) break;
                         float decision = CeremonyPacing.VetoDecision(pace) / speed;
@@ -260,16 +259,12 @@ namespace Gamesim.Episode
                     }
                     case CeremonyBeatKind.Closed:
                         ClearCues();
-                        Hush();
                         Release();
                         break;
                 }
             }
 
-            /// <summary>Whoever the meeting has set talking, so nobody is left mid-word when it moves on or ends.</summary>
-            private readonly HashSet<string> talking = new HashSet<string>();
-
-            /// <summary>A nominee waiting on the holder's word, from their chair: the cut to them, a look to the holder, and the lips moving - body language, never a line.</summary>
+            /// <summary>A nominee waiting on the holder's word, from their chair: the cut to them and a silent look to the holder.</summary>
             private void Waiting(string nominee, string holder, float seconds)
             {
                 Cut(SeatShot(nominee));
@@ -277,24 +272,7 @@ namespace Gamesim.Episode
                 if (visual == null) return;
                 var towards = holder != null ? director.BodyFor(holder) : null;
                 if (towards != null) visual.LookAt(towards, seconds + 0.4f);
-                // The player's own body never speaks for them.
-                if (nominee == state.playerId) return;
-                visual.SetTalking(true);
-                talking.Add(nominee);
-                Schedule(seconds, () => Quiet(nominee));
-            }
-
-            private void Quiet(string id)
-            {
-                if (!talking.Remove(id)) return;
-                var visual = Visual(id);
-                if (visual != null) visual.SetTalking(false);
-            }
-
-            /// <summary>Nobody the meeting set talking is still talking: the decision is on the screen, or the house is let go.</summary>
-            private void Hush()
-            {
-                foreach (var id in talking.ToList()) Quiet(id);
+                visual.SetTalking(false);
             }
 
             /// <summary>The push-in on the red chairs while the decision is pending, as the vote's is before its last ballot.</summary>

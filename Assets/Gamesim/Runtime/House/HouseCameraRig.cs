@@ -73,6 +73,9 @@ namespace Gamesim.House
         // ordinary move and every input releases it, and nothing that never asks for one sees one.
         // ------------------------------------------------------------------------------------
 
+        /// <summary>Constrains this shot's interpolated pose before the lens is placed.</summary>
+        public delegate void FrameMovingSubject(ref Vector3 focus, ref float yaw, ref float pitch, ref float distance);
+
         /// <summary>A scripted framing: where, how far, how steep, which lens, and how much depth of field.</summary>
         public struct Shot
         {
@@ -85,6 +88,7 @@ namespace Gamesim.House
             /// <summary>The yaw to turn to, unless <see cref="KeepYaw"/>.</summary>
             public float Yaw;
             public bool KeepYaw;
+            public FrameMovingSubject FrameSubject;
             /// <summary>The vertical field of view; zero keeps the camera's own.</summary>
             public float FieldOfView;
             /// <summary>An orthographic lens of this half-height, for the overview.</summary>
@@ -1044,8 +1048,17 @@ namespace Gamesim.House
                 shownPitch = Mathf.Lerp(shownPitch, pitch, blend);
                 shownYaw = Mathf.LerpAngle(shownYaw, yaw, blend);
             }
+            var frameSubject = activeShot.HasValue ? activeShot.Value.FrameSubject : null;
+            if (frameSubject != null && !reducedMotion)
+            {
+                var focus = transform.position;
+                frameSubject(ref focus, ref shownYaw, ref shownPitch, ref distance);
+                transform.position = focus;
+            }
             transform.rotation = Quaternion.Euler(shownPitch, shownYaw, 0f);
             appliedDistance = OccludedDistance(distance);
+            // The crane must travel out of the portrait the viewer actually saw.
+            if (frameSubject != null && !reducedMotion) distance = appliedDistance;
             viewCamera.transform.localPosition = new Vector3(0f, 0f, -appliedDistance);
             viewCamera.transform.localRotation = Quaternion.identity;
             ApplyLens(blend);

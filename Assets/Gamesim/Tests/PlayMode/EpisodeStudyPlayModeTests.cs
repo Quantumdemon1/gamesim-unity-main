@@ -18,6 +18,9 @@ namespace Gamesim.Tests.PlayMode
         [UnityTest]
         public IEnumerator StudyDiary_ViewReviewCancelAndForgedChoicesNeverSpendOrRoll()
         {
+            // Escape closes the panel before the player finishes standing. During those frames
+            // the NPC clock can commit its own revision, independently of the player's study choice.
+            director.SuspendNpcAutonomyForDiagnostics();
             var before = director.Snapshot;
             yield return OpenDiaryFixturePanel();
             AssertEquivalent(before, director.Snapshot);

@@ -337,6 +337,7 @@ namespace Gamesim.Episode
             private float farewellAtGoodbyeBy;
             /// <summary>The warm spot over the hot seats, from the vote's card to the end of the goodbye.</summary>
             private Light keyLight;
+            private Light reactionFill;
             /// <summary>
             /// Whether the camera is still the stage's to hand back: from the summons until its
             /// release, or, for a staged exit, until the walk out hands it back itself behind the
@@ -820,11 +821,20 @@ namespace Gamesim.Episode
                 lamp.transform.SetPositionAndRotation(from, Quaternion.LookRotation(target - from));
             }
 
-            private void PutOutTheKeyLight()
+            private void RemoveStageLights()
             {
-                if (keyLight == null) return;
-                UnityEngine.Object.Destroy(keyLight.gameObject);
-                keyLight = null;
+                if (keyLight != null)
+                {
+                    keyLight.enabled = false;
+                    UnityEngine.Object.Destroy(keyLight.gameObject);
+                    keyLight = null;
+                }
+                if (reactionFill != null)
+                {
+                    reactionFill.enabled = false;
+                    UnityEngine.Object.Destroy(reactionFill.gameObject);
+                    reactionFill = null;
+                }
             }
 
             /// <summary>Everyone who has reached their place sits, or stands facing the way the place faces.</summary>
@@ -936,7 +946,7 @@ namespace Gamesim.Episode
                         bool last = beat.Index == KeysInPlay - 1;
                         Schedule(hold * 0.5f / speed, () =>
                         {
-                            Cut(SeatShot(safe));
+                            CutToReactionSeat(safe);
                             Relief(safe, last);
                         });
                         break;
@@ -950,10 +960,10 @@ namespace Gamesim.Episode
                             var waiting = WaitingOnTheLastKey();
                             if (waiting.Count == 0) return;
                             var wide = GroupShot(waiting, 4.6f);
-                            Cut(wide);
+                            Cut(wide, lightFaces: true);
                             var near = GroupShot(waiting, 3.1f);
                             near.Seconds = Mathf.Max(0.4f, beatSeconds / speed - 0.6f);
-                            Schedule(0.05f, () => Move(near));
+                            Schedule(0.05f, () => Move(near, lightFaces: true));
                         });
                         break;
                     case CeremonyBeatKind.BlockShown:
@@ -966,7 +976,7 @@ namespace Gamesim.Episode
                         for (int i = 0; i < block.Count; i++)
                         {
                             string nominee = block[i];
-                            Schedule(step * (i + 1), () => { Cut(SeatShot(nominee)); Nominated(nominee); });
+                            Schedule(step * (i + 1), () => { CutToReactionSeat(nominee); Nominated(nominee); });
                         }
                         break;
                     case CeremonyBeatKind.Closed:
@@ -1402,10 +1412,15 @@ namespace Gamesim.Episode
 
             // ------------------------------------------------------------ the shots
 
-            private void Cut(HouseCameraRig.Shot shot)
+            private void Cut(HouseCameraRig.Shot shot, bool lightFaces = false)
             {
                 shot.Seconds = CutSeconds;
-                Move(shot);
+                Move(shot, lightFaces);
+            }
+
+            private void CutToReactionSeat(string id)
+            {
+                Cut(SeatShot(id), lightFaces: id != null && placeOf.ContainsKey(id));
             }
 
             /// <summary>
@@ -1421,11 +1436,35 @@ namespace Gamesim.Episode
             /// makes the stage the view's source, so the summons' wide leaves free play's whole house
             /// whole until it lands (RS6a).
             /// </summary>
-            private void Move(HouseCameraRig.Shot shot)
+            private void Move(HouseCameraRig.Shot shot, bool lightFaces = false)
             {
+                if (lightFaces) LightReaction(shot);
+                else if (reactionFill != null) reactionFill.enabled = false;
                 shot.Rooms = ShotRooms;
                 shot.TravelFromRooms = director.ViewedRooms;
                 director.cameraRig.MoveTo(shot);
+            }
+
+            /// <summary>A low, neutral fill from the viewing side keeps a seated face readable under the coloured room practicals.</summary>
+            private void LightReaction(HouseCameraRig.Shot shot)
+            {
+                if (reactionFill == null)
+                {
+                    var lamp = new GameObject("Ceremony reaction fill");
+                    lamp.transform.SetParent(director.transform, false);
+                    reactionFill = lamp.AddComponent<Light>();
+                    reactionFill.type = LightType.Spot;
+                    reactionFill.shadows = LightShadows.None;
+                    reactionFill.color = new Color(0.94f, 0.97f, 1f);
+                    reactionFill.intensity = 4.5f;
+                    reactionFill.range = 4f;
+                    reactionFill.innerSpotAngle = 48f;
+                    reactionFill.spotAngle = 78f;
+                }
+                var view = Quaternion.Euler(0f, shot.Yaw, 0f);
+                var offset = view * new Vector3(-0.4f, 0.3f, -1.8f);
+                reactionFill.transform.SetPositionAndRotation(shot.Focus + offset, Quaternion.LookRotation(-offset));
+                reactionFill.enabled = true;
             }
 
             /// <summary>
@@ -1622,7 +1661,7 @@ namespace Gamesim.Episode
                 Debug.Log(Report("release"));
                 ClearCues();
                 // The goodbye's light goes with the goodbye; the house watches the walk in the room's own.
-                PutOutTheKeyLight();
+                RemoveStageLights();
                 // A staged exit keeps the camera: the walk out frames the house watching them go,
                 // the door and its close, and hands the camera back itself behind the dip.
                 bool exit = Kind == CeremonySting.EvictionKind && leavingId != null && director.departingId == leavingId;
@@ -1667,7 +1706,7 @@ namespace Gamesim.Episode
                 if (lookMark != null) { UnityEngine.Object.Destroy(lookMark.gameObject); lookMark = null; }
                 foreach (var mark in downMarks.Values) if (mark != null) UnityEngine.Object.Destroy(mark.gameObject);
                 downMarks.Clear();
-                PutOutTheKeyLight();
+                RemoveStageLights();
                 // A door the exit built and never walked through goes with the house getting up.
                 director.StrikeWalkOutDoorIfNobodyWalks();
                 // Whenever the stage still holds the camera: a release that kept it for the exit,

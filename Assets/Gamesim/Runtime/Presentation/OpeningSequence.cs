@@ -129,6 +129,9 @@ namespace Gamesim.Presentation
 
             /// <summary>The walk-in's crane: inside the house facing the yard, up, and over the top.</summary>
             public IReadOnlyList<HouseCameraRig.Shot> WalkInKeys = new HouseCameraRig.Shot[0];
+            /// <summary>The live stage can frame its actual gathering place after the door reveal.</summary>
+            public Func<IReadOnlyList<HouseCameraRig.Shot>> StagedWalkInKeys;
+            public IReadOnlyList<HouseCameraRig.Shot> WalkInFraming => StagedWalkInKeys?.Invoke() ?? WalkInKeys;
 
             /// <summary>Optional. Without it every houseguest is introduced on a card instead of through the door.</summary>
             public IStage Stage;

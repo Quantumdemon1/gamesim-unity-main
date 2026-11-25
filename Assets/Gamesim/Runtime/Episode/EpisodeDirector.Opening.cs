@@ -122,6 +122,7 @@ namespace Gamesim.Episode
                 MarkBeat = MarkOpeningBeat,
                 Rig = cameraRig,
                 WalkInKeys = WalkInKeys,
+                StagedWalkInKeys = openingStage == null ? null : openingStage.WalkInFraming,
                 Stage = openingStage,
                 // The tour at every season's opening, as the reference build shows it in every new
                 // game's first week - to a player who has been through it before, offered rather

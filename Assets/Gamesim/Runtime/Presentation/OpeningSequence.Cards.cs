@@ -843,7 +843,7 @@ namespace Gamesim.Presentation
             yield return Hold(HouseEntryHold - 0.1f);
             // The walk-in opens inside the house looking out at the yard; the cut happens under this
             // card, so the house is never seen jumping to it.
-            var keys = settings.WalkInKeys;
+            var keys = settings.WalkInFraming;
             if (settings.Rig != null && keys != null && keys.Count > WalkInOver)
             {
                 var first = keys[WalkInPushFrom];
@@ -884,7 +884,7 @@ namespace Gamesim.Presentation
             }
 
             var rig = settings.Rig;
-            var keys = settings.WalkInKeys;
+            var keys = settings.WalkInFraming;
             var world = settings.Stage != null && settings.Stage.Placed ? settings.Stage : null;
             var order = PlayerFirst();
 

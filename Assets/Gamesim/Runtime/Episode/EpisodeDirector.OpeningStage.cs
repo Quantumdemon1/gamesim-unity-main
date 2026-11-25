@@ -192,6 +192,82 @@ namespace Gamesim.Episode
             /// <summary>The reference build's push-in as the door opens: a metre closer in half a second.</summary>
             public HouseCameraRig.Shot PushInShot => YardPushInShot;
 
+            private HouseCameraRig.Shot[] walkInFraming;
+
+            /// <summary>Frame the first runner's actual yard route before the crane opens out over the house.</summary>
+            public IReadOnlyList<HouseCameraRig.Shot> WalkInFraming()
+            {
+                if (!Active) return null;
+                if (walkInFraming != null) return walkInFraming;
+                var start = director.player.transform.position;
+                var path = new NavMeshPath();
+                if (!NavMesh.CalculatePath(start, director.initialPlayerPosition, filter, path)
+                    || path.status != NavMeshPathStatus.PathComplete) return null;
+                var corners = path.corners;
+                if (corners.Length < 2) return null;
+
+                // Check the stretch covered during the push against actual scenery, including
+                // decorative dividers without sight colliders.
+                Vector3 AlongRoute(float metres)
+                {
+                    var point = start;
+                    foreach (var next in corners)
+                    {
+                        float length = Vector3.Distance(point, next);
+                        if (length >= metres) return Vector3.MoveTowards(point, next, metres);
+                        metres -= length;
+                        point = next;
+                    }
+                    return point;
+                }
+                var bone = Visual(director.projected.playerId)?.HeadBone;
+                float height = bone != null ? Mathf.Clamp(bone.position.y - start.y, 1.1f, 1.95f) : 1.45f;
+                var head = start + Vector3.up * height;
+                var middle = AlongRoute(1.6f) + Vector3.up * height;
+                var far = AlongRoute(3.2f) + Vector3.up * height;
+                var approach = head - far;
+                float front = Mathf.Atan2(approach.x, approach.z) * Mathf.Rad2Deg;
+                var scenery = Object.FindObjectsByType<MeshRenderer>().Where(r => r.gameObject.scene == director.gameObject.scene
+                    && r.enabled && !r.forceRenderingOff && r.bounds.SqrDistance(middle) < 100f
+                    && r.bounds.max.y > head.y - 0.25f
+                    && r.GetComponentInParent<CharacterPresentation>() == null && r.GetComponentInParent<Canvas>() == null)
+                    .Select(r => r.bounds).ToList();
+                var from = WalkInKeys[OpeningSequence.WalkInPushFrom];
+                var to = WalkInKeys[OpeningSequence.WalkInDoorway];
+                int best = int.MaxValue;
+                float yaw = front;
+                float elevation = 0f;
+                // Stay on the front side of the route. If the divider cuts across the low push,
+                // try looking over it while keeping the runner's face toward the lens.
+                foreach (float lift in new[] { 0f, 8f, 16f })
+                {
+                    foreach (float turn in new[] { 0f, 25f, -25f, 45f, -45f })
+                    {
+                        float angle = front + turn;
+                        var outer = middle + Quaternion.Euler(from.Pitch + lift, angle, 0f) * Vector3.back * from.Distance;
+                        var inner = middle + Quaternion.Euler(to.Pitch + lift, angle, 0f) * Vector3.back * to.Distance;
+                        int hits = scenery.Count(b => b.Contains(outer) || b.Contains(inner)
+                            || Crosses(b, head, outer) || Crosses(b, middle, outer) || Crosses(b, far, outer)
+                            || Crosses(b, head, inner) || Crosses(b, middle, inner) || Crosses(b, far, inner));
+                        if (hits >= best) continue;
+                        best = hits;
+                        yaw = angle;
+                        elevation = lift;
+                        if (best == 0) break;
+                    }
+                    if (best == 0) break;
+                }
+
+                walkInFraming = (HouseCameraRig.Shot[])WalkInKeys.Clone();
+                from.Focus = to.Focus = middle;
+                from.Yaw = to.Yaw = yaw;
+                from.Pitch += elevation;
+                to.Pitch += elevation;
+                walkInFraming[OpeningSequence.WalkInPushFrom] = from;
+                walkInFraming[OpeningSequence.WalkInDoorway] = to;
+                return walkInFraming;
+            }
+
             public float BodyReadiness
             {
                 get
@@ -240,7 +316,7 @@ namespace Gamesim.Episode
                 director.player.Agent.ResetPath();
                 Physics.SyncTransforms();
                 director.Project();
-                set = OpeningDoorSet.Build(director.gameObject.scene);
+                set = OpeningDoorSet.Build(director.gameObject.scene, DoorLayout.Yard, entranceLighting: true);
                 Placed = true;
                 return true;
             }

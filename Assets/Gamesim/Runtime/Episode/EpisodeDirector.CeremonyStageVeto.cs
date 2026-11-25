@@ -223,7 +223,7 @@ namespace Gamesim.Episode
                             string first = block[0], second = block[1];
                             Schedule(decision * 0.4f, () =>
                             {
-                                Cut(PairShot(first, second), lightFaces: true);
+                                Cut(PairShot(first, second), ReactionLighting.Seated);
                                 Glance(first, second, 1.2f);
                                 Glance(second, first, 1.2f);
                             });
@@ -279,11 +279,11 @@ namespace Gamesim.Episode
             private void PushInOnThePair(string first, string second, float seconds)
             {
                 var wide = PairShot(first, second);
-                Cut(wide, lightFaces: true);
+                Cut(wide, ReactionLighting.Seated);
                 var near = PairShot(first, second);
                 near.Distance = Mathf.Max(0.9f, wide.Distance - 0.7f);
                 near.Seconds = Mathf.Max(0.4f, seconds - 0.1f);
-                Schedule(0.05f, () => Move(near, lightFaces: true));
+                Schedule(0.05f, () => Move(near, ReactionLighting.Seated));
             }
 
             /// <summary>Relief in the red chair: a look to the holder and, where the body has it, the seated fist pump.</summary>

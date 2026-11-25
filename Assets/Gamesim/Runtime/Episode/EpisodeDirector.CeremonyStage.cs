@@ -960,10 +960,10 @@ namespace Gamesim.Episode
                             var waiting = WaitingOnTheLastKey();
                             if (waiting.Count == 0) return;
                             var wide = GroupShot(waiting, 4.6f);
-                            Cut(wide, lightFaces: true);
+                            Cut(wide, ReactionLighting.Seated);
                             var near = GroupShot(waiting, 3.1f);
                             near.Seconds = Mathf.Max(0.4f, beatSeconds / speed - 0.6f);
-                            Schedule(0.05f, () => Move(near, lightFaces: true));
+                            Schedule(0.05f, () => Move(near, ReactionLighting.Seated));
                         });
                         break;
                     case CeremonyBeatKind.BlockShown:
@@ -976,7 +976,7 @@ namespace Gamesim.Episode
                         for (int i = 0; i < block.Count; i++)
                         {
                             string nominee = block[i];
-                            Schedule(step * (i + 1), () => { CutToReactionSeat(nominee); Nominated(nominee); });
+                            Schedule(step * (i + 1), () => { CutToReactionSeat(nominee, ReactionLighting.DowncastNominee); Nominated(nominee); });
                         }
                         break;
                     case CeremonyBeatKind.Closed:
@@ -1412,15 +1412,17 @@ namespace Gamesim.Episode
 
             // ------------------------------------------------------------ the shots
 
-            private void Cut(HouseCameraRig.Shot shot, bool lightFaces = false)
+            private enum ReactionLighting { None, Seated, DowncastNominee }
+
+            private void Cut(HouseCameraRig.Shot shot, ReactionLighting lighting = ReactionLighting.None)
             {
                 shot.Seconds = CutSeconds;
-                Move(shot, lightFaces);
+                Move(shot, lighting);
             }
 
-            private void CutToReactionSeat(string id)
+            private void CutToReactionSeat(string id, ReactionLighting lighting = ReactionLighting.Seated)
             {
-                Cut(SeatShot(id), lightFaces: id != null && placeOf.ContainsKey(id));
+                Cut(SeatShot(id), id != null && placeOf.ContainsKey(id) ? lighting : ReactionLighting.None);
             }
 
             /// <summary>
@@ -1436,9 +1438,9 @@ namespace Gamesim.Episode
             /// makes the stage the view's source, so the summons' wide leaves free play's whole house
             /// whole until it lands (RS6a).
             /// </summary>
-            private void Move(HouseCameraRig.Shot shot, bool lightFaces = false)
+            private void Move(HouseCameraRig.Shot shot, ReactionLighting lighting = ReactionLighting.None)
             {
-                if (lightFaces) LightReaction(shot);
+                if (lighting != ReactionLighting.None) LightReaction(shot, lighting);
                 else if (reactionFill != null) reactionFill.enabled = false;
                 shot.Rooms = ShotRooms;
                 shot.TravelFromRooms = director.ViewedRooms;
@@ -1446,7 +1448,7 @@ namespace Gamesim.Episode
             }
 
             /// <summary>A low, neutral fill from the viewing side keeps a seated face readable under the coloured room practicals.</summary>
-            private void LightReaction(HouseCameraRig.Shot shot)
+            private void LightReaction(HouseCameraRig.Shot shot, ReactionLighting lighting)
             {
                 if (reactionFill == null)
                 {
@@ -1455,14 +1457,17 @@ namespace Gamesim.Episode
                     reactionFill = lamp.AddComponent<Light>();
                     reactionFill.type = LightType.Spot;
                     reactionFill.shadows = LightShadows.None;
-                    reactionFill.color = new Color(0.94f, 0.97f, 1f);
-                    reactionFill.intensity = 4.5f;
                     reactionFill.range = 4f;
                     reactionFill.innerSpotAngle = 48f;
                     reactionFill.spotAngle = 78f;
                 }
+                // A nominee drops their chin into the table's red practical. Raise the cooler bounce
+                // from just below eye height for that beat. Ordinary seated portraits need a softer key.
+                bool downcast = lighting == ReactionLighting.DowncastNominee;
+                reactionFill.color = downcast ? new Color(0.65f, 0.98f, 1f) : new Color(0.94f, 0.97f, 1f);
+                reactionFill.intensity = downcast ? 4.5f : 1.45f;
                 var view = Quaternion.Euler(0f, shot.Yaw, 0f);
-                var offset = view * new Vector3(-0.4f, 0.3f, -1.8f);
+                var offset = view * (downcast ? new Vector3(-0.25f, -0.12f, -1.75f) : new Vector3(-0.4f, 0.3f, -1.8f));
                 reactionFill.transform.SetPositionAndRotation(shot.Focus + offset, Quaternion.LookRotation(-offset));
                 reactionFill.enabled = true;
             }

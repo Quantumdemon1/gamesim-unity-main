@@ -94,8 +94,6 @@ namespace Gamesim.Presentation
         private const float BurstRamp = 0.5f;
         private const float BurstSettled = 0.2f;
         private const float BurstDecay = 2f;
-        private const float LightPeak = 5f;
-        private const float LightSettled = 1f;
         private const float DarkRate = 3f;
         private const int SparkleCount = 25;
         private const float EmblemRate = 3f;
@@ -116,6 +114,7 @@ namespace Gamesim.Presentation
         private Material burstMaterial, emblemMaterial;
         private Renderer burstRenderer;
         private Light burstLight;
+        private float peakSpill = 5f, settledSpill = 1f;
         private Sparkle[] sparkles = new Sparkle[0];
         private Texture2D radial;
         private Color burstTint, emblemDeep, emblemBright;
@@ -241,7 +240,7 @@ namespace Gamesim.Presentation
             jittering = false;
             openness = 1f;
             burstLevel = BurstSettled;
-            lightLevel = LightSettled;
+            lightLevel = settledSpill;
             ApplyPose(0f, 0f);
             ApplyLight();
             HideSparkles();
@@ -277,7 +276,7 @@ namespace Gamesim.Presentation
             rampFromLight = lightLevel;
             if (!reduced) return;
             burstLevel = BurstSettled;
-            lightLevel = LightSettled;
+            lightLevel = settledSpill;
             ApplyLight();
         }
 
@@ -308,17 +307,17 @@ namespace Gamesim.Presentation
             if (lit)
             {
                 burstClock += dt;
-                if (reduced) { burstLevel = BurstSettled; lightLevel = LightSettled; }
+                if (reduced) { burstLevel = BurstSettled; lightLevel = settledSpill; }
                 else if (burstClock < BurstRamp)
                 {
                     float t = burstClock / BurstRamp;
                     burstLevel = Mathf.Lerp(rampFromLevel, calm ? BurstSettled : 1f, t);
-                    lightLevel = Mathf.Lerp(rampFromLight, calm ? LightSettled : LightPeak, t);
+                    lightLevel = Mathf.Lerp(rampFromLight, calm ? settledSpill : peakSpill, t);
                 }
                 else
                 {
                     burstLevel = Approach(burstLevel, BurstSettled, BurstDecay, dt);
-                    lightLevel = Approach(lightLevel, LightSettled, BurstDecay, dt);
+                    lightLevel = Approach(lightLevel, settledSpill, BurstDecay, dt);
                 }
             }
             else if (reduced) { burstLevel = 0f; lightLevel = 0f; }
@@ -629,9 +628,15 @@ namespace Gamesim.Presentation
             var lamp = new GameObject("Burst light");
             lamp.layer = 0;
             lamp.transform.SetParent(transform, false);
-            // Set the welcome spill to one side of the walking line, including the forward posing mark.
+            // The opening holds on the entrant from the threshold through the posing mark.
+            // Put the key on the camera side, clear of both marks, with a steady fill after the flash.
+            if (entranceLighting)
+            {
+                settledSpill = 12f;
+                peakSpill = 19f;
+            }
             lamp.transform.localPosition = entranceLighting
-                ? new Vector3(-1.1f, 2.5f, DoorCentre.z + 1.65f)
+                ? new Vector3(0.15f, 2.3f, DoorCentre.z + 0.85f)
                 : new Vector3(-3.0f, 1.8f, DoorCentre.z);
             burstLight = lamp.AddComponent<Light>();
             burstLight.type = LightType.Point;

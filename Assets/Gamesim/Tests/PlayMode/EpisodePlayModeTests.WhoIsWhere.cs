@@ -442,14 +442,16 @@ namespace Gamesim.Tests.PlayMode
             var beacons = director.TravelBeacons;
             Assert.That(beacons, Is.Not.Null, "The icons were built.");
             int shown = 0;
-            foreach (var room in new[] { "Living", "Bedroom", "Kitchen", "Private" })
+            // An icon stands only at a doorway from the player's room (the games room here), so the icons on screen
+            // are its neighbours': each one that shows must show its room's count.
+            foreach (var room in director.WhoIsWhere().Select(r => r.Name))
             {
                 int count = beacons.ShownCount(room);
                 if (count < 0) continue;
                 shown++;
                 Assert.That(count, Is.EqualTo(director.HouseguestsIn(room)), room + "'s icon shows its count.");
             }
-            Assert.That(shown, Is.GreaterThan(0), "Some of the four rooms' icons are on screen to read.");
+            Assert.That(shown, Is.GreaterThan(0), "Some rooms' icons, beside the games room, are on screen to read.");
         }
 
         /// <summary>

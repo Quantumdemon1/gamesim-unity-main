@@ -57,7 +57,7 @@ namespace Gamesim.Uma.Tests
                         expectedDyes.Add(AppearanceEditing.FabricChannel(slot));
                         Assert.That(hasDye, Is.True, context);
                         Assert.That(Mathf.Abs(saved.r - tint.Value.r) + Mathf.Abs(saved.g - tint.Value.g) + Mathf.Abs(saved.b - tint.Value.b),
-                            Is.LessThan(.01f), id + "'s " + slot + " is the colour in their photo.");
+                            Is.LessThan(.01f), id + "'s " + slot + " keeps its look's colour.");
                     }
                 }
                 Assert.That(outfit.colors.Where(color => AppearanceEditing.IsFabricChannel(color.id)).Select(color => color.id),

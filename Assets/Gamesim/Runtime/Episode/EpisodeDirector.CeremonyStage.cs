@@ -332,6 +332,8 @@ namespace Gamesim.Episode
             /// <summary>The eviction's evicted and its survivor, once the result is read.</summary>
             private string leavingId, survivorId;
             private float goodbyeUntil;
+            private bool goodbyeAwaitingBody;
+            private float goodbyeBodyReadyBy;
             /// <summary>Whether the goodbye awaits its owned two-party noncontact gesture, and until when.</summary>
             private bool farewellAtGoodbye;
             private float farewellAtGoodbyeBy;
@@ -361,6 +363,7 @@ namespace Gamesim.Episode
             public string StandingId { get; private set; }
             public bool Active => begun && !ended;
             public bool Narrating => Active && Step != CeremonyStageStep.Release;
+            public bool CanSkipGoodbye => Step == CeremonyStageStep.Goodbye || goodbyeAwaitingBody;
             /// <summary>
             /// Whether a press on the devices is the stage's: while it narrates, and while the
             /// evicted walk out under it. The skip chip is up exactly then, naming that press, and
@@ -723,7 +726,14 @@ namespace Gamesim.Episode
                         break;
                     case CeremonyStageStep.Playing:
                         RunCues(now);
-                        if (!CardPlaying) Release();
+                        if (goodbyeAwaitingBody)
+                        {
+                            if (director.departingId != leavingId || director.BodyFor(leavingId) == null) Release();
+                            else if (now >= pressGuardUntil && CeremonyTakeover.SkipPressed()) director.SkipWalkOut();
+                            else if (Visual(leavingId)?.IsBodyAssembling == false) BeginGoodbye(leavingId);
+                            else if (now >= goodbyeBodyReadyBy) Release();
+                        }
+                        else if (!CardPlaying) Release();
                         break;
                     case CeremonyStageStep.Goodbye:
                         RunCues(now);
@@ -759,7 +769,7 @@ namespace Gamesim.Episode
                 foreach (var pair in places)
                 {
                     string id = pair.Key;
-                    if (id == state.playerId || arrived.Contains(id) || meetings.CeremonyActorHolds(id) || LetGo(id)) continue;
+                    if (id == state.playerId || stoodUp.Contains(id) || arrived.Contains(id) || meetings.CeremonyActorHolds(id) || LetGo(id)) continue;
                     if (meetings.CeremonyPlace(id) != null) continue;
                     if (UsesShortSummons && entrance == null) entrance = SummonsEntrance();
                     if (meetings.JoinCeremonyStage(id, pair.Value, entrance, out var why))
@@ -1110,7 +1120,17 @@ namespace Gamesim.Episode
                             && placeOf.ContainsKey(evicted) && !LetGo(evicted) && director.BodyFor(evicted) != null
                             && director.isActiveAndEnabled && director.cameraRig != null)
                         {
-                            BeginGoodbye(evicted);
+                            var visual = Visual(evicted);
+                            if (visual != null && visual.IsBodyAssembling && director.WalkerRoomOf(visual.transform) != Room)
+                            {
+                                // The provider is already assembling this body. Keep the current shot
+                                // until the off-room subject can draw, or hand over to the walk on timeout.
+                                StandUp(evicted);
+                                goodbyeAwaitingBody = true;
+                                goodbyeBodyReadyBy = Time.unscaledTime + CharacterPresentation.AssemblyTimeoutSeconds;
+                                pressGuardUntil = Time.unscaledTime + PressGuard;
+                            }
+                            else BeginGoodbye(evicted);
                             break;
                         }
                         // A skip can close the card before the result's cues ran: the evicted still
@@ -1325,6 +1345,7 @@ namespace Gamesim.Episode
             private void BeginGoodbye(string id)
             {
                 leavingId = id;
+                goodbyeAwaitingBody = false;
                 Step = CeremonyStageStep.Goodbye;
                 float now = Time.unscaledTime;
                 goodbyeUntil = now + GoodbyeSeconds;
@@ -1406,7 +1427,7 @@ namespace Gamesim.Episode
             /// <summary>The goodbye over, from the director's side: a press that went straight to the shut door.</summary>
             public void EndTheGoodbye()
             {
-                if (Active && Step == CeremonyStageStep.Goodbye) Release();
+                if (Active && CanSkipGoodbye) Release();
             }
 
             // ------------------------------------------------------------ the walk out, watched
@@ -1694,6 +1715,7 @@ namespace Gamesim.Episode
             {
                 if (!Active || Step == CeremonyStageStep.Release) return;
                 EndTheGoodbyeFarewell("the goodbye released");
+                goodbyeAwaitingBody = false;
                 Step = CeremonyStageStep.Release;
                 releasedAt = Time.unscaledTime;
                 Debug.Log(Report("release"));

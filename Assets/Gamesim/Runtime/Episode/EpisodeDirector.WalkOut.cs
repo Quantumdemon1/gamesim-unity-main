@@ -588,7 +588,7 @@ namespace Gamesim.Episode
                 FinishWalkOut();
                 return;
             }
-            if (IsCeremonyStaged && ceremonyStage.Step == CeremonyStageStep.Goodbye) SkipTheGoodbye();
+            if (IsCeremonyStaged && ceremonyStage.CanSkipGoodbye) SkipTheGoodbye();
         }
 
         /// <summary>

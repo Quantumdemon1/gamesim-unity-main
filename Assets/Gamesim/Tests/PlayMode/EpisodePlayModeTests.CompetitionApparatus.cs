@@ -886,8 +886,8 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(finger, Is.Not.Null, "Signals measures the actual humanoid fingertip.");
             Assert.That(pose, Is.Not.Null);
             var pad = apparatus.HandContact(false);
-            Debug.Log($"[Signals contact] {phase} frame={Time.frameCount} animator={body.GetInstanceID()} finger={finger.GetInstanceID()} "
-                + $"apparatus={apparatus.GetInstanceID()} fingerWorld={finger.position:F4} padWorld={pad:F4} "
+            Debug.Log($"[Signals contact] {phase} frame={Time.frameCount} animator={body.GetEntityId()} finger={finger.GetEntityId()} "
+                + $"apparatus={apparatus.GetEntityId()} fingerWorld={finger.position:F4} padWorld={pad:F4} "
                 + $"distance={Vector3.Distance(finger.position, pad):F4} solver={pose.RightHandError:F4} hasContact={pose.HasContact}");
         }
 

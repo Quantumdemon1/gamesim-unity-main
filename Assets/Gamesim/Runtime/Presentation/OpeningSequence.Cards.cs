@@ -806,6 +806,7 @@ namespace Gamesim.Presentation
         private IEnumerator HouseEntry()
         {
             Section(Night);
+            if (!Motionless) settings.PrepareWalkIn?.Invoke();
             var card = HudPrimitives.Glass("Card", stage);
             card.anchorMin = card.anchorMax = new Vector2(0.5f, 0.5f);
             card.sizeDelta = new Vector2(880f, 272f);
@@ -896,6 +897,7 @@ namespace Gamesim.Presentation
                 yield break;
             }
 
+            WalkInSeconds = 0f;
             var first = keys[WalkInPushFrom];
             first.Seconds = 0.01f;
             TakeShot(rig, first);
@@ -914,6 +916,7 @@ namespace Gamesim.Presentation
                 }
                 // A timed move starts from wherever the camera is, so the push-in waits for the cut
                 // to its first key to land - a frame at most, bounded in case it never reports.
+                WalkInSeconds = clock;
                 if (!pushing && clock > 0f && (!rig.IsTravelling || clock >= 0.05f)) { TakeShot(rig, keys[WalkInDoorway]); pushing = true; }
                 if (world != null)
                     while (sent < order.Count && clock >= 0.3f + 0.35f * sent) world.SendHome(order[sent++].id);

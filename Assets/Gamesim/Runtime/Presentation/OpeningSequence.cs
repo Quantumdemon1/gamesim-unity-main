@@ -129,6 +129,8 @@ namespace Gamesim.Presentation
 
             /// <summary>The walk-in's crane: inside the house facing the yard, up, and over the top.</summary>
             public IReadOnlyList<HouseCameraRig.Shot> WalkInKeys = new HouseCameraRig.Shot[0];
+            /// <summary>Routes the lead to the doorway while its preceding opaque card is up.</summary>
+            public Action PrepareWalkIn;
             /// <summary>The live stage can frame its actual gathering place after the door reveal.</summary>
             public Func<IReadOnlyList<HouseCameraRig.Shot>> StagedWalkInKeys;
             public IReadOnlyList<HouseCameraRig.Shot> WalkInFraming => StagedWalkInKeys?.Invoke() ?? WalkInKeys;
@@ -222,6 +224,8 @@ namespace Gamesim.Presentation
 
         /// <summary>The beat on screen, or null between beats and when nothing is playing.</summary>
         public string CurrentBeat { get; private set; }
+        /// <summary>The active walk-in's unscaled shot clock, shared with its moving cast.</summary>
+        public float WalkInSeconds { get; private set; }
 
         /// <summary>The houseguest being introduced - through the door, on a card or in person - or null.</summary>
         public string CurrentGuestId { get; private set; }

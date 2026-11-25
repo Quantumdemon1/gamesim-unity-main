@@ -68,7 +68,8 @@ namespace Gamesim.Episode
             private readonly Dictionary<string, float> retrying = new Dictionary<string, float>();
             private const float RetrySeconds = 6f;
             private readonly object playerOwner = new object();
-            private Vector3 deck, door, mark, exit;
+            private Vector3 deck, door, mark, exit, walkInMark;
+            private bool hasWalkInMark;
             private OpeningDoorSet set;
             private bool begun, ended;
             // Who is waiting for the leaves to clear the whole body and route before walking through.
@@ -132,6 +133,13 @@ namespace Gamesim.Episode
                 if (!DoorRouteClears(door, radius, fullyOpen: true))
                 { Debug.Log("Opening stage: even fully open, the leaves cannot clear the house's bodies on the reveal route."); return false; }
 
+                // The house/yard opening is 2.8 m wide at x = 0, z = 10. The lead starts
+                // behind that opening. The other guests keep their original east-yard places.
+                foreach (var spot in new[] { new Vector3(.65f, 0f, 13.1f), new Vector3(.4f, 0f, 12.6f) })
+                    if (Accept(spot, accepted, out walkInMark, "the walk-in lead's place")
+                        && Route(exit, walkInMark) && Route(walkInMark, director.initialPlayerPosition))
+                    { hasWalkInMark = true; break; }
+
                 foreach (var spot in Grid(QueueX, QueueZ).OrderBy(spot => (spot - DeckMark).sqrMagnitude))
                     if ((spot - DeckMark).magnitude >= 1.0f && Accept(spot, accepted, out var sampled, "a place to wait") && Route(sampled, deck)) queue.Add(sampled);
                 foreach (var spot in Grid(GatherX, GatherZ).OrderBy(spot => (spot - ExitMark).sqrMagnitude))
@@ -193,125 +201,88 @@ namespace Gamesim.Episode
             public HouseCameraRig.Shot PushInShot => YardPushInShot;
 
             private HouseCameraRig.Shot[] walkInFraming;
-            private Bounds[] walkInScenery, walkInPeople;
             private CharacterPresentation lead;
-            private CharacterPresentation[] otherWalkers;
-            private Transform upperLip, leftEye, rightEye;
-            private float lastWalkYaw, lastWalkPitch, lastWalkDistance;
-            private static readonly float[] walkInTurns = { 0f, 25f, -25f, 45f, -45f };
-            private static readonly float[] walkInLifts = { 0f, 10f, 20f };
+            private float walkInHeadHeight;
+            private Light walkInLight;
 
-            /// <summary>The opening starts on the first person sent home, before the crane reveals the house.</summary>
+            // Placed outlives a failed binding. Only a bound stage with a real player who
+            // completed their personal reveal can claim that player for another walk.
+            private bool HasWalkInLead => Active && begun && hasWalkInMark && director.projected != null
+                && director.player != null && director.player.isActiveAndEnabled && director.player.Agent != null
+                && director.player.Agent.isActiveAndEnabled && director.player.Agent.isOnNavMesh
+                && gatherFor.ContainsKey(director.projected.playerId);
+
+            // Called while the opaque house-entry card covers the yard, after every personal reveal.
+            public void PrepareWalkIn()
+            {
+                if (!HasWalkInLead) return;
+                string id = director.projected.playerId;
+                if (!Arrived(id, gatherFor[id])) return;
+                Visual(id)?.SetFacing(200f);
+                Send(id, walkInMark);
+            }
+
             public IReadOnlyList<HouseCameraRig.Shot> WalkInFraming()
             {
-                if (!Active) return null;
+                if (!HasWalkInLead) return null;
                 if (walkInFraming != null) return walkInFraming;
                 lead = Visual(director.projected.playerId);
-                if (lead == null) return null;
-                // UMA exposes the same upper-lip landmark across the cast; other humanoids use the eyes.
-                upperLip = lead.GetComponentsInChildren<Transform>().FirstOrDefault(bone => bone.name == "LipsSuperior");
-                var animator = lead.GetComponentsInChildren<Animator>().FirstOrDefault(a => a.isActiveAndEnabled && a.isHuman
-                    && a.isInitialized && a.GetBoneTransform(HumanBodyBones.Head) == lead.HeadBone);
-                if (animator != null)
-                {
-                    leftEye = animator.GetBoneTransform(HumanBodyBones.LeftEye);
-                    rightEye = animator.GetBoneTransform(HumanBodyBones.RightEye);
-                }
-                otherWalkers = director.Housemates().Select(n => n.GetComponent<CharacterPresentation>())
-                    .Where(person => person != null && person != lead).ToArray();
-                walkInPeople = new Bounds[otherWalkers.Length];
-                // Decorative walls may have no collider. Static scenery stays put during this
-                // push; each guest's occupied space is instead refreshed from their drawn pose.
-                var start = lead.transform.position;
-                walkInScenery = Object.FindObjectsByType<MeshRenderer>().Where(r => r.gameObject.scene == director.gameObject.scene
-                    && r.enabled && !r.forceRenderingOff && r.bounds.SqrDistance(start) < 20f * 20f
-                    && r.bounds.max.y > start.y + 1f && r.GetComponentInParent<CharacterPresentation>() == null
-                    && r.GetComponentInParent<Canvas>() == null).Select(r => r.bounds).ToArray();
+                // Advancing directly through the entry card can interrupt the setup walk.
+                // In that case the sequence keeps its established wide doorway keys.
+                if (lead == null || !Arrived(director.projected.playerId, walkInMark))
+                    return walkInFraming = WalkInKeys;
+                walkInHeadHeight = lead.HeadBone != null ? lead.HeadBone.position.y - lead.transform.position.y : 1.5f;
                 walkInFraming = (HouseCameraRig.Shot[])WalkInKeys.Clone();
-                var front = lead.transform.forward;
-                float yaw = Mathf.Atan2(-front.x, -front.z) * Mathf.Rad2Deg;
                 for (int i = OpeningSequence.WalkInPushFrom; i <= OpeningSequence.WalkInDoorway; i++)
                 {
-                    walkInFraming[i].Focus = WalkInHead(lead);
-                    walkInFraming[i].Yaw = yaw;
+                    walkInFraming[i].Focus = lead.transform.position + Vector3.up * (walkInHeadHeight - .26f);
                     walkInFraming[i].FrameSubject = FrameWalkingLead;
                 }
                 return walkInFraming;
             }
 
-            private static Vector3 WalkInHead(CharacterPresentation person) => person.HeadBone != null
-                ? person.HeadBone.position : person.transform.position + Vector3.up * 1.5f;
-
-            private float ClearWalkInDistance(Vector3 head, float yaw, float pitch, float distance)
-            {
-                var ray = new Ray(head, Quaternion.Euler(pitch, yaw, 0f) * Vector3.back);
-                float clear = distance;
-                void Check(Bounds bounds)
-                {
-                    if (bounds.IntersectRay(ray, out float hit) && hit >= 0f) clear = Mathf.Min(clear, hit - .18f);
-                }
-                foreach (var bounds in walkInScenery)
-                    if (!bounds.Contains(head)) Check(bounds);
-                foreach (var bounds in walkInPeople)
-                    if (bounds.size.y > 0f) Check(bounds);
-                return Mathf.Clamp(clear, .35f, distance);
-            }
-
             private void FrameWalkingLead(ref Vector3 focus, ref float yaw, ref float pitch, ref float distance)
             {
-                if (!Active || lead == null) return;
-                var head = WalkInHead(lead);
-                var face = upperLip != null ? upperLip.position : leftEye != null && rightEye != null
-                    ? (leftEye.position + rightEye.position) * .5f : head;
-                var facing = face - head;
-                facing.y = 0f;
-                var aim = face + Vector3.up * .035f;
-                if (facing.sqrMagnitude < .0001f) facing = lead.transform.forward;
-                float front = Mathf.Atan2(-facing.x, -facing.z) * Mathf.Rad2Deg;
-                for (int i = 0; i < otherWalkers.Length; i++)
-                {
-                    var person = otherWalkers[i];
-                    if (person == null || !person.gameObject.activeInHierarchy) { walkInPeople[i] = default; continue; }
-                    var brow = WalkInHead(person);
-                    var bounds = new Bounds(brow, new Vector3(.70f, .46f, .70f));
-                    bounds.Encapsulate(new Bounds(brow - Vector3.up * .56f, new Vector3(.94f, 1.05f, .94f)));
-                    walkInPeople[i] = bounds;
-                }
+                if (!HasWalkInLead || lead == null) return;
+                // Track the real root along the western half of the doorway. At its tightest
+                // the eye passes x = -.72 between the exterior jamb and the room divider.
+                // Head-bob and glances animate inside the frame without steering the camera.
+                var root = lead.transform.position;
+                var head = root + Vector3.up * walkInHeadHeight;
+                focus = head - Vector3.up * .26f;
+                float push = director.opening.CurrentBeat == OpeningBeat.WalkIn
+                    ? Mathf.SmoothStep(0f, 1f, director.opening.WalkInSeconds) : 0f;
+                var eye = new Vector3(Mathf.Min(-.72f, root.x - .25f), head.y + .56f,
+                    root.z - Mathf.Lerp(2.55f, 2.18f, push));
+                var forward = focus - eye;
+                distance = forward.magnitude;
+                yaw = Mathf.Atan2(forward.x, forward.z) * Mathf.Rad2Deg;
+                pitch = -Mathf.Asin(forward.y / distance) * Mathf.Rad2Deg;
 
-                // Score the actual interpolated boom. Prefer the last side while it remains
-                // clear; bring the lens in immediately if a walker steps between it and the face.
-                float preferred = lastWalkDistance > 0f ? Mathf.Clamp(Mathf.DeltaAngle(front, lastWalkYaw), -45f, 45f) : 0f;
-                float bestYaw = front + preferred, bestPitch = pitch;
-                float best = ClearWalkInDistance(aim, bestYaw, bestPitch, distance);
-                foreach (float lift in walkInLifts)
+                if (director.opening.CurrentBeat != OpeningBeat.WalkIn) return;
+                if (walkInLight == null)
                 {
-                    if (best >= distance - .02f) break;
-                    foreach (float turn in walkInTurns)
-                    {
-                        float angle = front + turn;
-                        float clear = ClearWalkInDistance(aim, angle, pitch + lift, distance);
-                        if (clear <= best + .06f) continue;
-                        best = clear;
-                        bestYaw = angle;
-                        bestPitch = pitch + lift;
-                        if (best >= distance - .02f) break;
-                    }
+                    var lamp = new GameObject("Walk-in doorway fill");
+                    lamp.transform.SetParent(director.transform, false);
+                    walkInLight = lamp.AddComponent<Light>();
+                    walkInLight.type = LightType.Spot;
+                    walkInLight.color = new Color(1f, .95f, .89f);
+                    walkInLight.intensity = 4f;
+                    walkInLight.range = 3.5f;
+                    walkInLight.spotAngle = 38f;
+                    walkInLight.innerSpotAngle = 20f;
+                    walkInLight.shadows = LightShadows.None;
                 }
+                var place = Vector3.Lerp(head, eye, .58f) + new Vector3(.32f, .24f, 0f);
+                walkInLight.transform.SetPositionAndRotation(place, Quaternion.LookRotation(head - place));
+            }
 
-                if (lastWalkDistance > 0f)
-                {
-                    float step = 140f * Time.unscaledDeltaTime;
-                    float eased = Mathf.MoveTowardsAngle(lastWalkYaw, bestYaw, step);
-                    yaw = front + Mathf.Clamp(Mathf.DeltaAngle(front, eased), -48f, 48f);
-                    pitch = Mathf.MoveTowards(lastWalkPitch, bestPitch, step);
-                    float visible = ClearWalkInDistance(aim, yaw, pitch, distance);
-                    distance = Mathf.Min(visible, lastWalkDistance + 5f * Time.unscaledDeltaTime);
-                }
-                else { yaw = bestYaw; pitch = bestPitch; distance = best; }
-                focus = aim;
-                lastWalkYaw = yaw;
-                lastWalkPitch = pitch;
-                lastWalkDistance = distance;
+            private void ReleaseWalkInLight()
+            {
+                if (walkInLight == null) return;
+                walkInLight.enabled = false;
+                Object.Destroy(walkInLight.gameObject);
+                walkInLight = null;
             }
 
             public float BodyReadiness
@@ -410,6 +381,10 @@ namespace Gamesim.Episode
 
             private void ReleaseEveryone()
             {
+                ReleaseWalkInLight();
+                walkInFraming = null;
+                lead = null;
+                gatherFor.Clear();
                 if (director.npcMeetings != null) director.npcMeetings.EndOpeningStage();
                 if (director.player != null) director.player.ReleaseActivityMove(playerOwner);
                 legs.Clear();
@@ -624,6 +599,9 @@ namespace Gamesim.Episode
             public void Tick()
             {
                 if (!Active) return;
+                if (walkInLight != null && (director.cameraRig == null || !director.cameraRig.FramesMovingSubject
+                    || director.opening.CurrentBeat != OpeningBeat.WalkIn))
+                    ReleaseWalkInLight();
                 if (begun && director.npcMeetings != null) director.npcMeetings.ResumeOpeningActors();
                 if (throughWhenClear != null && DoorClears(throughWhenClear))
                 {

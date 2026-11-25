@@ -532,7 +532,15 @@ namespace Gamesim.Episode
                 endBy = now + CeremonyStageSeconds;
                 pressGuardUntil = now + PressGuard;
                 director.cameraRig.ControlsEnabled = false;
-                Move(Wide(1.2f));
+                StageArrival entrance = null;
+                if (UsesShortSummons)
+                {
+                    var shot = Wide(0f);
+                    shot.Rooms = ShotRooms;
+                    entrance = SummonsEntrance();
+                    director.cameraRig.CutToShot(shot);
+                }
+                else Move(Wide(1.2f));
                 holdsCamera = true;
                 if (director.sting != null) director.sting.Play(Kind, SummonsLine(Kind), director.reducedMotion);
 
@@ -542,7 +550,7 @@ namespace Gamesim.Episode
                     if (pair.Key == state.playerId) continue;
                     ids.Add(pair.Key); anchors.Add(pair.Value);
                 }
-                int sent = director.npcMeetings.BeginCeremonyStage(ids, anchors, out var left);
+                int sent = director.npcMeetings.BeginCeremonyStage(ids, anchors, entrance, out var left);
                 summonsRefusals = left;
                 if (left != null) Debug.Log("Ceremony stage (" + Kind + "): " + sent + " sent to their places. " + left);
 
@@ -554,7 +562,7 @@ namespace Gamesim.Episode
                 if (placeOf.TryGetValue(state.playerId, out var mine) && director.player != null)
                 {
                     director.player.ReleaseActivityMove(playerOwner);
-                    if (director.player.TryBeginActivityMove(playerOwner, mine.Approach, out var reason))
+                    if (director.player.TryBeginActivityMove(playerOwner, mine.Approach, entrance, out var reason))
                     {
                         playerPlace = mine;
                         longest = Mathf.Max(longest, Flat(director.player.transform.position, mine.Approach) * 1.3f);
@@ -562,11 +570,20 @@ namespace Gamesim.Episode
                     else Debug.Log("Ceremony stage (" + Kind + "): you stay where you are: " + reason);
                 }
                 summonsHardBy = now + SummonsHardSecondsFor(director.ceremonyPace, longest);
-                // The people the card is about get the pace's whole patience, whatever the routes
-                // said: the evicted, re-bound the frame the stage was made, is sent by a retry and
-                // walks thirty metres from the yard, and no eviction plays to an empty hot seat.
+                // The principals get the full patience window. In particular, the evicted can
+                // still be rebinding when the first summons goes out and gets their entrance on retry.
                 summonsPatienceBy = now + SummonsHardSeconds(director.ceremonyPace);
                 Subscribe(true);
+            }
+
+            private bool UsesShortSummons => Kind == CeremonySting.NominationKind || Kind == CeremonySting.EvictionKind;
+
+            private StageArrival SummonsEntrance()
+            {
+                System.Action conceal = Step == CeremonyStageStep.Summons ? director.CoverStageArrival : null;
+                var entrance = director.npcMeetings.CeremonyEntrance(director.cameraRig.ViewCamera, conceal);
+                foreach (var pair in places) entrance.Protect(pair.Value.Approach);
+                return entrance;
             }
 
             private void Subscribe(bool on)
@@ -738,12 +755,14 @@ namespace Gamesim.Episode
             {
                 var meetings = director.npcMeetings;
                 if (meetings == null) return;
+                StageArrival entrance = null;
                 foreach (var pair in places)
                 {
                     string id = pair.Key;
                     if (id == state.playerId || arrived.Contains(id) || meetings.CeremonyActorHolds(id) || LetGo(id)) continue;
                     if (meetings.CeremonyPlace(id) != null) continue;
-                    if (meetings.JoinCeremonyStage(id, pair.Value, out var why))
+                    if (UsesShortSummons && entrance == null) entrance = SummonsEntrance();
+                    if (meetings.JoinCeremonyStage(id, pair.Value, entrance, out var why))
                     {
                         refusals.Remove(id); refusalCounts.Remove(id);
                         // Sent late, they get their walk: the cap stretches to their route, within the patience.
@@ -757,9 +776,12 @@ namespace Gamesim.Episode
                         refusalCounts[id] = refusalCounts.TryGetValue(id, out int count) ? count + 1 : 1;
                     }
                 }
-                if (playerPlace == null && placeOf.TryGetValue(state.playerId, out var mine) && director.player != null && !playerSeatedRequested
-                    && !director.player.HasActivityOwner && director.player.TryBeginActivityMove(playerOwner, mine.Approach, out _))
-                    playerPlace = mine;
+                if (playerPlace == null && placeOf.TryGetValue(state.playerId, out var mine) && director.player != null
+                    && !playerSeatedRequested && !director.player.HasActivityOwner)
+                {
+                    if (UsesShortSummons && entrance == null) entrance = SummonsEntrance();
+                    if (director.player.TryBeginActivityMove(playerOwner, mine.Approach, entrance, out _)) playerPlace = mine;
+                }
             }
 
             private bool CardPlaying =>

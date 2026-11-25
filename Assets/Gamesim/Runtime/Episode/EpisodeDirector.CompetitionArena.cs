@@ -213,8 +213,12 @@ namespace Gamesim.Episode
             var contestantCandidates=candidates.OrderByDescending(p=>p.z)
                 .ThenBy(p=>Mathf.Abs(p.x-bounds.center.x)).ThenBy(p=>p.x)
                 .Concat(gaps.OrderByDescending(p=>p.z).ThenBy(p=>Mathf.Abs(p.x-bounds.center.x)).ThenBy(p=>p.x)).ToArray();
-            // The player uses a real complete path under an owner token. Ordinary input remains
-            // locked; neither the navigation root nor its collider is teleported or reconfigured.
+            // Take the actual stage view before choosing an entrance. The dip masks the outgoing
+            // frame for any actor that was on screen, and clears over the approach.
+            System.Action conceal = cameraRig != null ? CoverStageArrival : null;
+            var entrance = new StageArrival(rooms, cameraRig?.ViewCamera, conceal);
+            if (show == null) FrameCompetition();
+            else FrameCompetitionShow();
             // A show stations the player only when they competed; one watching stays where they are.
             bool stationPlayer=show==null || show.Plan.PlayerInField;
             if(stationPlayer)
@@ -229,17 +233,24 @@ namespace Gamesim.Episode
                     ?CompetitionStageFootprint.Actor(position,radius,player.Agent.height,Mathf.Max(.25f,player.Agent.stoppingDistance+.1f))
                     :CompetitionStageFootprint.Station(instrumentFamily,position,facing,radius,player.Agent.height,
                     Mathf.Max(.25f,player.Agent.stoppingDistance+.1f));
-                if(!FitsCompetitionFootprint(footprint,floor,player.transform) || !player.TryBeginActivityMove(competitionPlayerOwner,position,out _))continue;
+                if(!FitsCompetitionFootprint(footprint,floor,player.transform) || !player.TryBeginActivityMove(competitionPlayerOwner,position,entrance,out _))continue;
                 competitionRouteOwners.Add(player.transform);
                 competitionFootprints[state.playerId]=footprint;
                 competitionPlayerStation=HouseInteractionAnchor.Create(competitionArenaRoot.transform,"competition-player","Yard",0,position,facing,false);
+                entrance.Protect(position);
                 competitionPlayerStationPosition=position; competitionPlayerStationFacing=competitionPlayerStation.Facing;
                 break;
             }
             // The player's game cannot start without their station. A show goes on without it: the
             // player watches from where they stand and the rest of the field still competes.
             if(competitionPlayerStation==null && show==null)
-            { EndCompetitionArena(); competitionArenaStatus="Your competition station has no clear route. Try again after the path is clear."; return false; }
+            {
+                EndCompetitionArena();
+                if (competitionFramed && cameraRig != null) cameraRig.ReleaseShot(CompetitionShotSeconds);
+                competitionFramed = false;
+                competitionArenaStatus="Your competition station has no clear route. Try again after the path is clear.";
+                return false;
+            }
             competitionArenaStaging=true; competitionAssemblyDeadline=Time.unscaledTime+30;
             CacheCompetitionBody(state.playerId,player.gameObject);
             var contestants=show!=null ? new HashSet<string>(show.Plan.Standings)
@@ -332,13 +343,14 @@ namespace Gamesim.Episode
                         if(contestants.Contains(actor.id))Debug.LogError(refusal,this);else Debug.Log(refusal,this);
                         continue;
                     }
+                    entrance.Protect(anchor.Approach);
                     ids.Add(actor.id); anchors.Add(anchor); used.Add(anchor.Approach); competitionArenaActors[actor.id]=anchor;
                     competitionFootprints[actor.id]=footprint;
                     if(anchor.Seated)competitionFootprints[actor.id+":approach"]=CompetitionStageFootprint.Actor(anchor.Approach,capsule.radius,capsule.height);
                 }
                 if(show!=null)ReserveCompetitionShowMarks(show,state,ids,rooms,filter,floor,candidates.Concat(gaps),used);
                 string stageReason=null;
-                if(ids.Count>0 && npcMeetings.BeginCompetitionStage(ids,anchors,out stageReason))
+                if(ids.Count>0 && npcMeetings.BeginCompetitionStage(ids,anchors,entrance,out stageReason))
                 {
                     foreach(var id in ids)if(competitionBodies.TryGetValue(id,out var body) && body.root!=null)
                         competitionRouteOwners.Add(body.root.transform);

@@ -483,7 +483,7 @@ namespace Gamesim.Tests.PlayMode
         /// <summary>
         /// A practice competition: the briefing's shot names the yard and is a panel over free play, which
         /// from RS5 draws the rooms the shot holding the camera names: the yard; the attempt's own shot names
-        /// the yard (D7), and on its way draws the yard the briefing showed; landed, with nothing held the
+        /// the yard (D7) from the cut for arrivals; with nothing held the
         /// main view is the yard alone - its room
         /// bit only in the mask, every lamp off inside the main camera's render (the yard has none), the
         /// player at the station drawn and a houseguest in the games room hidden. Its shot let go under it,
@@ -527,14 +527,12 @@ namespace Gamesim.Tests.PlayMode
             ButtonWithCaption("Practice this competition").onClick.Invoke();
             Assert.That(director.IsFramingCompetition, Is.True, "The attempt takes its own shot.");
             Assert.That(director.CurrentRoomScopeSource, Is.EqualTo(EpisodeDirector.RoomScopeSource.Competition), "The competition's shot is the view.");
-            Assert.That(cameraRig.IsTravelling, Is.True, "Its shot moves on its clock from the briefing's.");
-            // On its way it draws what the view drew as it left - the briefing's yard - with the yard.
-            Assert.That(cameraRig.Rooms, Is.EqualTo(yard),
-                "The move leaves the briefing's yard, and draws it until it lands: " + cameraRig.Rooms + ".");
-            Assert.That(director.ViewedRooms, Is.EqualTo(yard), "Nothing the viewer saw goes before the camera has moved.");
+            Assert.That(cameraRig.IsTravelling, Is.False, "The gathering starts on a concealed cut from the briefing.");
+            Assert.That(cameraRig.Rooms, Is.EqualTo(yard), "The cut holds the yard from its first frame.");
+            Assert.That(director.ViewedRooms, Is.EqualTo(yard), "The briefing and the gathering both draw the yard.");
             var sight = Rs6aRenderNow(homes);
-            Assert.That(sight.Viewed, Is.EqualTo(yard), "The render on the move's own frame draws the yard,");
-            Rs6aAssertLamps(sight, homes, authored, yard, "on the attempt's way");
+            Assert.That(sight.Viewed, Is.EqualTo(yard), "The render on the cut's own frame draws the yard.");
+            Rs6aAssertLamps(sight, homes, authored, yard, "on the attempt's cut");
             yield return ScopeWaitUntilLanded();
             // A houseguest in the games room, well clear of the yard and its doorway band, put there once the
             // shot has landed (the field walks to its stations meanwhile), and two frames for its walker room.

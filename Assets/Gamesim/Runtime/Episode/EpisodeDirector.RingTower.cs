@@ -119,11 +119,10 @@ namespace Gamesim.Episode
         private bool FrameRingTower()
         {
             if (competitionRingTower == null || cameraRig == null || cameraRig.ReducedMotion) return false;
-            cameraRig.MoveTo(new HouseCameraRig.Shot
+            cameraRig.CutToShot(new HouseCameraRig.Shot
             {
                 Focus = competitionRingTower.Centre + Vector3.right * RingTowerShotShift, Distance = RingTowerShotDistance,
-                Pitch = RingTowerShotPitch, Yaw = 0f, FieldOfView = RingTowerShotFieldOfView, Seconds = CompetitionShotSeconds,
-                Rooms = CompetitionRooms, TravelFromRooms = ViewedRooms,
+                Pitch = RingTowerShotPitch, Yaw = 0f, FieldOfView = RingTowerShotFieldOfView, Rooms = CompetitionRooms,
             });
             competitionFramed = true;
             return true;

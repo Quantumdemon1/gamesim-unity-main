@@ -33,6 +33,7 @@ namespace Gamesim.Episode
         private Canvas travelDipCanvas;
         private Image travelDip;
         private float travelDipStarted = float.NegativeInfinity;
+        private int arrivalCutFrame = -1;
 
         /// <summary>Whether a warp's dip is still on screen.</summary>
         public bool IsTravelDipShowing => travelDip != null && travelDip.enabled;
@@ -70,6 +71,20 @@ namespace Gamesim.Episode
         private void BeginTravelDip()
         {
             if (cameraRig != null && cameraRig.ReducedMotion) return;
+            ShowTravelDip();
+        }
+
+        // An arrival can still need an opaque handoff on a reduced-motion wide. The cover
+        // cuts away on the next frame without moving the camera or animating its opacity.
+        private void CoverStageArrival()
+        {
+            ShowTravelDip();
+            if (cameraRig != null && cameraRig.ReducedMotion) arrivalCutFrame = Time.frameCount;
+        }
+
+        private void ShowTravelDip()
+        {
+            arrivalCutFrame = -1;
             if (travelDip == null)
             {
                 var root = new GameObject("Travel dip", typeof(RectTransform), typeof(Canvas));
@@ -94,6 +109,11 @@ namespace Gamesim.Episode
         private void TickTravelDip()
         {
             if (travelDip == null || !travelDip.enabled) return;
+            if (arrivalCutFrame >= 0)
+            {
+                if (Time.frameCount > arrivalCutFrame) travelDip.enabled = false;
+                return;
+            }
             float clear = Mathf.Clamp01((Time.unscaledTime - travelDipStarted) / TravelDipSeconds);
             travelDip.color = new Color(0f, 0f, 0f, 1f - Mathf.SmoothStep(0f, 1f, clear));
             if (clear >= 1f) travelDip.enabled = false;

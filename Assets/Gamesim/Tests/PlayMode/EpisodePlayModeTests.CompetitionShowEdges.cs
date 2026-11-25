@@ -87,6 +87,10 @@ namespace Gamesim.Tests.PlayMode
                 ButtonWithCaption(EpisodeHud.SimulateCompetitionCaption).onClick.Invoke();
                 Assert.That(director.IsCompetitionShowRunning, Is.True);
                 Assert.That(director.CompetitionShowFamilyRunning, Is.EqualTo(CompetitionShowFamily.Course));
+                AssertShortStageWalk(player.Agent, "sixteen-person player's entrance", allowCoveredStart: true);
+                foreach (var motion in WalkOutMotions())
+                    if (motion.LeaseId != null && motion.LeaseId.StartsWith("competition:"))
+                        AssertShortStageWalk(motion.GetComponent<UnityEngine.AI.NavMeshAgent>(), motion.BoundNpcId, allowCoveredStart: true);
                 float deadline = Time.realtimeSinceStartup + 60f;
                 while (director.IsCompetitionShowRunning && Time.realtimeSinceStartup < deadline) yield return null;
                 Assert.That(director.IsCompetitionShowRunning, Is.False, "The show ends within its bound.");
@@ -94,8 +98,7 @@ namespace Gamesim.Tests.PlayMode
                 var record = director.LastCompetitionShowFamily;
                 Assert.That(show.CardPlayed, Is.True); Assert.That(show.Skipped, Is.False);
                 Assert.That(show.Stationed.Count, Is.EqualTo(houseSize), "Every competitor took a station.");
-                // Whoever was still on the way at the walk out's last moment was put on their station: nobody is left out.
-                if (show.Placed.Count > 0) Debug.Log("[Gamesim competition edges test] put on their station: " + string.Join(", ", show.Placed));
+                Assert.That(show.Placed, Is.Empty, "The field walks to its stations without a second relocation.");
                 Assert.That(show.Placed, Is.SubsetOf(show.Stationed));
                 Assert.That(show.LeftOut, Is.Empty, "At the quick pace the whole field of sixteen reached its stations before the show started.");
                 Assert.That(show.AssembledSeconds, Is.LessThanOrEqualTo(show.AssemblyWaitSeconds), "inside the wait for it.");

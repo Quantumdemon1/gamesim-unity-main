@@ -530,27 +530,32 @@ namespace Gamesim.Simulation
             }
             var binding = template.cast?.Invoke(ctx);
             if (binding == null) return null;
+            return AvailableStoryCast(s, template, binding) ? binding : null;
+        }
+
+        internal static bool AvailableStoryCast(EpisodeState s, ArcTemplate template, ArcBinding binding)
+        {
             foreach (var role in template.roles)
             {
                 var id = binding.Get(role.key);
-                if (id == null) { if (role.optional) continue; return null; }
+                if (id == null) { if (role.optional) continue; return false; }
                 var who = s.Find(id);
-                if (who == null || who.isPlayer) return null;
-                if (who.status != ContestantStatus.Active && !(role.departed && who.status == ContestantStatus.Jury)) return null;
-                if (!StoryPeople.Allowed(s, id, role.needs)) return null;
+                if (who == null || who.isPlayer) return false;
+                if (who.status != ContestantStatus.Active && !(role.departed && who.status == ContestantStatus.Jury)) return false;
+                if (!StoryPeople.Allowed(s, id, role.needs)) return false;
             }
             string headliner = binding.headliner ?? template.roles.Select(r => binding.Get(r.key)).FirstOrDefault(id => id != null);
             if (headliner != null)
             {
                 if (Cooling(s, "star:" + headliner)
-                    || (template.oncePerHeadliner && Cooling(s, "once:" + template.id + ":" + headliner))) return null;
+                    || (template.oncePerHeadliner && Cooling(s, "once:" + template.id + ":" + headliner))) return false;
                 binding.headliner = headliner;
             }
             var ids = template.roles.Select(r => binding.Get(r.key)).Where(id => id != null).Distinct().OrderBy(id => id, StringComparer.Ordinal).ToList();
             for (int i = 0; i < ids.Count; i++)
                 for (int j = i + 1; j < ids.Count; j++)
-                    if (Cooling(s, "pair:" + ids[i] + "|" + ids[j])) return null;
-            return binding;
+                    if (Cooling(s, "pair:" + ids[i] + "|" + ids[j])) return false;
+            return true;
         }
 
         /// <summary>
@@ -898,15 +903,23 @@ namespace Gamesim.Simulation
             var applied = new List<StoryEffectState>();
             // Under the leak rules, the pact each alliance spread grants, so a play's receipt names that pact.
             var spread = AllianceLeaks.On(s) ? new Dictionary<StoryEffectState, AllianceState>() : null;
+            StoryCommitmentWrite commitment = StoryCommitmentWrite.Unknown;
+            bool targetWord = StoryCatalog.TargetWord(template.id, choice.optionId);
             foreach (var effect in effects.ToList())
             {
                 var resolved = Substitute(effect, picked);
                 RememberSpreadPact(s, resolved, spread);
-                ApplyStoryEffectWithPending(s, resolved, cycleRecord, subject?.id, key, reception, result == StoryResults.Backfire, pending);
+                ApplyStoryEffectAndReadCommitment(s, resolved, cycleRecord, subject?.id, key, reception, result == StoryResults.Backfire, pending, out var write);
+                if (write != StoryCommitmentWrite.Unknown) commitment = write;
                 applied.Add(resolved);
             }
 
             string outcome = result == StoryResults.Backfire ? option?.backfireOutcome ?? option?.outcome : option?.outcome;
+            if (targetWord)
+            {
+                cycle.SetVar(StoryCatalog.TargetWordReceipt, (int)commitment);
+                outcome = StoryCatalog.TargetWordOutcome(choice.optionId, commitment, outcome);
+            }
             item.outcome = Trim(StoryText.Neutral(outcome) ?? choice.label, 2000);
             int sequence = s.nextSequence;
             var audience = new[] { s.playerId }.Concat(cycleRecord.cast.Select(r => r.contestantId)).Distinct().ToArray();
@@ -922,7 +935,8 @@ namespace Gamesim.Simulation
                 Log(s, "story-lore", "It worked, but something you said landed wrong. You learned what " + subject.name
                     + " can't stand.", s.playerId, subject.id);
             if (!lapsed && subject != null)
-                Remember(s, s.playerId, subject.id, (item.title ?? "A moment") + ": " + choice.label + ".", true);
+                Remember(s, s.playerId, subject.id, (item.title ?? "A moment") + ": "
+                    + (targetWord ? item.outcome : choice.label + "."), true);
             // A play's step says what it changed (plan 30 §4); other arcs keep to their outcome line.
             if (template.play != null) Receipts(s, applied, spread);
 

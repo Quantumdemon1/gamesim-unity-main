@@ -204,6 +204,14 @@ namespace Gamesim.Simulation
                     var option = arc?.Beat(step.beatId)?.Option(step.optionId);
                     string outcome = step.result == StoryResults.Backfire
                         ? option?.backfireOutcome ?? option?.outcome : option?.outcome;
+                    if (StoryCatalog.TargetWord(cycle.templateId, step.optionId))
+                    {
+                        var receipt = cycle.vars?.FirstOrDefault(v => v.key == StoryCatalog.TargetWordReceipt);
+                        // An older save records the choice, but cannot say which commitment writer admitted it.
+                        // If an imported cycle used all its variable slots, retain the specific outcome the log saved.
+                        if (receipt == null && entry.text != arc?.Beat(step.beatId)?.title + ": " + Neutral(outcome)) return entry.text;
+                        outcome = StoryCatalog.TargetWordOutcome(step.optionId, (StoryCommitmentWrite)(receipt?.value ?? 0), outcome);
+                    }
                     if (string.IsNullOrEmpty(outcome)) return entry.text;
                     string title = arc.Beat(step.beatId)?.title;
                     return (string.IsNullOrEmpty(title) ? "" : title + ": ") + FillDisplay(state, outcome, cycle.cast);

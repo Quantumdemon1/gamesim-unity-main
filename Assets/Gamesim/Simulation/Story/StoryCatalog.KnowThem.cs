@@ -7,6 +7,9 @@ using static Gamesim.Simulation.Personality.Approach;
 
 namespace Gamesim.Simulation
 {
+    // Persisted as the one-beat Target arc's variable. Zero is also a save written before this receipt existed.
+    internal enum StoryCommitmentWrite { Unknown = 0, Created = 1, Existing = 2, Proposed = 3, Refused = 4 }
+
     /// <summary>
     /// M4, getting to know them: the one real conversation of move-in night, the photo from home,
     /// and the alumnus who knows the house is coming for them. What these teach is lore - facts the
@@ -108,6 +111,27 @@ namespace Gamesim.Simulation
 
         // ---------------------------------------------------------------- the-target-on-their-back
 
+        internal const string TargetArc = "the-target-on-their-back", TargetWordReceipt = "commitment-write";
+
+        internal static bool TargetWord(string arc, string option) => arc == TargetArc && (option == "protect" || option == "numbers");
+
+        internal static string TargetWordOutcome(string option, StoryCommitmentWrite write, string created)
+        {
+            bool safety = option == "protect";
+            switch (write)
+            {
+                case StoryCommitmentWrite.Created: return created;
+                case StoryCommitmentWrite.Existing: return safety
+                    ? "You reminded {BIGNAME} that your promise of safety still stands."
+                    : "You and {BIGNAME} reaffirmed your existing agreement to vote together.";
+                case StoryCommitmentWrite.Proposed: return "The offer to vote together is still on the table between you and {BIGNAME}.";
+                case StoryCommitmentWrite.Refused: return safety
+                    ? "You discussed protecting {BIGNAME}, but made no new safety promise."
+                    : "You offered to vote with {BIGNAME}, but the conversation ended without an agreement.";
+                default: return safety ? "You offered {BIGNAME} protection." : "You offered to vote with {BIGNAME}.";
+            }
+        }
+
         /// <summary>
         /// All-Stars, early: an alumnus who won their season knows the house is coming for them.
         /// Game register only - their record is public and documented - so it may be told about a
@@ -115,16 +139,18 @@ namespace Gamesim.Simulation
         /// </summary>
         private static ArcTemplate TheTargetOnTheirBack() => new ArcTemplate
         {
-            id = "the-target-on-their-back", lane = StoryLanes.Game, eyebrow = "All-Stars", title = "The Target on Their Back",
+            id = TargetArc, lane = StoryLanes.Game, eyebrow = "All-Stars", title = "The Target on Their Back",
             origin = "native, alumni-safe: replaces legend-talk; the record read from the audited legacy sheet",
             rulesVersion = StoryRules.Lore, startAnchors = new[] { StoryAnchors.EvictionNight, StoryAnchors.HohCrowned },
             roles = new[] { Role("BIGNAME") },
             cast = c =>
             {
                 if (c.state.week > 3) return null;
-                var big = Npcs(c).Where(x => StoryPeople.IsRealPerson(x) && Lore.SheetIn(c.state, x.id)?.wonSeason == true)
-                    .OrderByDescending(x => c.Score(P(c), x.id)).ThenBy(x => x.id, StringComparer.Ordinal).FirstOrDefault();
-                return big == null ? null : Bind().With("BIGNAME", big.id).Headlining(big.id);
+                var template = Find(TargetArc);
+                return Npcs(c).Where(x => StoryPeople.IsRealPerson(x) && Lore.SheetIn(c.state, x.id)?.wonSeason == true)
+                    .OrderByDescending(x => c.Score(P(c), x.id)).ThenBy(x => x.id, StringComparer.Ordinal)
+                    .Select(x => Bind().With("BIGNAME", x.id).Headlining(x.id))
+                    .FirstOrDefault(binding => EpisodeEngine.AvailableStoryCast(c.state, template, binding));
             },
             weight = (c, b) => 20,
             beats = new[]

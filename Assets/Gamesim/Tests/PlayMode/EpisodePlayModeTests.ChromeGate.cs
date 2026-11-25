@@ -470,7 +470,9 @@ namespace Gamesim.Tests.PlayMode
                 // The board in play, the yard framed, and the frame through a capture's lens.
                 if (screen.IsAssembling)
                     screen.GetComponentsInChildren<Button>().First(button => button.name == "Continue to competition").onClick.Invoke();
-                yield return Settle(() => cameraRig.HasShot && !cameraRig.IsTravelling && cameraRig.HasArrived(.1f), 4f);
+                // The game opens on a close-up of the station and cuts to the yard wide once the arena is ready.
+                yield return Settle(() => cameraRig.HasShot && !cameraRig.IsTravelling && cameraRig.HasArrived(.1f)
+                    && Mathf.Abs(cameraRig.DesiredDistance - EpisodeDirector.CompetitionShotDistance) < .01f, 8f);
                 yield return ThroughTheLens(1600, 900, () =>
                 {
                     AssertNoWorldLabelOnTheBoard(screen, "The practice board through the capture's lens", true);

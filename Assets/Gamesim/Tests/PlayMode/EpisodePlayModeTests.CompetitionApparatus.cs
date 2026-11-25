@@ -777,13 +777,20 @@ namespace Gamesim.Tests.PlayMode
             Vector3 position=eye.transform.position;Quaternion rotation=eye.transform.rotation;
             float fov=eye.fieldOfView;bool orthographic=eye.orthographic;
             var overlays=instrument.OverlayRenderers.Select(renderer=>(Renderer:renderer,Enabled:renderer.enabled)).ToArray();
-            try
+            bool signal = handContact && instrument.Instrument == CompetitionApparatus.Family.Signals;
+            bool restored = false;
+            void RestoreView()
             {
-                yield return null;Canvas.ForceUpdateCanvases();yield return lens.MakeSureTheCanvasesAreDrawn();
-                if(screen.Paused && resumeBeforeInput)yield return PressKey(Key.P);
-                yield return play();yield return null;
+                eye.transform.SetPositionAndRotation(position,rotation);eye.fieldOfView=fov;eye.orthographic=orthographic;
+                foreach(var pair in canvases)if(pair.Canvas!=null)pair.Canvas.enabled=pair.Enabled;
+                foreach(var pair in overlays)if(pair.Renderer!=null)pair.Renderer.enabled=pair.Enabled;
+                restored = true;
+            }
+            void ReadInputFrame()
+            {
                 var humanoid=player.GetComponentsInChildren<Animator>().FirstOrDefault(animator=>animator.isHuman && animator.isActiveAndEnabled);
                 var pose=player.GetComponent<CompetitionInstrumentPose>();
+                if (signal) LogSignalContact("render", humanoid, pose, instrument);
                 if(handContact && humanoid!=null)
                 {
                     // The dice's press is a gesture, not a touch: the roll's press lasts while the dice
@@ -831,14 +838,57 @@ namespace Gamesim.Tests.PlayMode
                     +"; bodyBounds="+view.Body+"; instrumentBounds="+view.Instrument+"; clearTargets="+view.Targets.Length
                     +"; actualFrontReadouts="+view.Readouts.Length+"; progressGlyphsOpaqueClear=true; semanticReadoutsOpaqueClearFraction>=0.8");
             }
+            try
+            {
+                yield return null;Canvas.ForceUpdateCanvases();yield return lens.MakeSureTheCanvasesAreDrawn();
+                if(screen.Paused && resumeBeforeInput)yield return PressKey(Key.P);
+                yield return play();yield return null;
+                if (!signal) ReadInputFrame();
+                else
+                {
+                    // The coroutine resumes before LateUpdate writes the actual native hand pose.
+                    // Sample the bone and both camera views on the same rendered input frame.
+                    var activeBody = player.GetComponentsInChildren<Animator>().FirstOrDefault(animator => animator.isHuman && animator.isActiveAndEnabled);
+                    LogSignalContact("coroutine", activeBody, player.GetComponent<CompetitionInstrumentPose>(), instrument);
+                    int inputFrame = Time.frameCount, sampledFrame = -1;
+                    Exception captureError = null;
+                    var probe = player.gameObject.AddComponent<FrameFootProbe>();
+                    try
+                    {
+                        probe.Foot = () =>
+                        {
+                            probe.Foot = null;
+                            sampledFrame = Time.frameCount;
+                            position = eye.transform.position; rotation = eye.transform.rotation;
+                            fov = eye.fieldOfView; orthographic = eye.orthographic;
+                            try { ReadInputFrame(); }
+                            catch (Exception error) { captureError = error; }
+                            finally { RestoreView(); }
+                        };
+                        yield return null;
+                        Assert.That(sampledFrame, Is.EqualTo(inputFrame), "Inspect the same input frame after its native hand pose.");
+                        if (captureError != null) System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(captureError).Throw();
+                    }
+                    finally { probe.Foot = null; Object.Destroy(probe); }
+                }
+            }
             finally
             {
-                eye.transform.SetPositionAndRotation(position,rotation);eye.fieldOfView=fov;eye.orthographic=orthographic;
-                foreach(var pair in canvases)if(pair.Canvas!=null)pair.Canvas.enabled=pair.Enabled;
-                foreach(var pair in overlays)if(pair.Renderer!=null)pair.Renderer.enabled=pair.Enabled;
+                if (!restored) RestoreView();
                 lens.Dispose();if(frame!=null)Object.Destroy(frame);if(uiFrame!=null)Object.Destroy(uiFrame);
             }
             yield return null;
+        }
+
+        private static void LogSignalContact(string phase, Animator body, CompetitionInstrumentPose pose, CompetitionApparatus apparatus)
+        {
+            var finger = body != null ? body.GetBoneTransform(HumanBodyBones.RightMiddleDistal) : null;
+            Assert.That(finger, Is.Not.Null, "Signals measures the actual humanoid fingertip.");
+            Assert.That(pose, Is.Not.Null);
+            var pad = apparatus.HandContact(false);
+            Debug.Log($"[Signals contact] {phase} frame={Time.frameCount} animator={body.GetInstanceID()} finger={finger.GetInstanceID()} "
+                + $"apparatus={apparatus.GetInstanceID()} fingerWorld={finger.position:F4} padWorld={pad:F4} "
+                + $"distance={Vector3.Distance(finger.position, pad):F4} solver={pose.RightHandError:F4} hasContact={pose.HasContact}");
         }
 
         /// <summary>

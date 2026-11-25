@@ -1376,11 +1376,19 @@ namespace Gamesim.Episode
                         Focus = face, Distance = 3.1f, Pitch = 10f, Yaw = facing + 180f,
                         FieldOfView = Lens, Seconds = CutSeconds, DepthOfFieldWeight = 0.5f,
                     };
-                    Cut(close);
+                    // A skipped summons can leave the evictee in another room. Frame their
+                    // actual walker room at both marks, just as the subject's root supplies the focus.
+                    void FrameStanding(HouseCameraRig.Shot shot)
+                    {
+                        if (body == null) return;
+                        shot.Focus = body.position + Vector3.up * StandingFace;
+                        Move(shot, rooms: RoomSet.Of(director.WalkerRoomOf(body)));
+                    }
+                    FrameStanding(close);
                     var closer = close;
                     closer.Distance = 2.4f;
                     closer.Seconds = 2f;
-                    if (!farewellAtGoodbye || farewellPrimitive) Schedule(0.05f, () => Move(closer));
+                    if (!farewellAtGoodbye || farewellPrimitive) Schedule(0.05f, () => FrameStanding(closer));
                 }
                 // Their line, worded for where they are: standing before the house, not at the door
                 // (UI-UX-PASS-PLAN W0). The walk out does not say it again.
@@ -1460,12 +1468,12 @@ namespace Gamesim.Episode
             /// makes the stage the view's source, so the summons' wide leaves free play's whole house
             /// whole until it lands (RS6a).
             /// </summary>
-            private void Move(HouseCameraRig.Shot shot, ReactionLighting lighting = ReactionLighting.None)
+            private void Move(HouseCameraRig.Shot shot, ReactionLighting lighting = ReactionLighting.None, RoomSet rooms = default)
             {
                 if (lighting != ReactionLighting.None) LightReaction(shot, lighting);
                 else if (reactionFill != null) reactionFill.enabled = false;
-                shot.Rooms = ShotRooms;
-                shot.TravelFromRooms = director.ViewedRooms;
+                shot.Rooms = rooms.IsEmpty ? ShotRooms : rooms;
+                shot.TravelFromRooms = rooms.IsEmpty ? director.ViewedRooms : rooms;
                 director.cameraRig.MoveTo(shot);
             }
 

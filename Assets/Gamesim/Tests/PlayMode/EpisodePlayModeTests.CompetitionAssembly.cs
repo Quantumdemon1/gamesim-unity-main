@@ -27,20 +27,16 @@ namespace Gamesim.Tests.PlayMode
             cameraRig.SetReducedMotion(false);
             var before=director.Snapshot;var start=player.transform.position;
             float radius=player.Agent.radius,height=player.Agent.height;bool enabled=player.Agent.enabled;
-            // A narrow viewport puts a reachable wing just beyond the stock shot's edge.
             var view = cameraRig.ViewCamera;
-            float originalAspect = view.aspect;
-            Vector3 entrance;
-            try
-            {
-                view.aspect = .60f;
-                ButtonWithCaption("Practice this competition").onClick.Invoke();
-                entrance = player.transform.position;
-                Assert.That(Vector3.Distance(start, entrance), Is.GreaterThan(.5f), "The outgoing trip is cut to a nearby entrance.");
-                AssertShortStageWalk(player.Agent, "player's practice approach", allowCoveredStart: true);
-                Assert.That(StageBodyOutsideViewport(view, player.Agent), Is.True, "The entire body begins outside the stock camera where the floor permits it.");
-            }
-            finally { view.aspect = originalAspect; }
+            float aspect = view.aspect;
+            float began = Time.unscaledTime;
+            ButtonWithCaption("Practice this competition").onClick.Invoke();
+            var entrance = player.transform.position;
+            Assert.That(view.aspect, Is.EqualTo(aspect).Within(.001f), "The stock viewport is unchanged.");
+            Assert.That(Vector3.Distance(start, entrance), Is.GreaterThan(.5f), "The outgoing trip is cut to a nearby entrance.");
+            AssertShortStageWalk(player.Agent, "player's practice approach", allowCoveredStart: true);
+            Assert.That(StageBodyOutsideViewport(view, player.Agent), Is.True,
+                "The entire body begins outside the unchanged stock camera.");
             Assert.That(player.IsRunning, Is.False);
             Assert.That(cameraRig.IsTravelling, Is.False, "The relocation is never shown during a camera sweep.");
             var screen=RequireCompetitionAssemblyScreen();Assert.That(screen.IsAssembling,Is.True);
@@ -49,8 +45,16 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(player.InputEnabled,Is.False);Assert.That(cameraRig.ControlsEnabled,Is.False);
             Assert.That(player.TryMoveTo(start+Vector3.right),Is.False,"Ordinary commands cannot replace a reserved route.");
             Assert.That(station.transform.parent.GetComponentsInChildren<Collider>(true),Is.Empty,"Station dressing must not add colliders.");
-            yield return new WaitForSecondsRealtime(.3f);
+            yield return WaitFor(() =>
+            {
+                var torso = view.WorldToViewportPoint(player.transform.position + Vector3.up * 1.1f);
+                return !director.IsTravelDipShowing && torso.z > view.nearClipPlane && torso.x > .03f && torso.x < .97f
+                    && torso.y > .03f && torso.y < .97f && player.Agent.velocity.sqrMagnitude > .04f
+                    && Vector3.Distance(player.transform.position, station.Approach) > .35f;
+            }, 4f, "the player visibly walks into the unchanged stock view before reaching the station");
             Assert.That((player.transform.position-entrance).sqrMagnitude,Is.GreaterThan(.0001f),"The claimed station must actually be approached on the native agent.");
+            Debug.LogFormat("[Gamesim short arrivals] visible moving entrance: aspect {0:F2}, at {1:F2} s",
+                aspect, Time.unscaledTime - began);
             yield return PressKey(Key.P);Assert.That(screen.Paused,Is.True);
             yield return null;var pausedAt=player.transform.position;
             yield return new WaitForSecondsRealtime(.2f);
@@ -77,6 +81,8 @@ namespace Gamesim.Tests.PlayMode
             cameraRig.SetReducedMotion(false);
             ButtonWithCaption("Practice this competition").onClick.Invoke();
             AssertShortStageWalk(player.Agent, "standard camera practice approach", allowCoveredStart: true);
+            Assert.That(StageBodyOutsideViewport(cameraRig.ViewCamera, player.Agent), Is.True);
+            float entranceDistance = cameraRig.DesiredDistance;
             yield return null;
             var screen=RequireCompetitionAssemblyScreen();
             var station=SceneComponents<HouseInteractionAnchor>().Single(a=>a.VenueId=="competition-player");
@@ -91,6 +97,8 @@ namespace Gamesim.Tests.PlayMode
             }
             Assert.That(screen.IsPlaying,Is.True,"A real reachable player station must eventually permit the ready countdown and practice.");
             Debug.LogFormat("[Gamesim short arrivals] practice ready and playing after {0:F2} s", Time.unscaledTime - waitingAt);
+            Assert.That(cameraRig.DesiredDistance, Is.GreaterThan(entranceDistance + 1f),
+                "Ready play restores the station framing beyond the entrance shot.");
             Assert.That(Vector3.Distance(player.transform.position,station.Approach),Is.LessThan(.35f));
             Assert.That(player.Agent.velocity.sqrMagnitude,Is.LessThan(.04f));
             Assert.That(player.InputEnabled,Is.False);

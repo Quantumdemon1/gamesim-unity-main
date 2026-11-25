@@ -309,6 +309,11 @@ namespace Gamesim.Episode
         private void BeginCompetitionShowHold(CompetitionShowRun run, float now)
         {
             run.HoldFrom = now;
+            if (competitionEntranceFramed)
+            {
+                competitionEntranceFramed = false;
+                if (cameraRig != null && cameraRig.HasShot) FrameCompetitionShow();
+            }
             var holding = new HashSet<string>();
             CompetitionShowPlan.SplitAtHold(run.Stationed, id => CompetitionShowArrived(run, id), Array.Empty<string>(), holding, run.LeftOut);
             foreach (var id in run.LeftOut) { run.Out.Add(id); run.SideAt[id] = now; }

@@ -45,6 +45,7 @@ namespace Gamesim.Episode
         private string competitionArenaStatus, competitionAudienceStatus;
         private bool competitionArenaStaging;
         private bool competitionEffortFramed;
+        private bool competitionEntranceFramed;
         private bool competitionArenaWasReady;
         // The house approaches the deck from -Z. Matching rows face +Z, with the
         // instrument ahead and the native approach behind its actor. Path corner
@@ -217,8 +218,8 @@ namespace Gamesim.Episode
             // frame for any actor that was on screen, and clears over the approach.
             System.Action conceal = cameraRig != null ? CoverStageArrival : null;
             var entrance = new StageArrival(rooms, cameraRig?.ViewCamera, conceal);
-            if (show == null) FrameCompetition();
-            else FrameCompetitionShow();
+            bool showKeepsWide = show != null && cameraRig != null && cameraRig.ReducedMotion;
+            if (showKeepsWide) FrameCompetitionShow();
             // A show stations the player only when they competed; one watching stays where they are.
             bool stationPlayer=show==null || show.Plan.PlayerInField;
             if(stationPlayer)
@@ -233,7 +234,9 @@ namespace Gamesim.Episode
                     ?CompetitionStageFootprint.Actor(position,radius,player.Agent.height,Mathf.Max(.25f,player.Agent.stoppingDistance+.1f))
                     :CompetitionStageFootprint.Station(instrumentFamily,position,facing,radius,player.Agent.height,
                     Mathf.Max(.25f,player.Agent.stoppingDistance+.1f));
-                if(!FitsCompetitionFootprint(footprint,floor,player.transform) || !player.TryBeginActivityMove(competitionPlayerOwner,position,entrance,out _))continue;
+                if(!FitsCompetitionFootprint(footprint,floor,player.transform))continue;
+                FrameCompetitionEntrance(position);
+                if(!player.TryBeginActivityMove(competitionPlayerOwner,position,entrance,out _))continue;
                 competitionRouteOwners.Add(player.transform);
                 competitionFootprints[state.playerId]=footprint;
                 competitionPlayerStation=HouseInteractionAnchor.Create(competitionArenaRoot.transform,"competition-player","Yard",0,position,facing,false);
@@ -348,7 +351,13 @@ namespace Gamesim.Episode
                     competitionFootprints[actor.id]=footprint;
                     if(anchor.Seated)competitionFootprints[actor.id+":approach"]=CompetitionStageFootprint.Actor(anchor.Approach,capsule.radius,capsule.height);
                 }
-                if(show!=null)ReserveCompetitionShowMarks(show,state,ids,rooms,filter,floor,candidates.Concat(gaps),used);
+                if(show!=null)
+                {
+                    ReserveCompetitionShowMarks(show,state,ids,rooms,filter,floor,candidates.Concat(gaps),used);
+                    if (competitionPlayerStation == null && competitionArenaActors.TryGetValue(show.Plan.WinnerId, out var winnerMark))
+                        FrameCompetitionEntrance(winnerMark.Approach);
+                }
+                if (show != null && !showKeepsWide && !competitionEntranceFramed) FrameCompetitionShow();
                 string stageReason=null;
                 if(ids.Count>0 && npcMeetings.BeginCompetitionStage(ids,anchors,entrance,out stageReason))
                 {
@@ -810,7 +819,13 @@ namespace Gamesim.Episode
                 || !player.IsActivityMoveValid(competitionPlayerOwner)))
             { CompetitionArenaRefused("Your competition route changed. You are back at the briefing: try again.");return; }
             if(player==null){CompetitionArenaRefused("The player's body is gone.");return;}
-            competitionArenaWasReady|=CompetitionArenaReady;
+            bool ready = CompetitionArenaReady;
+            competitionArenaWasReady |= ready;
+            if (!show && competitionEntranceFramed && ready)
+            {
+                competitionEntranceFramed = false;
+                if (cameraRig != null && cameraRig.HasShot) FrameCompetition();
+            }
             bool paused=CompetitionArenaPaused;
             player.PauseActivityMove(competitionPlayerOwner,paused);
             bool castStaged=npcMeetings!=null && npcMeetings.HasCompetitionStage;
@@ -934,6 +949,7 @@ namespace Gamesim.Episode
                 }
                 competitionPlayerStation=null;
                 competitionEffortFramed=false;
+                competitionEntranceFramed=false;
                 competitionArenaWasReady=false;
                 competitionSign=null;competitionArenaMarks.Clear();competitionOverlaysShown=true;
                 competitionInstruments.Clear();

@@ -649,6 +649,21 @@ namespace Gamesim.Episode
             });
         }
 
+        private void FrameCompetitionEntrance(Vector3 station)
+        {
+            if (cameraRig == null || cameraRig.ReducedMotion) return;
+            // The 12 m yard wide covers the whole nearby approach at the far stations.
+            // Begin on the station from the open apron, with room beyond the sides of the
+            // image for a short entrance. Widen only once the presentation can use the marks.
+            cameraRig.CutToShot(new HouseCameraRig.Shot
+            {
+                Focus = station + Vector3.up * .95f,
+                Distance = 4.2f, Pitch = 18f, Yaw = 12f, FieldOfView = 38f, Rooms = CompetitionRooms,
+            });
+            competitionEntranceFramed = true;
+            if (competitionShow == null) competitionFramed = true;
+        }
+
         private void FrameCompetition()
         {
             if (cameraRig == null || cameraRig.ReducedMotion) return;

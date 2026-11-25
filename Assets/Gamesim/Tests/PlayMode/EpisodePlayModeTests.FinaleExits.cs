@@ -144,13 +144,13 @@ namespace Gamesim.Tests.PlayMode
             director.ClosePanels();
             yield return null;
 
-            var rail = ControlCarrying("Go to episode screen");
+            var rail = ControlCarrying(EpisodeHud.EpisodeTravelCaption);
             Assert.That(rail, Is.Not.Null, "The rail offers the episode screen.");
             var objective = ActiveRect("Objective");
             Assert.That(objective, Is.Not.Null, "The objective is on screen.");
             var line = objective.GetComponentsInChildren<TMP_Text>().FirstOrDefault(label => label.text.StartsWith("Next stop:"));
             Assert.That(line, Is.Not.Null, "The objective says where to go next.");
-            Assert.That(line.text, Does.Contain("episode screen"),
+            Assert.That(line.text, Does.Contain("Episode"),
                 "It names the rail's control, 'Go to episode screen': '" + line.text + "'.");
             Assert.That(line.text, Does.Contain("season report"), "and what waits there.");
             line.ForceMeshUpdate();
@@ -182,7 +182,7 @@ namespace Gamesim.Tests.PlayMode
                 director.ClosePanels();
                 yield return null;
 
-                var rail = ControlCarrying("Go to episode screen");
+                var rail = ControlCarrying(EpisodeHud.EpisodeTravelCaption);
                 Assert.That(rail, Is.Not.Null, "The HUD offers the episode screen.");
                 rail.onClick.Invoke();
                 yield return null; yield return null;

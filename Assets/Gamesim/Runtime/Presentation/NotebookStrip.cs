@@ -87,6 +87,22 @@ namespace Gamesim.Presentation
             new Tab("The story so far", StorySection),
         };
 
+        public const string HouseGroup = "House", StrategyGroup = "Strategy";
+
+        public static string RailGroupFor(string section)
+        {
+            switch (section)
+            {
+                case PeopleSection:
+                case NetworkSection:
+                case RoomsSection: return HouseGroup;
+                case DealsSection:
+                case AlliancesSection:
+                case VotesSection: return StrategyGroup;
+                default: return null;
+            }
+        }
+
         /// <summary>The rows at the rail's foot, apart from the Notebook group.</summary>
         public static readonly IReadOnlyList<string> FootRows = new[] { "Save [F5]", "Settings" };
     }

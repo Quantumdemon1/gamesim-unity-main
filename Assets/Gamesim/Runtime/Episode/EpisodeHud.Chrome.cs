@@ -287,7 +287,7 @@ namespace Gamesim.Episode
             // the report is a button inside the episode screen, and only once it is open. While the
             // screen is open the line says the player is there, as the diary's lines do (UI-UX U1).
             : state.phase == EpisodePhase.Finished
-                ? (director != null && director.IsPhasePanelOpen ? "Here: the episode screen · season report" : "Next stop: episode screen · season report")
+                ? (director != null && director.IsPhasePanelOpen ? "Here: the episode screen · season report" : "Next stop: Episode · season report")
             : director != null && director.IsPhasePanelOpen ? "Here: the episode screen" : "Next stop: episode screen";
 
         /// <summary>The objective chip's endgame mark, named apart from the objectives card's row marks.</summary>
@@ -392,15 +392,18 @@ namespace Gamesim.Episode
             float nextStop = LargestTextPages ? CompactLargestNextStop : 48f, grow = nextStop - 48f;
             var objective = Chrome("Objective", canvas.transform);
             Anchor(objective, new Vector2(0, 1), new Vector2(0, 1), new Vector2(LeftColumnX, -IconRail.Top),
-                new Vector2(ObjectiveWidth, 238f + grow));
+                new Vector2(ObjectiveWidth, 290f + grow));
             string waiting = WaitingLine(state);
             var heading = CardHeading(objective, waiting ?? ObjectiveTitle(state));
             if (waiting != null) WaitingStyle(heading);
             FixedText(objective, NextStop(state), 18, Paper, new Vector2(18f, -44f), new Vector2(294f, nextStop));
             ActionChip(objective, state, -94f - grow);
-            FixedButton(objective,"Go to episode screen",new Vector2(18,-126 - grow),new Vector2(294,44),director.GoToStation);
-            FixedButton(objective,DiaryTravelCaption,new Vector2(18,-178 - grow),new Vector2(294,44),director.GoToDiary).interactable=
-                director.HasDiaryRoom && !recovery && state.Find(state.playerId)?.status==ContestantStatus.Active;
+            FixedButton(objective, DiaryTravelCaption, new Vector2(18, -126 - grow), new Vector2(294, 44), director.GoToDiary).interactable =
+                director.HasDiaryRoom && !recovery && state.Find(state.playerId)?.status == ContestantStatus.Active;
+            FixedButton(objective, CompetitionTravelCaption, new Vector2(18, -178 - grow), new Vector2(294, 44),
+                () => director.GoToPlayDestination(true)).interactable = !recovery;
+            FixedButton(objective, EpisodeTravelCaption, new Vector2(18, -230 - grow), new Vector2(294, 44),
+                () => director.GoToPlayDestination(false)).interactable = !recovery;
         }
 
         /// <summary>
@@ -602,29 +605,57 @@ namespace Gamesim.Episode
         /// </summary>
         private void LeftGutter(EpisodeState state, bool recovery)
         {
-            railScale = RailFit();
+            string active = director.ActiveSection;
+            if (lastRailSection != active)
+            {
+                lastRailSection = active;
+                string group = NotebookStrip.RailGroupFor(active);
+                if (group != null) expandedRailGroup = group;
+            }
+            var entries = new List<IconRail.Entry> {
+                new IconRail.Entry(IconRail.Mark.Overview, EpisodeDirector.OverviewSection, "Overview"),
+                new IconRail.Entry(IconRail.Mark.Notes, NotebookStrip.NotesSection, NotebookStrip.NotebookRow)
+            };
+            foreach (var group in new[] { NotebookStrip.HouseGroup, NotebookStrip.StrategyGroup })
+            {
+                string count = group == NotebookStrip.HouseGroup ? state.Active.Count().ToString() : null;
+                entries.Add(new IconRail.Entry(group == NotebookStrip.HouseGroup ? IconRail.Mark.People : IconRail.Mark.Deals,
+                    group, group, count: count, expanded: expandedRailGroup == group));
+                if (expandedRailGroup != group) continue;
+                foreach (var row in NotebookStrip.RailRows)
+                    if (NotebookStrip.RailGroupFor(row.Section) == group)
+                        entries.Add(new IconRail.Entry(RailMark(row.Section), row.Section, row.Caption, nested: true));
+            }
+            var story = NotebookStrip.RailRows[NotebookStrip.RailRows.Count - 1];
+            entries.Add(new IconRail.Entry(IconRail.Mark.Story, story.Section, story.Caption));
+            railScale = RailFit(entries.Count);
             var ground = Chrome("Rail ground", canvas.transform);
-            // The overview first, alone: the house from above is no page of the notebook. Then the
-            // Notebook heading over its rows in reading order (NotebookStrip.RailRows): the notes,
-            // Deals & promises, the people, the web, the rooms, the vote and the season.
-            var entries = new List<IconRail.Entry> { new IconRail.Entry(IconRail.Mark.Overview, EpisodeDirector.OverviewSection, "Overview") };
-            foreach (var row in NotebookStrip.RailRows) entries.Add(new IconRail.Entry(RailMark(row.Section), row.Section, row.Caption));
             IconRail.Build(canvas.transform, entries, railScale, section =>
             {
                 // "Notebook [J]" opens the notebook on the notes, as the J key does.
-                if (section == EpisodeDirector.NotebookSection.Notes) director.OpenJournal();
+                if (section == NotebookStrip.HouseGroup || section == NotebookStrip.StrategyGroup)
+                {
+                    expandedRailGroup = expandedRailGroup == section ? null : section;
+                    director.RenderChrome();
+                }
+                else if (section == EpisodeDirector.NotebookSection.Notes) director.OpenJournal();
                 else director.ShowNotebookSection(section);
-            }, director.ActiveSection, 1, NotebookStrip.RailHeading, NotebookHeadingRoom);
+            }, NotebookStrip.RailGroupFor(active) != null && NotebookStrip.RailGroupFor(active) != expandedRailGroup ? NotebookStrip.RailGroupFor(active) : active, 1, NotebookStrip.RailHeading, NotebookHeadingRoom);
             float y = IconRail.Top + IconRail.Height(entries.Count, railScale, true) + NotebookHeadingRoom;
 
             if (!Compact)
             {
-                y = RailLabel("PLAY", y, StationTravelCaption);
-                var next = RailGroup("Next move", y, 2);
-                RailButton(next, StationTravelCaption, UiTheme.Icon("camera"), 0, director.GoToStation, true);
-                // Lit while the player is in the room it goes to, as the notebook's pages are.
-                RailButton(next, DiaryTravelCaption, UiTheme.Icon("chat"), 1, director.GoToDiary, on: director.IsDiaryOpen).interactable =
+                y = RailLabel("PLAY", y, DiaryTravelCaption);
+                var next = RailGroup("Next move", y, 3);
+                RailButton(next, DiaryTravelCaption, UiTheme.Icon("chat"), 0, director.GoToDiary, on: director.IsDiaryOpen).interactable =
                     director.HasDiaryRoom && !recovery && state.Find(state.playerId)?.status == ContestantStatus.Active;
+                RailButton(next, CompetitionTravelCaption, UiTheme.Icon("trophy"), 1, () => director.GoToPlayDestination(true),
+                    EpisodeEngine.IsCompetition(state.phase)).interactable = !recovery;
+                var episode = RailButton(next, EpisodeTravelCaption, UiTheme.Icon("camera"), 2, () => director.GoToPlayDestination(false),
+                    !EpisodeEngine.IsCompetition(state.phase));
+                episode.interactable = !recovery;
+                LayoutEpisodeRailRow(episode);
+                next.sizeDelta += new Vector2(0f, EpisodeRowHeight - IconRail.RowHeight * railScale);
                 y += next.sizeDelta.y;
             }
 
@@ -699,18 +730,18 @@ namespace Gamesim.Episode
         /// (1.19). On every frame at the standard and the larger size, and on a 4:3 frame at the
         /// largest, they fit, and the scale is the text size's exactly as it always was.
         /// </summary>
-        private float RailFit()
+        private float RailFit(int entryCount)
         {
             var bounds = ((RectTransform)canvas.transform).rect;
             float height = bounds.height > 0f ? bounds.height : 900f;
             // Every row and label band in the gutter, at a scale of one; the ground reaches 6 past
             // the last row, and 6 more keep it off the strip.
-            float rows = IconRail.Height(1 + NotebookStrip.RailRows.Count, 1f, true) + RailRuleBand + IconRail.Height(NotebookStrip.FootRows.Count, 1f)
-                + (Compact ? 0f : RailLabelBand + IconRail.Height(2, 1f));
+            float rows = IconRail.Height(entryCount, 1f, true) + RailRuleBand + IconRail.Height(NotebookStrip.FootRows.Count, 1f)
+                + (Compact ? 0f : RailLabelBand + IconRail.Height(3, 1f) - IconRail.RowHeight);
             // The room the headings keep for the chips under them grows with the text, not the rail:
             // it comes off the room first, so the rail still ends where it fits.
             float room = height - (CastRail.Bottom + CastRail.Height * FontScale) - IconRail.Top - 12f
-                - NotebookHeadingRoom - (Compact ? 0f : PlayLabelRoom);
+                - NotebookHeadingRoom - (Compact ? 0f : PlayLabelRoom + EpisodeRowHeight);
             return Mathf.Max(1f, Mathf.Min(FontScale, room / rows));
         }
 
@@ -728,8 +759,7 @@ namespace Gamesim.Episode
             return y + RailLabelBand * railScale + ChipRoomOver(firstRow, FontScale);
         }
 
-        /// <summary>The rail's way to the episode screen, the first row under PLAY.</summary>
-        private const string StationTravelCaption = "Go to episode screen";
+        private string expandedRailGroup, lastRailSection;
 
         /// <summary>
         /// The room the Notebook heading keeps under its divider for the chip of the row under it
@@ -739,7 +769,56 @@ namespace Gamesim.Episode
         private float NotebookHeadingRoom => ChipRoomOver(NotebookStrip.RailRows[0].Caption, FontScale);
 
         /// <summary>The same room under PLAY, for the row under it (none while that row names no key).</summary>
-        private float PlayLabelRoom => ChipRoomOver(StationTravelCaption, FontScale);
+        private float PlayLabelRoom => ChipRoomOver(DiaryTravelCaption, FontScale);
+
+        private float EpisodeTitleSize => Mathf.Round(15f * FontScale);
+        private float EpisodeRoomSize => Mathf.Round(14f + (FontScale - 1f) * 5f);
+        private float EpisodeTitleBand => Mathf.Ceil(EpisodeTitleSize * 1.6f);
+        private float EpisodeRoomBand => Mathf.Ceil(EpisodeRoomSize * 1.6f);
+        private float EpisodeRowHeight => 8f + EpisodeTitleBand + EpisodeRoomBand;
+
+        private void LayoutEpisodeRailRow(Button button)
+        {
+            var row = (RectTransform)button.transform;
+            row.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, EpisodeRowHeight);
+            var mark = (RectTransform)row.Find("Row mark");
+            mark.anchorMin = mark.anchorMax = new Vector2(0f, 1f);
+            mark.anchoredPosition = new Vector2(12f, -4f - EpisodeTitleBand / 2f);
+
+            var title = button.GetComponentInChildren<TMP_Text>();
+            var caption = title.text;
+            title.textPreprocessor = EpisodeRailTitle.Instance;
+            title.enableAutoSizing = false;
+            title.fontSize = EpisodeTitleSize;
+            var words = title.rectTransform;
+            words.anchorMin = new Vector2(0f, 1f);
+            words.anchorMax = Vector2.one;
+            words.offsetMin = new Vector2(mark.anchoredPosition.x + mark.sizeDelta.x + 8f, -4f - EpisodeTitleBand);
+            words.offsetMax = new Vector2(-8f, -4f);
+
+            int split = EpisodeRailTitle.DestinationStart(caption);
+            if (split < 0) return;
+            var room = HudPrimitives.Label("Episode destination", row, EpisodeRoomSize, title.color, TextAlignmentOptions.MidlineLeft);
+            room.text = caption.Substring(split + 2).TrimEnd(')');
+            room.textWrappingMode = TextWrappingModes.NoWrap;
+            var subtitle = room.rectTransform;
+            subtitle.anchorMin = new Vector2(0f, 1f);
+            subtitle.anchorMax = Vector2.one;
+            subtitle.offsetMin = new Vector2(12f, 4f - EpisodeRowHeight);
+            subtitle.offsetMax = new Vector2(-6f, -4f - EpisodeTitleBand);
+        }
+
+        // The button and its label retain the full localized command for focus and caption lookup.
+        private sealed class EpisodeRailTitle : ITextPreprocessor
+        {
+            public static readonly EpisodeRailTitle Instance = new EpisodeRailTitle();
+            public static int DestinationStart(string text) => text.IndexOf(" (", System.StringComparison.Ordinal);
+            public string PreprocessText(string text)
+            {
+                int split = DestinationStart(text);
+                return split >= 0 ? text.Substring(0, split) : text;
+            }
+        }
 
         private Button RailButton(RectTransform group, string caption, Sprite icon, int index, System.Action action,
             bool primary = false, bool on = false) =>

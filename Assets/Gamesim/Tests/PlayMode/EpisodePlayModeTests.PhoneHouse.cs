@@ -84,6 +84,31 @@ namespace Gamesim.Tests.PlayMode
                 yield return null;
                 yield return null;
                 Assert.That(moves, Is.EqualTo(1), "The same unobstructed tap takes exactly one route.");
+                bool compact = director.CompactHud;
+                try
+                {
+                    director.SetCompactHud(true);
+                    director.ClosePanels();
+                    yield return Frames(2);
+                    foreach (string caption in new[] { Gamesim.Episode.EpisodeHud.DiaryTravelCaption,
+                        Gamesim.Episode.EpisodeHud.CompetitionTravelCaption, Gamesim.Episode.EpisodeHud.EpisodeTravelCaption })
+                        Assert.That(ButtonWithCaption(caption).IsInteractable(), Is.True, caption);
+                    var house = ActiveRect(Gamesim.Presentation.IconRail.RootName).GetComponentsInChildren<Button>().Single(b => b.name == "House");
+                    var groupAt = ScreenCentre((RectTransform)house.transform);
+                    QueueFinger(screen, 4, groupAt, TouchPhase.Began);
+                    yield return null;
+                    QueueFinger(screen, 4, groupAt, TouchPhase.Ended);
+                    yield return Frames(2);
+                    var people = ActiveRect(Gamesim.Presentation.IconRail.RootName).GetComponentsInChildren<Button>().Single(b => b.name == "Houseguests");
+                    var rowAt = ScreenCentre((RectTransform)people.transform);
+                    QueueFinger(screen, 5, rowAt, TouchPhase.Began);
+                    yield return null;
+                    QueueFinger(screen, 5, rowAt, TouchPhase.Ended);
+                    yield return Frames(2);
+                    Assert.That(director.ActiveSection, Is.EqualTo(Gamesim.Episode.EpisodeDirector.NotebookSection.People));
+                    Assert.That(moves, Is.EqualTo(1), "A group or page tap never chooses the floor behind it.");
+                }
+                finally { director.SetCompactHud(compact); director.ClosePanels(); }
             }
             finally
             {

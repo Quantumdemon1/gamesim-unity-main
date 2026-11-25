@@ -67,11 +67,13 @@ namespace Gamesim.Presentation
         {
             public readonly Mark Mark;
             public readonly string Section;
-            public readonly string Caption;
+            public readonly string Caption, Count;
+            public readonly bool? Expanded;
+            public readonly bool Nested;
 
-            public Entry(Mark mark, string section, string caption)
+            public Entry(Mark mark, string section, string caption, string count = null, bool nested = false, bool? expanded = null)
             {
-                Mark = mark; Section = section; Caption = caption;
+                Mark = mark; Section = section; Caption = caption; Count = count; Nested = nested; Expanded = expanded;
             }
         }
 
@@ -179,10 +181,34 @@ namespace Gamesim.Presentation
                 bool on = !string.IsNullOrEmpty(active) && entry.Section == active;
                 string section = entry.Section;
                 var mark = entry.Mark;
-                Row(root, entry.Caption, UiTheme.Icon(IconOf(entry.Mark)),
+                var button = Row(root, entry.Caption, UiTheme.Icon(IconOf(entry.Mark)),
                     (box, tint) => Draw(mark, box, scale * .8f, tint),
                     on, RowTop(i, scale, headed ? headingBefore : -1, headingRoom), scale,
                     jump == null ? (Action)null : () => jump(section));
+                var row = (RectTransform)button.transform;
+                if (entry.Nested) row.offsetMin += new Vector2(9f, 0f);
+                if (!entry.Expanded.HasValue) continue;
+                var words = row.Find("Row label") as RectTransform;
+                float chevronSide = 14f * scale;
+                words.offsetMax -= new Vector2(chevronSide + (entry.Count == null ? 5f : 36f), 0f);
+                var chevron = new GameObject("Disclosure", typeof(RectTransform), typeof(Image)).GetComponent<Image>();
+                chevron.rectTransform.SetParent(row, false);
+                chevron.rectTransform.anchorMin = chevron.rectTransform.anchorMax = new Vector2(1f, .5f);
+                chevron.rectTransform.pivot = new Vector2(1f, .5f);
+                chevron.rectTransform.anchoredPosition = new Vector2(-8f, 0f);
+                chevron.rectTransform.sizeDelta = new Vector2(chevronSide, chevronSide);
+                chevron.sprite = UiTheme.Pack(entry.Expanded.Value ? PackArt.KitIconChevronDown : PackArt.KitIconChevronRight);
+                chevron.color = UiTheme.Muted;
+                chevron.preserveAspect = true;
+                chevron.raycastTarget = false;
+                if (entry.Count == null) continue;
+                var detail = HudPrimitives.Label("Group status", row, Mathf.Round(13f * scale), UiTheme.Paper, TextAlignmentOptions.MidlineRight);
+                detail.text = entry.Count;
+                detail.raycastTarget = false;
+                detail.rectTransform.anchorMin = new Vector2(1f, 0f);
+                detail.rectTransform.anchorMax = Vector2.one;
+                detail.rectTransform.offsetMin = new Vector2(-42f - chevronSide, 2f);
+                detail.rectTransform.offsetMax = new Vector2(-16f - chevronSide, -2f);
             }
             return root;
         }
@@ -224,6 +250,7 @@ namespace Gamesim.Presentation
             row.offsetMax = new Vector2(-Pad, -top);
             var ground = row.GetComponent<Image>();
             ground.raycastTarget = true;
+            ground.canvasRenderer.cullTransparentMesh = false;
 
             var tint = on ? UiTheme.Paper : UiTheme.Accent;
             float side = 20f * scale;

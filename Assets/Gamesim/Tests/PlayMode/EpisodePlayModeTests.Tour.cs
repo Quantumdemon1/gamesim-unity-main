@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using Gamesim.Episode;
 using Gamesim.Presentation;
 using NUnit.Framework;
 using TMPro;
@@ -117,7 +118,7 @@ namespace Gamesim.Tests.PlayMode
         /// <summary>
         /// A stand-in for the HUD on an emulated window: the six pieces of chrome the tour lights,
         /// where the HUD draws them in its 1600x900 units - the week chip and house pill on the top
-        /// bar, the left rail's ground and its "Go to episode screen" row, the cast strip along the
+        /// bar, the left rail's ground and its EpisodeHud.EpisodeTravelCaption row, the cast strip along the
         /// floor and the current objective above it.
         /// </summary>
         private RectTransform EmulatedTourHud(int wide, int high)
@@ -141,7 +142,7 @@ namespace Gamesim.Tests.PlayMode
             Part("Week chip", topLeft, new Vector2(270f, -14f), new Vector2(280f, 52f));
             Part("House pill", topLeft, new Vector2(894f, -14f), new Vector2(360f, 52f));
             Part("Rail ground", topLeft, new Vector2(8f, -74f), new Vector2(212f, 560f));
-            Part("Go to episode screen", topLeft, new Vector2(20f, -420f), new Vector2(188f, 40f));
+            Part(EpisodeHud.EpisodeTravelCaption, topLeft, new Vector2(20f, -420f), new Vector2(188f, 40f));
             Part("Objective", topLeft, new Vector2(564f, -14f), new Vector2(320f, 52f));
             var strip = new GameObject(CastRail.StripName, typeof(RectTransform)).GetComponent<RectTransform>();
             strip.SetParent(frame, false);

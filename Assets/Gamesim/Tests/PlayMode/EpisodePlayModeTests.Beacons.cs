@@ -158,11 +158,11 @@ namespace Gamesim.Tests.PlayMode
             System.Func<string, Vector3> where = name => name == director.ScreenRoom ? director.StationPosition
                 : name == "Private" ? director.DiaryPosition : markers[name].transform.position;
             // The chrome's top edge a quarter of the icon below its middle.
-            System.Func<Vector2, bool> band = point => hud.Covers(point) || point.y < screen.y - half * .5f;
+            System.Func<Vector2, bool> band = point => hud.Covers(point) || Vector2.Distance(point, screen) > half * .75f;
             for (int frame = 0; frame < 3; frame++)
             {
                 // After the director's own request each frame, before the icons are placed.
-                director.TravelBeacons.Request(true, cameraRig, 1f, director.ScreenRoom, false, null, where, band);
+                director.TravelBeacons.Request(true, cameraRig, 1f, director.ScreenRoom, false, director.WalkerRoomOf(player.transform), where, band);
                 yield return null;
             }
             Assert.That(icon.gameObject.activeInHierarchy, Is.False, room + "'s icon, half under the chrome, is not shown.");
@@ -195,16 +195,17 @@ namespace Gamesim.Tests.PlayMode
             director.ClosePanels();
             yield return null;
 
-            // The room view (D17, RS5): close up as well, the icons stay - a room view of 4 to 18 m is never
-            // "the house close up" - and a panel still hides them.
+            // Following somebody across the house does not adopt their room as the player's origin.
             yield return RoomViewLetGoOfTheDollhouse();
-            cameraRig.FocusSubject(SceneComponents<HouseNpc>().First(actor => actor.gameObject.activeInHierarchy).transform);
-            deadline = Time.realtimeSinceStartup + 6f;
-            while (Time.realtimeSinceStartup < deadline && cameraRig.Distance > EpisodeTravelBeacons.HiddenBelow - .5f) yield return null;
-            yield return null;
-            yield return null;
-            Assert.That(cameraRig.IsRoomView, Is.True, "Following close up is the room view,");
-            Assert.That(director.TravelBeacons.IsShowing, Is.True, "where the icons find the way at every distance.");
+            var scope = ScopeOf(director);
+            int living = RoomLayers.IndexOf("Living"), games = RoomLayers.IndexOf("Games");
+            yield return RoomViewPlayerIn(scope, living);
+            var away = SceneComponents<HouseNpc>().First(actor => actor.gameObject.activeInHierarchy);
+            ScopePlace(away.transform, ScopeOpenFloor(scope, games), 1f);
+            cameraRig.FocusSubject(away.transform);
+            yield return WaitFor(() => cameraRig.ViewRoom == games, 5f, "The follow frames the games room.");
+            yield return Frames(2);
+            Assert.That(director.TravelBeacons.IsShowing, Is.False, "The player is in the living room and cannot click through the follow.");
             director.OpenJournal();
             yield return null;
             yield return null;
@@ -229,7 +230,7 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(beacons.IsShowing, Is.True);
             // After the director's Update has asked for this frame's icons and before they are
             // placed: the test's request is the one LateUpdate places.
-            beacons.Request(true, cameraRig, 1f, director.ScreenRoom, false, null,
+            beacons.Request(true, cameraRig, 1f, director.ScreenRoom, false, director.WalkerRoomOf(player.transform),
                 room => SceneComponents<HouseRoomMarker>().First(marker => marker.RoomName == room).transform.position,
                 underChrome: _ => true);
             yield return null;

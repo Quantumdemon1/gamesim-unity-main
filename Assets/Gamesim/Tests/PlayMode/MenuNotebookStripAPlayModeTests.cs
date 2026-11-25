@@ -7,6 +7,7 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
+using UnityEngine.InputSystem.LowLevel;
 using UnityEngine.TestTools;
 using UnityEngine.UI;
 
@@ -174,7 +175,7 @@ namespace Gamesim.Tests.PlayMode
                     var rail = LastActiveRect(IconRail.RootName);
                     Assert.That(rail, Is.Not.Null, at + ": the rail.");
                     var rows = rail.GetComponentsInChildren<Button>().ToArray();
-                    Assert.That(rows.Select(row => row.name), Is.EqualTo(new[] { "Overview" }.Concat(NotebookStrip.RailRows.Select(row => row.Caption))),
+                    Assert.That(rows.Select(row => row.name), Is.EqualTo(new[] { "Overview", NotebookStrip.NotebookRow, "House", "Strategy", "The story so far" }),
                         at + ": the overview, then the notebook's rows in reading order.");
                     for (int i = 1; i < rows.Length; i++)
                         Assert.That(ScreenRect((RectTransform)rows[i].transform).yMax, Is.LessThanOrEqualTo(ScreenRect((RectTransform)rows[i - 1].transform).yMin + 1f),
@@ -200,8 +201,20 @@ namespace Gamesim.Tests.PlayMode
                     Assert.That(rule, Is.Not.Null, at + ": set apart by a rule.");
                     Assert.That(ScreenRect(rule).yMin, Is.GreaterThanOrEqualTo(ScreenRect(foot).yMax - 1f), at + ": the rule over the foot.");
                     var next = LastActiveRect("Next move");
+                    var play = compact ? LastActiveRect("Objective") : next;
+                    Assert.That(play.GetComponentsInChildren<Button>().Select(button => button.name),
+                        Is.EqualTo(new[] { EpisodeHud.DiaryTravelCaption, EpisodeHud.CompetitionTravelCaption, EpisodeHud.EpisodeTravelCaption }), at);
+                    AssertEpisodeTravelLabel(compact, at);
+                    AssertRailDisclosure("House", false);
+                    AssertRailDisclosure("Strategy", false);
+                    if (!compact && size == TextSize.Largest && Application.isBatchMode)
+                        yield return CaptureFraming("play-episode-caption-largest-21x9", settle: false,
+                            inspect: _ => AssertEpisodeTravelLabel(false, "largest, 2560x1080"), width: 2560, height: 1080);
                     if (!compact)
                     {
+                        next = LastActiveRect("Next move");
+                        foot = LastActiveRect("Navigation");
+                        rail = LastActiveRect(IconRail.RootName);
                         Assert.That(next, Is.Not.Null, at + ": the places to go next.");
                         Assert.That(ScreenRect(foot).yMax, Is.LessThanOrEqualTo(ScreenRect(next).yMin + 1f), at + ": the foot is the rail's last group.");
                     }
@@ -214,13 +227,66 @@ namespace Gamesim.Tests.PlayMode
                             Assert.That(ScreenRect(part).Overlaps(ScreenRect(cast)), Is.False, at + ": '" + part.name + "' " + ScreenRect(part) + " runs onto the cast strip " + ScreenRect(cast) + ".");
                     Assert.That(ScreenRect(foot).yMin, Is.GreaterThanOrEqualTo(-.5f), at + ": on the screen.");
                 }
+            }
+            finally
+            {
+                director.SetTextSize(originalSize);
+                director.SetCompactHud(originalCompact);
+                director.ClosePanels();
+            }
+            yield return null;
+        }
 
+        private IEnumerator AssertRailFolderInput()
+        {
+            var originalSize = director.TextSize;
+            bool originalCompact = director.CompactHud;
+            try
+            {
                 // The rows open what they name: Deals & promises its page, lit on the rail; the notebook's row the notes.
                 director.SetTextSize(TextSize.Standard);
                 director.SetCompactHud(false);
                 director.ClosePanels();
                 yield return Frames(2);
-                RailRow(NotebookStrip.DealsTab).onClick.Invoke();
+                var house = RailRow("House");
+                EventSystem.current.SetSelectedGameObject(house.gameObject);
+                ExecuteEvents.Execute(house.gameObject, new BaseEventData(EventSystem.current), ExecuteEvents.submitHandler);
+                yield return Frames(2);
+                Assert.That(EventSystem.current.currentSelectedGameObject, Is.SameAs(RailRow("House").gameObject), "Expand keeps keyboard focus on its group.");
+                AssertRailDisclosure("House", true);
+                AssertRailDisclosure("Strategy", false);
+                foreach (var caption in new[] { "Houseguests", "Relationships", "Who is where" })
+                    Assert.That(RailRow(caption), Is.Not.Null);
+                Assert.That(RailRow("House").GetComponentsInChildren<TMP_Text>().Any(label => label.text.Contains(director.Snapshot.Active.Count().ToString())), Is.True);
+                RailRow("Strategy").onClick.Invoke();
+                yield return Frames(2);
+                Assert.That(LastActiveRect(IconRail.RootName).GetComponentsInChildren<Button>().Any(button => button.name == "Houseguests"), Is.False);
+                AssertRailDisclosure("House", false);
+                AssertRailDisclosure("Strategy", true);
+                Assert.That(RailRow("The vote"), Is.Not.Null);
+                RailRow("Strategy").onClick.Invoke();
+                yield return Frames(2);
+                AssertRailDisclosure("Strategy", false);
+                Assert.That(LastActiveRect(IconRail.RootName).GetComponentsInChildren<Button>().Any(button => button.name == "The vote"), Is.False);
+                RailRow("Strategy").onClick.Invoke();
+                yield return Frames(2);
+                var mouse = TestMouse();
+                var target = RailRow(NotebookStrip.DealsTab);
+                InputSystem.QueueStateEvent(mouse, new MouseState { position = ScreenCentre((RectTransform)target.transform) });
+                yield return Frames(2);
+                Canvas.ForceUpdateCanvases();
+                target = RailRow(NotebookStrip.DealsTab);
+                var pointer = ScreenCentre((RectTransform)target.transform);
+                var hits = new System.Collections.Generic.List<RaycastResult>();
+                EventSystem.current.RaycastAll(new PointerEventData(EventSystem.current) { position = pointer }, hits);
+                Assert.That(hits.Count > 0 && hits[0].gameObject.GetComponentInParent<Button>() == target, Is.True,
+                    "Pointer at " + pointer + " must reach Deals & promises. Hits: " + string.Join(", ", hits.Select(hit => hit.gameObject.name)));
+                bool clicked = false;
+                target.onClick.AddListener(() => clicked = true);
+                yield return ClickAt(mouse, pointer);
+                Assert.That(clicked, Is.True, "The UI module must deliver the real mouse click to the row it hit. Target still active: "
+                    + (target != null && target.IsActive()) + ", point: " + pointer + ", mouse: " + mouse.position.ReadValue()
+                    + ", module: " + EventSystem.current.currentInputModule + ", selected: " + EventSystem.current.currentSelectedGameObject);
                 yield return Frames(2);
                 Assert.That(director.ActiveSection, Is.EqualTo(EpisodeDirector.NotebookSection.Word), "The rail's Deals & promises opens its page");
                 AssertNotebookStrip(NotebookStrip.DealsTab, "Deals & promises from the rail");
@@ -279,6 +345,71 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(focused, Is.Not.Null, "Something has the focus to move from.");
             var move = new AxisEventData(EventSystem.current) { moveDir = direction, moveVector = direction == MoveDirection.Left ? Vector2.left : Vector2.right };
             ExecuteEvents.Execute(focused, move, ExecuteEvents.moveHandler);
+        }
+
+        private void AssertRailDisclosure(string group, bool expanded)
+        {
+            var row = RailRow(group).transform;
+            var label = (RectTransform)row.Find("Row label");
+            var chevron = row.Find("Disclosure").GetComponent<Image>();
+            Assert.That(chevron.sprite, Is.Not.Null, group);
+            Assert.That(chevron.sprite, Is.SameAs(UiTheme.Pack(expanded ? PackArt.KitIconChevronDown : PackArt.KitIconChevronRight)), group);
+            Assert.That(chevron.raycastTarget, Is.False, group);
+            var count = row.Find("Group status") as RectTransform;
+            if (group == "House")
+            {
+                Assert.That(count, Is.Not.Null);
+                var countLabel = count.GetComponent<TMP_Text>();
+                Assert.That(countLabel.text, Is.EqualTo(director.Snapshot.Active.Count().ToString()));
+                Assert.That(countLabel.raycastTarget, Is.False);
+                Assert.That(ScreenRect(label).xMax, Is.LessThanOrEqualTo(ScreenRect(count).xMin), group);
+                Assert.That(ScreenRect(count).xMax, Is.LessThan(ScreenRect(chevron.rectTransform).xMin), group);
+            }
+            else
+            {
+                Assert.That(count, Is.Null, group);
+                Assert.That(ScreenRect(label).xMax, Is.LessThan(ScreenRect(chevron.rectTransform).xMin), group);
+            }
+        }
+
+        private void AssertEpisodeTravelLabel(bool compact, string at)
+        {
+            var container = LastActiveRect(compact ? "Objective" : "Next move");
+            var button = container.GetComponentsInChildren<Button>().Single(row => row.name == EpisodeHud.EpisodeTravelCaption);
+            var label = button.GetComponentsInChildren<TMP_Text>().Single(text => text.text == EpisodeHud.EpisodeTravelCaption);
+            string title = compact ? EpisodeHud.EpisodeTravelCaption : "Episode";
+            AssertDrawnLine(label, title, at);
+            if (compact) return;
+
+            var destination = button.transform.Find("Episode destination");
+            Assert.That(destination, Is.Not.Null, at + ": room subtitle under the action.");
+            var room = destination.GetComponent<TMP_Text>();
+            AssertDrawnLine(room, "Nominations Room", at);
+            var bounds = ScreenRect((RectTransform)button.transform);
+            AssertInside(bounds, label.rectTransform, at + ": action title");
+            AssertInside(bounds, room.rectTransform, at + ": room subtitle");
+            Assert.That(ScreenRect(room.rectTransform).yMax, Is.LessThanOrEqualTo(ScreenRect(label.rectTransform).yMin + .5f), at);
+            var mark = (RectTransform)button.transform.Find("Row mark");
+            Assert.That(ScreenRect(mark).xMax, Is.LessThan(ScreenRect(label.rectTransform).xMin), at);
+        }
+
+        private void AssertDrawnLine(TMP_Text label, string expected, string at)
+        {
+            label.ForceMeshUpdate();
+            var info = label.textInfo;
+            var glyphs = info.characterInfo.Take(info.characterCount).Where(character => character.isVisible).ToArray();
+            string shown = new string(glyphs.Select(character => character.character).ToArray());
+            string metrics = string.Join(", ", info.lineInfo.Take(info.lineCount)
+                .Select(line => $"advance={line.maxAdvance:F1} height={line.lineHeight:F1}"));
+            string details = $"{at}, {label.name}: raw '{label.text}', parsed '{label.GetParsedText()}', visible '{shown}', "
+                + $"rect {label.rectTransform.rect}, screen {ScreenRect(label.rectTransform)}, preferred {label.preferredWidth:F1}x{label.preferredHeight:F1}, "
+                + $"font {label.font.name} at {label.fontSize:F1}, smallest glyph {(glyphs.Length == 0 ? 0f : glyphs.Min(glyph => glyph.pointSize)):F1}, "
+                + $"lines [{metrics}], overflow {label.isTextOverflowing}, truncated {label.isTextTruncated}, focus {EventSystem.current.currentSelectedGameObject}";
+            Assert.That(label.isTextOverflowing || label.isTextTruncated, Is.False, details);
+            Assert.That(shown, Is.EqualTo(expected.Replace(" ", "")), details);
+            Assert.That(info.lineCount, Is.EqualTo(1), details);
+            if (director.TextSize == TextSize.Largest)
+                Assert.That(glyphs.Min(glyph => glyph.pointSize), Is.GreaterThanOrEqualTo(16f), details);
         }
 
         /// <summary>The rail's row of this caption, on the live rail.</summary>

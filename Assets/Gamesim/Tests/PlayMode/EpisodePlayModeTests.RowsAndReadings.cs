@@ -228,7 +228,7 @@ namespace Gamesim.Tests.PlayMode
             director.ClosePanels();
             yield return null;
             Canvas.ForceUpdateCanvases();
-            AssertKitGround(ButtonWithCaption("Go to episode screen"), "The compact objective's 'Go to episode screen'");
+            AssertKitGround(ButtonWithCaption(EpisodeHud.EpisodeTravelCaption), "The compact objective's 'Go to episode screen'");
             var diary = ButtonWithCaption(EpisodeHud.DiaryTravelCaption);
             AssertKitGround(diary, "The compact objective's '" + EpisodeHud.DiaryTravelCaption + "'");
             var edge = diary.transform.Find("Border").GetComponent<Image>();

@@ -753,7 +753,7 @@ namespace Gamesim.Tests.PlayMode
                 var next = NextCommand(before);
                 if (!director.IsPanelOpen)
                 {
-                    ButtonWithCaption("Go to episode screen").onClick.Invoke();
+                    ButtonWithCaption(EpisodeHud.PhaseTravelCaption(before.phase)).onClick.Invoke();
                     if (before.Find(before.playerId).status == ContestantStatus.Active)
                     {
                         var deadline = Time.realtimeSinceStartup + 12;

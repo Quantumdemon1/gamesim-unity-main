@@ -128,11 +128,14 @@ namespace Gamesim.Tests.EditMode
             int end = tour.IndexOf("new Step(", start + 1, StringComparison.Ordinal);
             Assert.That(end, Is.GreaterThan(start));
             string step = tour.Substring(start, end - start);
-            foreach (var row in NotebookStrip.RailRows.Where(row => row.Caption != NotebookStrip.NotebookRow))
-                Assert.That(step, Does.Contain(row.Caption), "The step names every row of the Notebook group: " + row.Caption + ".");
-            Assert.That(step, Does.Contain(NotebookStrip.RailHeading + ":"), "and names the group by its heading.");
-            Assert.That(step, Does.Contain("Save and Settings are at its foot"), "Only Save and Settings are at the rail's foot.");
-            Assert.That(step, Does.Not.Contain("Notebook, Save"), "The notebook's row heads its group now, not the foot.");
+            Assert.That(step, Does.Contain("Open " + NotebookStrip.HouseGroup + " for people and rooms"));
+            Assert.That(step, Does.Contain("Open " + NotebookStrip.StrategyGroup + " for deals and votes"));
+            Assert.That(NotebookStrip.RailRows.Where(row => NotebookStrip.RailGroupFor(row.Section) == NotebookStrip.HouseGroup)
+                .Select(row => row.Section), Is.EquivalentTo(new[] { NotebookStrip.PeopleSection, NotebookStrip.NetworkSection, NotebookStrip.RoomsSection }));
+            Assert.That(NotebookStrip.RailRows.Where(row => NotebookStrip.RailGroupFor(row.Section) == NotebookStrip.StrategyGroup)
+                .Select(row => row.Section), Is.EquivalentTo(new[] { NotebookStrip.DealsSection, NotebookStrip.VotesSection }));
+            Assert.That(step, Does.Contain("Save and Settings are below"));
+            Assert.That(step, Does.Contain("Notebook opens your notes"));
         }
 
 #if UNITY_5_3_OR_NEWER

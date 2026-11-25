@@ -45,14 +45,14 @@ namespace Gamesim.Tests.PlayMode
                     Assert.That(director.GetComponentsInChildren<RectTransform>().Any(rect=>rect.name==name),Is.True,name);
                 foreach(var name in new[]{EpisodeHud.HouseVibeCardName,EpisodeHud.RecentEventsCardName,EpisodeDirector.LiveFeedCardName})
                     Assert.That(director.GetComponentsInChildren<RectTransform>().Any(rect=>rect.name==name),Is.False,name);
-                Assert.That(ButtonWithCaption("Go to episode screen").interactable,Is.True);
+                Assert.That(ButtonWithCaption(EpisodeHud.EpisodeTravelCaption).interactable,Is.True);
                 Assert.That(ButtonWithCaption(EpisodeHud.DiaryTravelCaption).interactable,Is.True);
                 var objective=ActiveRect("Objective");
                 foreach(var label in objective.GetComponentsInChildren<TMPro.TMP_Text>())
                 {label.ForceMeshUpdate();Assert.That(label.isTextOverflowing,Is.False,label.text);}
                 var destination=objective.GetComponentsInChildren<TMPro.TMP_Text>().Single(label=>label.text.StartsWith("Next stop:"));
                 Assert.That(destination.fontSize,Is.EqualTo(Mathf.RoundToInt(18*TextSizes.Scale(textSize))),TextScales.At(textSize));
-                Assert.That(objective.rect.height,Is.EqualTo(largest?256f:238f),"The compact objective's height "+TextScales.At(textSize)+".");
+                Assert.That(objective.rect.height,Is.EqualTo(largest?308f:290f),"The compact objective's height "+TextScales.At(textSize)+".");
                 Assert.That(destination.rectTransform.rect.height,Is.EqualTo(largest?66f:48f),"The next stop's box "+TextScales.At(textSize)+".");
                 if(largest)
                     Assert.That(destination.rectTransform.rect.height,Is.GreaterThanOrEqualTo(2*destination.fontSize*1.3f),

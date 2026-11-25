@@ -625,7 +625,7 @@ namespace Gamesim.Episode
         {
             if (seasonDirector.IsPanelOpen) yield break;
             var before = seasonDirector.Snapshot;
-            yield return ClickSeasonButton("Go to episode screen");
+            yield return ClickSeasonButton(EpisodeHud.PhaseTravelCaption(before.phase));
             if (before.Find(before.playerId).status == ContestantStatus.Active)
                 yield return WaitSeasonWalk("episode screen: " + before.phase,seasonDirector.StationPosition);
             RequireSeason(seasonDirector.TryOpenPhasePanel(),"The current episode station must open after navigation.");

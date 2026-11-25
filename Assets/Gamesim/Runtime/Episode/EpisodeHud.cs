@@ -32,7 +32,11 @@ namespace Gamesim.Episode
         public const string BlockSpeechReadbackHeading = "SPEECHES FROM THE BLOCK";
         public const string SpeechSkipCaption = "Skip my final speech";
         public const string SpeechContinueCaption = "Continue to jury voting";
-        public const string DiaryTravelCaption = "Go to diary room [R]";
+        public const string DiaryTravelCaption = "Diary Room [R]";
+        public const string CompetitionTravelCaption = "Competition";
+        public const string EpisodeTravelCaption = "Episode (Nominations Room)";
+        public static string PhaseTravelCaption(EpisodePhase phase) =>
+            EpisodeEngine.IsCompetition(phase) ? CompetitionTravelCaption : EpisodeTravelCaption;
         /// <summary>The read (STRATEGY-LOOP-PLAN.md section 2): a question and a look, both free, once a week each.</summary>
         public const string AskVoteCaption = "Where's your head at on the vote?";
         public const string ReadPersonCaption = "Read them";
@@ -2404,7 +2408,7 @@ namespace Gamesim.Episode
                     ?? eligible.FirstOrDefault(item => item.name == preferredSelection && MayFocusOnItsOwn(item))
                     ?? OpeningControl(eligible.Where(MayFocusOnItsOwn).ToArray())
                     ?? PinnedSelectable(eligible)
-                    ?? eligible.FirstOrDefault(item => item.name == "Go to episode screen")
+                    ?? eligible.FirstOrDefault(item => item.name == PhaseTravelCaption(director.Snapshot.phase))
                     ?? eligible.FirstOrDefault(MayFocusOnItsOwn);
                 RestoreFocus(events, focus != null ? focus.gameObject : null);
                 restoreSelection = false;

@@ -36,7 +36,7 @@ namespace Gamesim.Tests.PlayMode
             yield return null;
             Assert.That(RouteMetres(player.transform.position, station), Is.GreaterThan(HousePlayerController.WarpRouteMetres),
                 "From the yard the screen is across the whole house.");
-            ButtonWithCaption("Go to episode screen").onClick.Invoke();
+            ButtonWithCaption(EpisodeHud.EpisodeTravelCaption).onClick.Invoke();
             Assert.That(director.LastTravel, Is.EqualTo(EpisodeDirector.TravelKind.Warp), "A trip across the whole house is not a trip.");
             Assert.That(Vector3.Distance(player.transform.position, station), Is.LessThan(1f), "The player is at the screen.");
             Assert.That(cameraRig.FocusedSubject, Is.SameAs(player.transform), "The camera is on them.");
@@ -48,7 +48,7 @@ namespace Gamesim.Tests.PlayMode
 
             WarpPlayer(OnFootFrom(station, 9f, 18f));
             yield return null;
-            ButtonWithCaption("Go to episode screen").onClick.Invoke();
+            ButtonWithCaption(EpisodeHud.EpisodeTravelCaption).onClick.Invoke();
             yield return null;
             Assert.That(director.LastTravel, Is.EqualTo(EpisodeDirector.TravelKind.Run),
                 "A trip of " + player.RouteMetres.ToString("0") + " m is a run.");
@@ -58,7 +58,7 @@ namespace Gamesim.Tests.PlayMode
             // inherited.
             WarpPlayer(OnFootFrom(station, 1.5f, 5f));
             yield return null;
-            ButtonWithCaption("Go to episode screen").onClick.Invoke();
+            ButtonWithCaption(EpisodeHud.EpisodeTravelCaption).onClick.Invoke();
             yield return null;
             Assert.That(director.LastTravel, Is.EqualTo(EpisodeDirector.TravelKind.Walk),
                 "A trip of " + player.RouteMetres.ToString("0.0") + " m is a walk, whatever the last trip was.");
@@ -111,6 +111,30 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(director.LastTravel, Is.EqualTo(EpisodeDirector.TravelKind.Warp));
             Assert.That(director.CanUseDiary, Is.True, "Arriving by warp is arriving: the diary opens.");
             Assert.That(cameraRig.FocusedSubject, Is.SameAs(player.transform));
+
+            // Both named destinations retain their physical approaches as the active phase changes.
+            for (int phase = 0; phase < 2; phase++)
+            {
+                if (phase == 1) yield return InstallRules4AtFirstHoH(SeedOpeningWith("Luck"));
+                bool competition = Gamesim.Simulation.EpisodeEngine.IsCompetition(director.Snapshot.phase);
+                Assert.That(competition, Is.EqualTo(phase == 1));
+                foreach (bool yard in new[] { false, true })
+                {
+                    director.ClosePanels();
+                    string venue = yard ? HouseInteractionAnchors.CompetitionDestination : HouseInteractionAnchors.EpisodeDestination;
+                    Assert.That(HouseInteractionAnchors.TryFind(player.gameObject.scene, venue, 0, out var target), Is.True, venue);
+                    WarpPlayer(FarthestRoomFrom(target.Approach));
+                    yield return Frames(2);
+                    int revision = director.Snapshot.revision;
+                    ButtonWithCaption(yard ? EpisodeHud.CompetitionTravelCaption : EpisodeHud.EpisodeTravelCaption).onClick.Invoke();
+                    yield return Frames(2);
+                    Assert.That(director.LastTravel, Is.Not.EqualTo(EpisodeDirector.TravelKind.None), venue);
+                    var goal = director.LastTravel == EpisodeDirector.TravelKind.Warp ? player.transform.position : player.Agent.destination;
+                    Assert.That(Vector3.Distance(goal, target.Approach), Is.LessThan(1.1f), venue + " in " + director.Snapshot.phase);
+                    Assert.That(director.Snapshot.revision, Is.EqualTo(revision), "Travel alone submits no command.");
+                    if (yard != competition) Assert.That(director.TryOpenPhasePanel(), Is.False, "The other venue cannot open the current phase.");
+                }
+            }
         }
 
         /// <summary>

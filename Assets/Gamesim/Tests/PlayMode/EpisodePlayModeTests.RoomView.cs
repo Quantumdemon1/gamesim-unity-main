@@ -751,73 +751,80 @@ namespace Gamesim.Tests.PlayMode
         // Way-finding (D17).
         // ------------------------------------------------------------------------------------
 
-        /// <summary>
-        /// The next stop stays pinned and clickable at every room-view distance (D17): from every room, at its
-        /// nearest and farthest zoom and at yaws 0, 45 and 90, the episode screen's icon is on screen, clear of
-        /// the HUD and takes a click - where the dollhouse hid every icon under 14 m.
-        /// </summary>
         [UnityTest]
         public IEnumerator WayFinding_TheNextStopIsPinnedAndClickableAtEveryRoomViewDistance()
         {
             director.ClosePanels();
             director.SuspendNpcAutonomyForDiagnostics();
             yield return null;
-            Assert.That(director.Snapshot.pendingDiary, Is.Null, "No diary is owed, so the next stop is the episode screen.");
             var scope = ScopeOf(director);
             ScopeParkHouseguests(scope);
             string next = director.ScreenRoom;
             var hud = director.GetComponentInChildren<EpisodeHud>(true);
-            var failures = new List<string>();
             for (int room = 0; room < RoomLayers.Count; room++)
             {
                 cameraRig.SetReducedMotion(false);
                 yield return RoomViewPlayerIn(scope, room);
-                // The rig's own reduced motion for the sweep: a yaw and a distance set are the ones drawn on the next frame.
                 cameraRig.SetReducedMotion(true);
                 foreach (float distance in new[] { HouseRoomView.NearestDistance, HouseRoomView.FarthestDistance(room) })
                     foreach (float yaw in new[] { 0f, 45f, 90f })
                     {
                         RoomViewSetYaw(yaw);
                         SetCameraDistance(distance);
-                        yield return null;
-                        yield return null;
-                        yield return null;
-                        string where = RoomLayers.RoomIds[room] + " at " + distance + " m, yaw " + yaw;
-                        var beacons = director.TravelBeacons;
-                        if (beacons == null) { failures.Add(where + ": no icons"); continue; }
-                        if (beacons.RoomViewRoom != RoomLayers.RoomIds[room]) failures.Add(where + ": the icons are placed for " + beacons.RoomViewRoom);
-                        var icon = BeaconFor(next);
-                        if (icon == null || !icon.gameObject.activeInHierarchy) { failures.Add(where + ": the next stop's icon is not shown"); continue; }
-                        var centre = ScreenCentre(icon);
-                        if (!cameraRig.ViewCamera.pixelRect.Contains(centre)) failures.Add(where + ": the next stop's icon is off the screen");
-                        if (hud.Covers(centre)) failures.Add(where + ": the next stop's icon is under the HUD");
-                        var group = icon.GetComponent<CanvasGroup>();
-                        if (group != null && (!group.blocksRaycasts || !group.interactable)) failures.Add(where + ": the next stop's icon takes no click");
+                        yield return Frames(3);
+                        var shortcut = FindButton(EpisodeHud.PhaseTravelCaption(director.Snapshot.phase));
+                        Assert.That(shortcut.IsInteractable(), Is.True, "The fixed Play shortcut stays available.");
+                        Assert.That(director.TravelBeacons.RoomViewRoom, Is.EqualTo(RoomLayers.RoomIds[room]));
+                        if (director.TravelBeacons.TryPlacedAt(next, out _))
+                            AssertVisibleNeighbor(scope, room, next, hud);
                     }
             }
             cameraRig.SetReducedMotion(false);
-            Assert.That(failures, Is.Empty, string.Join("; ", failures.Take(20)));
-
-            // And a click on it goes there, from the room farthest from it.
-            var station = director.StationPosition;
-            int farRoom = Rs4FarRoom(scope, station);
-            yield return RoomViewPlayerIn(scope, farRoom);
-            yield return null;
-            yield return null;
-            var shown = BeaconFor(next);
-            Assert.That(shown != null && shown.gameObject.activeInHierarchy, Is.True, "From the " + RoomLayers.RoomIds[farRoom] + ", the next stop is on screen.");
-            var mouse = TestMouse();
-            yield return ClickAt(mouse, ScreenCentre(shown));
-            Assert.That(director.LastTravel, Is.Not.EqualTo(EpisodeDirector.TravelKind.None), "A click on the pinned next stop goes there. Status: " + director.StatusMessage);
+            yield return RoomViewPlayerIn(scope, Rs4FarRoom(scope, director.StationPosition));
+            Assert.That(director.TravelBeacons.TryPlacedAt(next, out _), Is.False);
+            var fixedButton = ButtonWithCaption(EpisodeHud.PhaseTravelCaption(director.Snapshot.phase));
+            yield return ClickAt(TestMouse(), ScreenCentre((RectTransform)fixedButton.transform));
+            Assert.That(director.LastTravel, Is.Not.EqualTo(EpisodeDirector.TravelKind.None));
         }
 
-        /// <summary>
-        /// Every other room keeps an icon with its count (D17): from the living room each room a doorway leads
-        /// to has its icon at that doorway, every other room's is on screen at the frame's edge, and a press on
-        /// a neighbour's icon takes the player into that room. From the kitchen, the doorway into the private
-        /// room is walked through since the kitchen run moved into the corner (the quick fixes, 2026-11-03; it
-        /// was no doorway while the run and the agents' erosion closed it): the private room's icon stands at it.
-        /// </summary>
+        private void AssertVisibleNeighbor(HouseRoomScope scope, int from, string room, EpisodeHud hud)
+        {
+            var eye = cameraRig.ViewCamera;
+            Assert.That(scope.TryDoorway(from, RoomLayers.IndexOf(room), eye.transform.position, out _), Is.True, room);
+            Assert.That(director.TravelBeacons.IsAtDoorway(room), Is.True, room);
+            var icon = BeaconFor(room);
+            var group = icon.GetComponent<CanvasGroup>();
+            Assert.That(group.blocksRaycasts && group.interactable, Is.True, room);
+            var tag = (RectTransform)icon.Find(EpisodeTravelBeacons.RoomNameName);
+            Rect ProjectedRect(RectTransform target)
+            {
+                var canvas = target.GetComponentInParent<Canvas>();
+                var camera = canvas.renderMode == RenderMode.ScreenSpaceOverlay ? null : canvas.worldCamera;
+                var corners = new Vector3[4];
+                target.GetWorldCorners(corners);
+                var low = RectTransformUtility.WorldToScreenPoint(camera, corners[0]);
+                var high = RectTransformUtility.WorldToScreenPoint(camera, corners[2]);
+                return Rect.MinMaxRect(low.x, low.y, high.x, high.y);
+            }
+            int index = Enumerable.Range(0, scope.Query.FloorCount).Single(i => scope.Query.FloorRoom(i) == room);
+            var floor = scope.Query.FloorCollider(index);
+            Assert.That(director.TravelBeacons.TryPlacedAt(room, out var placed), Is.True, room);
+            foreach (var part in new[] { icon, tag })
+            {
+                var rect = ProjectedRect(part);
+                string framing = $"{RoomLayers.RoomIds[from]} to {room}, {part.name} rect {rect}, recorded pivot {placed}, "
+                    + $"eye {eye.transform.position}, yaw {cameraRig.Yaw:F1}, distance {cameraRig.Distance:F2}, frame {Time.frameCount}";
+                Assert.That(eye.pixelRect.Contains(rect.min) && eye.pixelRect.Contains(rect.max), Is.True, framing);
+                Assert.That(hud.CoversAny(rect), Is.False, framing);
+                foreach (var point in new[] { rect.center, rect.min, rect.max, new Vector2(rect.xMin,rect.yMax), new Vector2(rect.xMax,rect.yMin) })
+                {
+                    Assert.That(Physics.Raycast(eye.ScreenPointToRay(point), out var hit, eye.farClipPlane, HouseLayers.Pick, QueryTriggerInteraction.Ignore),
+                        Is.True, framing + ": no collider at " + point);
+                    Assert.That(hit.collider, Is.SameAs(floor), $"{framing}: at {point}, hit {hit.collider.transform.parent}/{hit.collider.name} at {hit.point}.");
+                }
+            }
+        }
+
         [UnityTest]
         public IEnumerator WayFinding_EachAdjacentRoomsIconReachesItsRoom()
         {
@@ -826,66 +833,70 @@ namespace Gamesim.Tests.PlayMode
             yield return null;
             var scope = ScopeOf(director);
             ScopeParkHouseguests(scope);
-            int living = RoomLayers.IndexOf("Living");
+            int living = RoomLayers.IndexOf("Living"), kitchen = RoomLayers.IndexOf("Kitchen");
+            Assert.That(scope.TryDoorway(kitchen, RoomLayers.IndexOf("Private"), Vector3.zero, out var gap), Is.True);
+            Assert.That(gap.Middle.x, Is.InRange(5.6f, 8.4f));
             yield return RoomViewPlayerIn(scope, living);
-            yield return null;
-            yield return null;
-            var beacons = director.TravelBeacons;
-            Assert.That(beacons, Is.Not.Null, "The icons are built.");
-            Assert.That(beacons.RoomViewRoom, Is.EqualTo("Living"), "placed for the room view of the living room.");
-            var adjacent = Enumerable.Range(0, RoomLayers.Count).Where(room => room != living && scope.TryDoorway(living, room, cameraRig.transform.position, out _)).ToList();
-            Assert.That(adjacent.Select(room => RoomLayers.RoomIds[room]).ToArray(), Is.SupersetOf(new[] { "Kitchen", "Bedroom" }),
-                "The living room's doorways lead to the kitchen and the bedroom, read from the walls.");
-            var failures = new List<string>();
-            foreach (var room in Enumerable.Range(0, RoomLayers.Count).Where(room => room != living))
+            cameraRig.SetReducedMotion(true);
+            SetCameraDistance(HouseRoomView.FarthestDistance(living));
+            RoomViewSetYaw(0f);
+            yield return Frames(3);
+            var hud = director.GetComponentInChildren<EpisodeHud>(true);
+            void CheckLiving()
             {
-                string id = RoomLayers.RoomIds[room];
-                var icon = BeaconFor(id);
-                bool shownIcon = icon != null && icon.gameObject.activeInHierarchy;
-                if (!shownIcon) { failures.Add(id + ": no icon"); continue; }
-                if (!cameraRig.ViewCamera.pixelRect.Contains(ScreenCentre(icon))) failures.Add(id + ": its icon is off the screen");
-                if (beacons.ShownCount(id) < 0) failures.Add(id + ": no count");
-                bool viaDoor = adjacent.Contains(room);
-                if (viaDoor && !beacons.IsAtDoorway(id)) failures.Add(id + ": a doorway leads there, but its icon is not at it (or pinned towards it)");
-                if (!viaDoor && beacons.IsAtDoorway(id)) failures.Add(id + ": no doorway leads there, but its icon stands at one");
-                if (!viaDoor && !beacons.IsPinned(id)) failures.Add(id + ": with no doorway from here its icon should wait at the frame's edge");
+                foreach (var id in new[] { "Yard", "Games", "Private", "HoH", "Living", "Nomination" })
+                    Assert.That(BeaconFor(id).gameObject.activeInHierarchy, Is.False, id + " is not a travel target in this shot.");
+                foreach (var id in new[] { "Bedroom", "Kitchen" })
+                {
+                    Assert.That(director.TravelBeacons.TryPlacedAt(id, out _), Is.True, id + " is visible from Living.");
+                    AssertVisibleNeighbor(scope, living, id, hud);
+                }
             }
-            Assert.That(failures, Is.Empty, string.Join("; ", failures));
-
-            // From the kitchen: the doorway into the private room is walked through on the baked NavMesh since the
-            // kitchen run moved into the corner (section 2.1; the quick fixes, 2026-11-03), so the private room's icon
-            // stands at it, as the living room's stands at the doorway that leads there.
-            int kitchen = RoomLayers.IndexOf("Kitchen"), privateRoom = RoomLayers.IndexOf("Private");
-            yield return RoomViewPlayerIn(scope, kitchen);
-            yield return null;
-            yield return null;
-            Assert.That(beacons.RoomViewRoom, Is.EqualTo("Kitchen"), "The icons are placed for the room view of the kitchen.");
-            Assert.That(scope.TryDoorway(kitchen, privateRoom, cameraRig.transform.position, out var gap), Is.True,
-                "A walkable doorway joins the kitchen to the private room.");
-            Assert.That(gap.Middle.x, Is.InRange(5.6f, 8.4f), "It is the gap in the wall between them: " + gap + ".");
-            Assert.That(scope.TryDoorway(kitchen, living, cameraRig.transform.position, out _), Is.True, "A doorway joins the kitchen to the living room.");
-            Assert.That(BeaconFor("Private") != null && BeaconFor("Private").gameObject.activeInHierarchy, Is.True, "The private room keeps its icon,");
-            Assert.That(beacons.IsAtDoorway("Private"), Is.True, "at the doorway that leads there.");
-            Assert.That(beacons.IsAtDoorway("Living"), Is.True, "The living room's icon stands at the kitchen's doorway that leads there.");
-            yield return RoomViewPlayerIn(scope, living);
-
-            // A press on the kitchen's icon takes the player into the kitchen.
-            director.PressTravelBeacon("Kitchen");
-            Assert.That(director.LastTravel, Is.Not.EqualTo(EpisodeDirector.TravelKind.None), "The kitchen's icon sends the player there. Status: " + director.StatusMessage);
+            if (Application.isBatchMode)
+                yield return CaptureFraming("living-room-doorway-travel-21x9", settle: false, inspect: _ => CheckLiving(), width: 2560, height: 1080);
+            else CheckLiving();
+            // Put a temporary opaque wall above the visible bedroom floor. None of its buttons may survive on this side.
+            int index = Enumerable.Range(0, scope.Query.FloorCount).Single(i => scope.Query.FloorRoom(i) == "Bedroom");
+            var bounds = scope.Query.FloorCollider(index).bounds;
+            var wall = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            try
+            {
+                wall.transform.position = new Vector3(bounds.center.x, bounds.max.y + .15f, bounds.center.z);
+                wall.transform.localScale = new Vector3(bounds.size.x, .2f, bounds.size.z);
+                Physics.SyncTransforms();
+                yield return Frames(2);
+                Assert.That(BeaconFor("Bedroom").gameObject.activeInHierarchy, Is.False, "An occluded neighbor cannot take pointer hits.");
+                Object.DestroyImmediate(wall.GetComponent<Collider>());
+                HouseRoomScope.PlaceDressing(wall.transform);
+                // The blocker is visible to the camera, independently of the room decoration the scope culls.
+                wall.layer = 0;
+                yield return Frames(2);
+                Assert.That(BeaconFor("Bedroom").gameObject.activeInHierarchy, Is.False, "A drawn occluder without a collider also hides the destination.");
+                wall.SetActive(false);
+                var floorSurface = scope.Query.FloorCollider(index).GetComponent<Renderer>();
+                bool enabled = floorSurface.enabled;
+                try
+                {
+                    floorSurface.enabled = false;
+                    yield return Frames(2);
+                    Assert.That(BeaconFor("Bedroom").gameObject.activeInHierarchy, Is.False, "A floor collider without its drawn floor is not a destination.");
+                }
+                finally { floorSurface.enabled = enabled; }
+            }
+            finally { Object.Destroy(wall); }
+            yield return Frames(2);
+            for (int yaw = 0; yaw < 360 && !director.TravelBeacons.TryPlacedAt("Kitchen", out _); yaw += 15)
+            {
+                RoomViewSetYaw(yaw);
+                yield return Frames(2);
+            }
+            Assert.That(director.TravelBeacons.TryPlacedAt("Kitchen", out var at), Is.True);
+            yield return ClickAt(TestMouse(), at);
+            Assert.That(director.LastTravel, Is.Not.EqualTo(EpisodeDirector.TravelKind.None));
             var goal = director.LastTravel == EpisodeDirector.TravelKind.Warp ? player.transform.position : player.Agent.destination;
-            Assert.That(scope.RoomUnder(goal), Is.EqualTo(RoomLayers.IndexOf("Kitchen")), "The trip ends in the kitchen.");
+            Assert.That(scope.RoomUnder(goal), Is.EqualTo(kitchen));
         }
 
-        /// <summary>
-        /// No icon stands on another (D17: every room keeps an icon, and one drawn over another is lost): from every
-        /// room, at its nearest, middle and farthest zoom and at yaws 0, 45 and 90, every other room's icon is shown,
-        /// and no icon's disc or the room's name under it touches another icon's disc or name. The lane's rs4 captures
-        /// had the nomination room's icon over the games room's in the living room's view, both waiting at the
-        /// frame's edge the same way, the one's name hiding the other's. And the viewed room's own icon - shown for
-        /// the screen or the diary, which a click on it opens - is shown wherever its place is on screen and clear of
-        /// the HUD: beside its place where the next stop's holds it (the fixes' review), which the private room is read
-        /// on until a framing shows (the claims' second review).
-        /// </summary>
         [UnityTest]
         public IEnumerator WayFinding_NoIconStandsOnAnother()
         {
@@ -895,169 +906,41 @@ namespace Gamesim.Tests.PlayMode
             var scope = ScopeOf(director);
             ScopeParkHouseguests(scope);
             var hud = director.GetComponentInChildren<EpisodeHud>(true);
-            var failures = new List<string>();
-            int frames = 0, pairs = 0, mostIcons = 0;
+            int frames = 0, pairs = 0;
             for (int room = 0; room < RoomLayers.Count; room++)
             {
                 cameraRig.SetReducedMotion(false);
                 yield return RoomViewPlayerIn(scope, room);
-                // The rig's own reduced motion for the sweep: a yaw and a distance set are the ones drawn on the next frame.
                 cameraRig.SetReducedMotion(true);
-                float nearest = HouseRoomView.NearestDistance, farthest = HouseRoomView.FarthestDistance(room);
-                foreach (float distance in new[] { nearest, (nearest + farthest) * .5f, farthest })
+                float near = HouseRoomView.NearestDistance, far = HouseRoomView.FarthestDistance(room);
+                foreach (float distance in new[] { near, (near + far) * .5f, far })
                     foreach (float yaw in new[] { 0f, 45f, 90f })
                     {
                         RoomViewSetYaw(yaw);
                         SetCameraDistance(distance);
-                        yield return null;
-                        yield return null;
-                        yield return null;
-                        string viewed = RoomLayers.RoomIds[room];
-                        string where = viewed + " at " + distance.ToString("0.##") + " m, yaw " + yaw;
-                        int shown = WayFindingReadFraming(viewed, where, hud, failures, ref pairs);
-                        if (shown < 0) continue;
+                        yield return Frames(3);
                         frames++;
-                        mostIcons = Mathf.Max(mostIcons, shown);
-                    }
-            }
-
-            // The diary's icon waiting beside its place where the next stop's holds it (the fixes' review), which the nine
-            // framings never reach: from the private room at yaws 0, 45 and 90 the next stop's icon, claiming its spot
-            // first, never stands on the diary's place, so they passed at 304c872b, which hid the diary's icon there (the
-            // claims' second review). So the private room is read on, every framing as above, until one where it does:
-            // the player at the room's open floor, at four spots 1.5 m off it along the room's axes and four on its
-            // diagonals, then at spots 2.5 m and 3 m off along the axes, each zoom, every 15 degrees round - the open
-            // floor and the four axis spots alone missed it in 3 of 144 of the review's varied houses (the claims' third
-            // review) - a spot read only where the floor under it is the private room's, the camera's focus put over the
-            // spot at every framing as far as the zoom's clamp lets it. There the diary's icon waits beside its place,
-            // pinned; where its place is clear and it is not shown, it fails.
-            int privateRoom = RoomLayers.IndexOf("Private");
-            string besideItsPlace = null;
-            int searched = 0;
-            cameraRig.SetReducedMotion(false);
-            yield return RoomViewPlayerIn(scope, privateRoom);
-            var open = player.transform.position;
-            var spots = new[]
-            {
-                Vector3.zero, Vector3.right * 1.5f, Vector3.left * 1.5f, Vector3.forward * 1.5f, Vector3.back * 1.5f,
-                new Vector3(1.5f, 0f, 1.5f), new Vector3(-1.5f, 0f, 1.5f), new Vector3(1.5f, 0f, -1.5f), new Vector3(-1.5f, 0f, -1.5f),
-                Vector3.right * 2.5f, Vector3.left * 2.5f, Vector3.forward * 2.5f, Vector3.back * 2.5f,
-                Vector3.right * 3f, Vector3.left * 3f, Vector3.forward * 3f, Vector3.back * 3f,
-            };
-            foreach (var offset in spots)
-            {
-                if (besideItsPlace != null) break;
-                if (!NavMesh.SamplePosition(open + offset, out var floor, 1f, player.Agent.areaMask) || scope.RoomUnder(floor.position) != privateRoom) continue;
-                cameraRig.SetReducedMotion(false);
-                ScopePlace(player.transform, floor.position, 1f);
-                cameraRig.RecenterOnPlayer();
-                yield return null;
-                yield return SettleCamera();
-                cameraRig.SetReducedMotion(true);
-                float nearest = HouseRoomView.NearestDistance, farthest = HouseRoomView.FarthestDistance(privateRoom);
-                foreach (float distance in new[] { nearest, (nearest + farthest) * .5f, farthest })
-                    for (float yaw = 0f; yaw < 360f && besideItsPlace == null; yaw += 15f)
-                    {
-                        RoomViewSetYaw(yaw);
-                        SetCameraDistance(distance);
-                        // Reduced motion freezes the focus where the camera stands, and the room's clamp holds it at the
-                        // room's centre at the farthest zoom, which every spot's framings end on: without this every spot
-                        // after the first was read from the centre, the player alone moved (the claims' fourth review).
-                        RoomViewSetDesired(new Vector3(floor.position.x, cameraRig.transform.position.y, floor.position.z), distance);
-                        yield return null;
-                        yield return null;
-                        yield return null;
-                        string where = "Private, the player " + offset.ToString("0.#") + " off its open floor, at " + distance.ToString("0.##") + " m, yaw " + yaw;
-                        if (WayFindingReadFraming("Private", where, hud, failures, ref pairs) < 0) continue;
-                        searched++;
-                        if (director.TravelBeacons.IsPinned("Private")) besideItsPlace = where;
+                        var occupied = new List<Rect>();
+                        foreach (string id in RoomLayers.RoomIds)
+                        {
+                            if (!director.TravelBeacons.TryPlacedAt(id, out _)) continue;
+                            AssertVisibleNeighbor(scope, room, id, hud);
+                            var icon = BeaconFor(id);
+                            var disc = ScreenRect(icon);
+                            var label = ScreenRect((RectTransform)icon.Find(EpisodeTravelBeacons.RoomNameName));
+                            foreach (var old in occupied)
+                            {
+                                pairs++;
+                                Assert.That(old.Overlaps(disc) || old.Overlaps(label), Is.False, id);
+                            }
+                            occupied.Add(disc);
+                            occupied.Add(label);
+                        }
                     }
             }
             cameraRig.SetReducedMotion(false);
-            Assert.That(failures, Is.Empty, failures.Count + " found: " + string.Join("; ", failures.Take(20)));
-            Assert.That(frames, Is.EqualTo(RoomLayers.Count * 9), "Every room's nine framings were read.");
-            Assert.That(mostIcons, Is.GreaterThanOrEqualTo(RoomLayers.Count - 1), "Every other room's icon was on screen together (" + pairs + " pairs compared).");
-            Assert.That(besideItsPlace, Is.Not.Null, "In one of the private room's " + searched + " framings read the diary's icon waited beside its place, the next stop's icon on it.");
-        }
-
-        /// <summary>
-        /// Reads one framing of <see cref="WayFinding_NoIconStandsOnAnother"/>: every other room's icon shown, the viewed
-        /// room's own shown wherever its place is on screen and clear of the HUD, and no icon's disc or room's name on
-        /// another's. Returns how many icons are shown, or -1 when the icons are not placed for the viewed room's room view.
-        /// </summary>
-        private int WayFindingReadFraming(string viewed, string where, EpisodeHud hud, List<string> failures, ref int pairs)
-        {
-            // A drawn rect half a pixel in on every side: two icons that only meet at an edge do not stand on each other.
-            Rect Inside(RectTransform rect) { var at = ScreenRect(rect); return new Rect(at.xMin + .5f, at.yMin + .5f, at.width - 1f, at.height - 1f); }
-            var beacons = director.TravelBeacons;
-            if (beacons == null || beacons.RoomViewRoom != viewed) { failures.Add(where + ": the icons are not placed for its room view (" + beacons?.RoomViewRoom + ")"); return -1; }
-            var shown = new List<(string room, Rect disc, Rect? name)>();
-            foreach (var id in RoomLayers.RoomIds)
-            {
-                var icon = BeaconFor(id);
-                if (icon == null) continue;
-                if (!icon.gameObject.activeInHierarchy)
-                {
-                    if (id != viewed) failures.Add(where + ": the " + id + "'s icon is not shown");
-                    else if (WayFindingOwnPlaceIsClear(viewed, icon, hud, out var place))
-                        failures.Add(where + ": the viewed room's own icon is not shown, though its place (" + place.ToString("0") + ") is on screen and clear of the HUD");
-                    continue;
-                }
-                var tag = icon.Find(EpisodeTravelBeacons.RoomNameName) as RectTransform;
-                shown.Add((id, Inside(icon), tag != null && tag.gameObject.activeSelf ? Inside(tag) : (Rect?)null));
-            }
-            for (int a = 0; a < shown.Count; a++)
-                for (int b = a + 1; b < shown.Count; b++)
-                {
-                    pairs++;
-                    var one = shown[a];
-                    var other = shown[b];
-                    bool touch = one.disc.Overlaps(other.disc)
-                        || (other.name.HasValue && one.disc.Overlaps(other.name.Value))
-                        || (one.name.HasValue && one.name.Value.Overlaps(other.disc))
-                        || (one.name.HasValue && other.name.HasValue && one.name.Value.Overlaps(other.name.Value));
-                    if (touch)
-                        failures.Add(where + ": the " + one.room + "'s icon (" + one.disc + ", its name " + one.name + ") stands on the "
-                            + other.room + "'s (" + other.disc + ", its name " + other.name + ")");
-                }
-            return shown.Count;
-        }
-
-        /// <summary>
-        /// Whether the viewed room's own icon has its place on screen and clear of the HUD: shown only for the screen's room
-        /// and the diary's, it floats over the screen, the diary chair or the room's marker, and its square - taken a quarter
-        /// wider every way than the icons test it - and the room's name under it, with two pixels' air, are all on the frame
-        /// and under none of the chrome. There the icon is always shown (D17), at its place or beside it.
-        /// </summary>
-        private bool WayFindingOwnPlaceIsClear(string room, RectTransform icon, EpisodeHud hud, out Vector2 place)
-        {
-            place = default;
-            Vector3 anchor;
-            if (room == director.ScreenRoom && !float.IsInfinity(director.StationPosition.x)) anchor = director.StationPosition;
-            else if (room == "Private" && director.HasDiaryRoom) anchor = director.DiaryPosition;
-            else if (room == director.ScreenRoom || room == "Private")
-            {
-                var marker = SceneComponents<HouseRoomMarker>().FirstOrDefault(candidate => candidate.isActiveAndEnabled && candidate.RoomName == room);
-                if (marker == null) return false;
-                anchor = marker.transform.position;
-            }
-            else return false;
-            var camera = cameraRig.ViewCamera;
-            var seen = camera.WorldToScreenPoint(anchor + Vector3.up * EpisodeTravelBeacons.Height);
-            if (seen.z <= .5f) return false;
-            place = seen;
-            // The icon as drawn (its scale is the text size's, kept while it is hidden), moved to its place.
-            var drawn = ScreenRect(icon);
-            float half = drawn.width * .75f;
-            var square = new Rect(place.x - half, place.y - half, 2f * half, 2f * half);
-            var frame = camera.pixelRect;
-            if (!frame.Contains(square.min) || !frame.Contains(square.max) || hud.CoversAny(square)) return false;
-            var tag = icon.Find(EpisodeTravelBeacons.RoomNameName) as RectTransform;
-            if (tag == null) return true;
-            var name = ScreenRect(tag);
-            name.position += place - drawn.center;
-            name = new Rect(name.xMin - 2f, name.yMin - 2f, name.width + 4f, name.height + 4f);
-            return frame.Contains(name.min) && frame.Contains(name.max) && !hud.CoversAny(name);
+            Assert.That(frames, Is.EqualTo(RoomLayers.Count * 9));
+            Assert.That(pairs, Is.Positive, "The sweep compared simultaneously visible neighbors.");
         }
 
         // ------------------------------------------------------------------------------------

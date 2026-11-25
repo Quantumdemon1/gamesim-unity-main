@@ -205,13 +205,13 @@ namespace Gamesim.Tests.PlayMode
         /// <summary>Opens the episode screen by the pad: A on the rail's way there, then A again at the screen, or X once there on foot.</summary>
         private IEnumerator PadOpenTheStation()
         {
-            yield return ReachAndPress("Go to episode screen", pad: true);
+            yield return ReachAndPress(EpisodeHud.PhaseTravelCaption(director.Snapshot.phase), pad: true);
             float deadline = Time.realtimeSinceStartup + 20f;
             while (!director.IsPhasePanelOpen && Time.realtimeSinceStartup < deadline
                    && Vector3.Distance(player.transform.position, director.StationPosition) > 2.5f)
                 yield return null;
             if (!director.IsPhasePanelOpen && director.LastTravel == EpisodeDirector.TravelKind.Warp)
-                yield return ReachAndPress("Go to episode screen", pad: true);
+                yield return ReachAndPress(EpisodeHud.PhaseTravelCaption(director.Snapshot.phase), pad: true);
             // On foot, the screen is the interact button's while the player is heading to it.
             if (!director.IsPhasePanelOpen) { yield return PressOnPad(GamepadButton.West); yield return Frames(2); }
             Assert.That(director.IsPhasePanelOpen, Is.True, "The pad opens the episode screen in " + director.Snapshot.phase

@@ -199,7 +199,7 @@ namespace Gamesim.Tests.PlayMode
         /// to the diary, the settings' CEREMONIES paragraph and the tour's episode-screen step. Each
         /// names the pad's buttons once a pad is the device and the keyboard's again after a key.
         ///
-        /// <para>The first pad press of the test is A on the rail's "Go to episode screen", through
+        /// <para>The first pad press of the test is A on the rail's EpisodeHud.EpisodeTravelCaption, through
         /// the UI module: that press can reach the button's handler before the director's Update has
         /// noted the device, so the line is worded at the press.</para>
         /// </summary>
@@ -212,7 +212,7 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(director.HintsForPad, Is.False, "A house starts on the keyboard's words.");
 
             // 1. The episode screen, by the pad's A on the rail's button.
-            yield return PadSubmitCaption("Go to episode screen");
+            yield return PadSubmitCaption(EpisodeHud.EpisodeTravelCaption);
             bool warp = director.LastTravel == EpisodeDirector.TravelKind.Warp;
             Assert.That(director.StatusMessage, Is.EqualTo(InputGlossary.StationLine(warp, true)),
                 "A pad's A on the rail: the line names the pad's button. It read: " + director.StatusMessage);

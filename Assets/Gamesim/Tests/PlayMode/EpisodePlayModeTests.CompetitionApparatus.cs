@@ -61,9 +61,9 @@ namespace Gamesim.Tests.PlayMode
             var before=director.Snapshot;
             if(houseSize>0)InstallRepresentativeYardSolids();
             beforeEntry?.Invoke();
-            Vector3 start=player.transform.position;float radius=player.Agent.radius,height=player.Agent.height;
+            float radius=player.Agent.radius,height=player.Agent.height;
             ButtonWithCaption(ranked?CompetitionMiniGames.EnterCaption(CompetitionMiniGames.For(category)):"Practice this competition").onClick.Invoke();
-            Assert.That(player.transform.position,Is.EqualTo(start),"Opening the apparatus claims a route and does not warp the body.");
+            AssertShortStageWalk(player.Agent, "apparatus " + category + " entrance", allowCoveredStart: true);
             var instrument=PlayerInstrument();
             Assert.That(instrument.GetComponentsInChildren<Collider>(true),Is.Empty);
             yield return null;

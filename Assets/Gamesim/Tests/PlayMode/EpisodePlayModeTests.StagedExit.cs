@@ -585,6 +585,9 @@ namespace Gamesim.Tests.PlayMode
             string folder = GoodbyeTakeFolder(skipSummons);
             var rows = new StringBuilder("frame\twhen\tunscaledSeconds\tgoodbyeSeconds\tid\tname\tstatus\tvoteRoom\tseatedAtVote\tdrawnAtVote\tactorRoom\tviewRooms\tscopeSource\tcullingMask\tstage\tshot\tdip\troot\teye\theadViewport\theadChanged\theadTested\ttorsoChanged\ttorsoTested\tmeshRenderers\tmaskIncluded\tactorDrawn\thudHeld\n");
             var cameraTrace = new StringBuilder("frame\tgoodbyeSeconds\ttrackerRoom\tfloorRoom\tseatActive\tvisualSeated\trequestedBoomM\tappliedBoomM\ttravelling\tviewRooms\tcullingMask\tactorDrawn\n");
+            var handback = new StringBuilder("frame\tunscaledSeconds\tsource\tphase\tstagedExit\tstageActive\thudHeld\tdip\tshot\ttravelling\tcameraControl\tplayerInput\tpanel\tweeklyRecap\treturnButtonFrame\n");
+            string lastHandoffState = null;
+            int recapFrame = -1, returnButtonFrame = -1;
             var pictures = new List<(string path, Texture2D image)>();
             var issues = new List<string>();
             var host = new GameObject("Stock eviction goodbye observer");
@@ -736,20 +739,47 @@ namespace Gamesim.Tests.PlayMode
                                 Sample(moments[portraits++], true);
                             }
                         }
-                        else if (began >= 0f && !cameraRig.HasShot && director.CurrentRoomScopeSource == EpisodeDirector.RoomScopeSource.FreePlay)
+                        else if (began >= 0f)
                         {
+                            string state = $"{director.CurrentRoomScopeSource}\t{director.CeremonyStagePhase}\t{director.StagedExitRunning}\t{director.IsCeremonyStaged}\t{Hud.IsHeldForReveal}\t{director.IsTravelDipShowing}\t{cameraRig.HasShot}\t{cameraRig.IsTravelling}\t{cameraRig.ControlsEnabled}\t{player.InputEnabled}\t{director.IsPanelOpen}\t{director.IsWeeklyRecapOpen}\t{returnButtonFrame}";
+                            if (lastHandoffState != state)
+                            {
+                                handback.AppendLine(FormattableString.Invariant($"{Time.frameCount}\t{Time.unscaledTime:F5}\t{state}"));
+                                lastHandoffState = state;
+                            }
+                            if (cameraRig.HasShot || director.CurrentRoomScopeSource != EpisodeDirector.RoomScopeSource.FreePlay) return;
                             if (!released) { released = true; Sample("ownership-return", false); }
+                            if (director.IsWeeklyRecapOpen && recapFrame < 0)
+                            {
+                                recapFrame = Time.frameCount;
+                                Sample("weekly-recap", false);
+                            }
                             if (!director.StagedExitRunning && !director.IsCeremonyStaged && !Hud.IsHeldForReveal
-                                && !director.IsTravelDipShowing && !cameraRig.IsTravelling && cameraRig.ControlsEnabled)
+                                && !director.IsTravelDipShowing && !cameraRig.IsTravelling && cameraRig.ControlsEnabled
+                                && !director.IsPanelOpen && player.InputEnabled)
                             { free = true; Sample("first-free-camera", false); }
                         }
                     }
                     catch (Exception ex) { observerFailure = ex; }
                 };
                 yield return SkipReveals();
-                yield return WaitFor(() => free || observerFailure != null, EpisodeDirector.GoodbyeSeconds + EpisodeDirector.WalkOutSeconds + 8f,
-                    "the first ordinary stock frame after the exit releases the camera, dip and chrome");
+                // An eviction can open its weekly recap after the walkout. Its own Return button
+                // restores input. Keep observing across the click, including the first eligible LateUpdate.
+                // Keep the timeout in this iterator so its finally block flushes the frames on failure.
+                float deadline = Time.realtimeSinceStartup + EpisodeDirector.GoodbyeSeconds + EpisodeDirector.WalkOutSeconds + 8f;
+                while (!free && observerFailure == null && Time.realtimeSinceStartup < deadline)
+                {
+                    if (recapFrame >= 0 && returnButtonFrame < 0 && director.IsWeeklyRecapOpen)
+                    {
+                        var back = ButtonWithCaption(WeeklyRecapScreen.ContinueCaption);
+                        Assert.That(back.IsInteractable(), Is.True, "The displayed weekly recap offers Return to the house.");
+                        returnButtonFrame = Time.frameCount;
+                        back.onClick.Invoke();
+                    }
+                    yield return null;
+                }
                 Assert.That(observerFailure, Is.Null, observerFailure?.ToString());
+                Assert.That(free, Is.True, "The first ordinary stock frame after the exit releases the camera, dip and chrome. Last handback state: " + lastHandoffState);
                 Assert.That(portraits, Is.EqualTo(3));
                 Assert.That(entryFrame, Is.GreaterThanOrEqualTo(0));
                 if (skipSummons)
@@ -761,19 +791,41 @@ namespace Gamesim.Tests.PlayMode
             finally
             {
                 probe.Foot = null;
-                lens.Dispose();
-                Object.Destroy(host);
+                // The stock reads already own their pixels. Write each item independently before
+                // releasing the lens so a rejected later frame or a teardown problem cannot discard them.
+                var writeFailures = new List<Exception>();
+                void WriteRows(string name, StringBuilder lines)
+                {
+                    try
+                    {
+                        using (var file = new FileStream(Path.Combine(folder, name), FileMode.CreateNew, FileAccess.Write))
+                        using (var log = new StreamWriter(file)) log.Write(lines.ToString());
+                    }
+                    catch (Exception ex) { writeFailures.Add(new IOException(name, ex)); }
+                }
                 try
                 {
+                    WriteRows("handback.tsv", handback);
+                    WriteRows("goodbye-boom.tsv", cameraTrace);
+                    WriteRows("stock-camera.tsv", rows);
                     foreach (var picture in pictures)
-                        using (var file = new FileStream(picture.path, FileMode.CreateNew, FileAccess.Write))
-                        { var png = picture.image.EncodeToPNG(); file.Write(png, 0, png.Length); }
-                    using (var file = new FileStream(Path.Combine(folder, "goodbye-boom.tsv"), FileMode.CreateNew, FileAccess.Write))
-                    using (var log = new StreamWriter(file)) log.Write(cameraTrace.ToString());
-                    using (var file = new FileStream(Path.Combine(folder, "stock-camera.tsv"), FileMode.CreateNew, FileAccess.Write))
-                    using (var log = new StreamWriter(file)) log.Write(rows.ToString());
+                    {
+                        try
+                        {
+                            var png = picture.image.EncodeToPNG();
+                            using (var file = new FileStream(picture.path, FileMode.CreateNew, FileAccess.Write))
+                                file.Write(png, 0, png.Length);
+                        }
+                        catch (Exception ex) { writeFailures.Add(new IOException(picture.path, ex)); }
+                    }
+                    if (writeFailures.Count > 0) throw new AggregateException("Incomplete stock goodbye evidence.", writeFailures);
                 }
-                finally { foreach (var picture in pictures) Object.Destroy(picture.image); }
+                finally
+                {
+                    foreach (var picture in pictures) Object.Destroy(picture.image);
+                    Object.Destroy(host);
+                    lens.Dispose();
+                }
             }
         }
 

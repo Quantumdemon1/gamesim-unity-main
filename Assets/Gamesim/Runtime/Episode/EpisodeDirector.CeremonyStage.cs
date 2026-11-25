@@ -1402,13 +1402,16 @@ namespace Gamesim.Episode
                     };
                     // A skipped summons can leave the evictee in another room. Frame their
                     // actual walker room at both marks, just as the subject's root supplies the focus.
-                    void FrameStanding(HouseCameraRig.Shot shot)
+                    void FrameStanding(HouseCameraRig.Shot shot, bool entryCut = false)
                     {
                         if (body == null) return;
                         shot.Focus = body.position + Vector3.up * StandingFace;
-                        Move(shot, rooms: RoomSet.Of(director.WalkerRoomOf(body)));
+                        string room = director.WalkerRoomOf(body);
+                        // The off-room cut must land before the next cue can replace it, even
+                        // when this frame is shorter than the normal ceremony cut duration.
+                        Move(shot, rooms: RoomSet.Of(room), immediate: entryCut && !farewellAtGoodbye && room != Room);
                     }
-                    FrameStanding(close);
+                    FrameStanding(close, entryCut: true);
                     var closer = close;
                     closer.Distance = 2.4f;
                     closer.Seconds = 2f;
@@ -1492,13 +1495,15 @@ namespace Gamesim.Episode
             /// makes the stage the view's source, so the summons' wide leaves free play's whole house
             /// whole until it lands (RS6a).
             /// </summary>
-            private void Move(HouseCameraRig.Shot shot, ReactionLighting lighting = ReactionLighting.None, RoomSet rooms = default)
+            private void Move(HouseCameraRig.Shot shot, ReactionLighting lighting = ReactionLighting.None,
+                RoomSet rooms = default, bool immediate = false)
             {
                 if (lighting != ReactionLighting.None) LightReaction(shot, lighting);
                 else if (reactionFill != null) reactionFill.enabled = false;
                 shot.Rooms = rooms.IsEmpty ? ShotRooms : rooms;
                 shot.TravelFromRooms = rooms.IsEmpty ? director.ViewedRooms : rooms;
-                director.cameraRig.MoveTo(shot);
+                if (immediate) director.cameraRig.CutToShot(shot);
+                else director.cameraRig.MoveTo(shot);
             }
 
             /// <summary>A low, neutral fill from the viewing side keeps a seated face readable under the coloured room practicals.</summary>

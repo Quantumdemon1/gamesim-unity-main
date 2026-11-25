@@ -69,18 +69,6 @@ namespace Gamesim.Tests.PlayMode
                         Debug.LogFormat("[Gamesim short arrivals] simulated {0} walks into stock aspect {1:F2} after {2:F2} s and {3:F2} m",
                             family, originalAspect, Time.realtimeSinceStartup - started,
                             Vector3.Distance(entrancePosition, player.transform.position));
-                        if (Application.isBatchMode && family == CompetitionShowFamily.Hold)
-                        {
-                            using var lens = new CaptureLens(view, Mathf.RoundToInt(900 * originalAspect), 900);
-                            var frame = lens.Read();
-                            try
-                            {
-                                string output = System.IO.Path.GetFullPath(System.IO.Path.Combine(Application.dataPath, "..", "short-arrival-endurance.png"));
-                                System.IO.File.WriteAllBytes(output, frame.EncodeToPNG());
-                                Debug.Log("[Gamesim short arrivals] stock approach -> " + output);
-                            }
-                            finally { Object.Destroy(frame); }
-                        }
                     }
                 }
                 else if (!holdChecked)

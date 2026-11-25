@@ -1464,7 +1464,7 @@ namespace Gamesim.Episode
                 // A nominee drops their chin into the table's red practical. Raise the cooler bounce
                 // from just below eye height for that beat. Ordinary seated portraits need a softer key.
                 bool downcast = lighting == ReactionLighting.DowncastNominee;
-                reactionFill.color = downcast ? new Color(0.65f, 0.98f, 1f) : new Color(0.94f, 0.97f, 1f);
+                reactionFill.color = downcast ? new Color(0.81f, 0.94f, 0.97f) : new Color(0.94f, 0.97f, 1f);
                 reactionFill.intensity = downcast ? 4.5f : 1.45f;
                 var view = Quaternion.Euler(0f, shot.Yaw, 0f);
                 var offset = view * (downcast ? new Vector3(-0.25f, -0.12f, -1.75f) : new Vector3(-0.4f, 0.3f, -1.8f));

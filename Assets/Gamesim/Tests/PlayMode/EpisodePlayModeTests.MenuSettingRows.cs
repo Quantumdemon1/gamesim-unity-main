@@ -69,6 +69,7 @@ namespace Gamesim.Tests.PlayMode
             AssertRowReads(SettingRowWords.ReducedSoundRow, SettingsWords.SwitchValue(director.ReducedAudio));
             AssertRowReads(SettingRowWords.TextSizeRow, SettingRowWords.TextSizeValue(director.TextSize));
             AssertRowReads(SettingRowWords.CaptionTimeRow, director.CaptionTimeSetting == CaptionTime.Longer ? "Longer" : "Standard");
+            AssertRowReads(SettingRowWords.ConversationLinesRow, director.AutoContinueLines ? "Move on" : "Wait for me");
             AssertRowReads(SettingRowWords.CeremonyPaceRow, director.CeremonyPaceSetting == CeremonyPace.Quick ? "Quick" : "Suspenseful");
             AssertNoOldButtons("Accessibility");
 
@@ -144,6 +145,15 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(director.CaptionTimeSetting, Is.EqualTo(CaptionTime.Longer));
             PressSettingRow(SettingRowWords.CaptionTimeRow, "Standard");
             Assert.That(StoredPreference(CaptionTiming.Key), Is.EqualTo(0));
+
+            // Conversation lines (UI plan D11): a new setting under its own key, waiting for a press until the player chooses.
+            Assert.That(SettingRowValue(SettingRowWords.ConversationLinesRow), Is.EqualTo("Wait for me"), "Lines wait for a press by default.");
+            PressSettingRow(SettingRowWords.ConversationLinesRow, "Move on");
+            Assert.That(StoredPreference(ConversationLinePace.Key), Is.EqualTo(1), "Move on is kept as 1.");
+            Assert.That(director.AutoContinueLines, Is.True);
+            StepSettingRow(SettingRowWords.ConversationLinesRow, MoveDirection.Left, "Wait for me");
+            Assert.That(StoredPreference(ConversationLinePace.Key), Is.EqualTo(0));
+            Assert.That(director.AutoContinueLines, Is.False);
 
             StepSettingRow(SettingRowWords.CeremonyPaceRow, MoveDirection.Left, "Quick");
             Assert.That(StoredPreference("Gamesim.CeremonyPace"), Is.EqualTo(1), "Quick is the old 'Make ceremonies quick': 1.");

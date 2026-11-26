@@ -182,6 +182,7 @@ namespace Gamesim.Episode
             textSize = TextSizes.FromRecord(preferences.HasKey(TextSizes.SizeKey) ? preferences.GetInt(TextSizes.SizeKey, 0) : (int?)null,
                 preferences.HasKey(TextSizes.LegacyKey) ? preferences.GetInt(TextSizes.LegacyKey, 0) : (int?)null);
             captionTime = CaptionTiming.FromRecord(preferences.GetInt(CaptionTiming.Key, 0));
+            autoContinueLines = ConversationLinePace.FromRecord(preferences.GetInt(ConversationLinePace.Key, 0));
             // The player's own keys and buttons (A5), on every copy of the actions from the start.
             HouseBindings.Load(preferences);
             musicVolumePercent = SoundPictures.Clamp(preferences.GetInt(SoundPictures.MusicVolumeKey, SoundPictures.DefaultVolume));

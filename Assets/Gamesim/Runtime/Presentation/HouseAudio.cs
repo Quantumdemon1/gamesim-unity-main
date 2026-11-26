@@ -50,7 +50,7 @@ namespace Gamesim.Presentation
         // its own source, and a level from 0 to 1 that moves toward its target at the reference
         // build's constant rates (MusicFade). The level is what the voice is doing now; the target is
         // what the requested state wants from it.
-        private AudioSource ambienceSource, cueSource, themeSource, seasonSource, roomSource;
+        private AudioSource cueSource, themeSource, seasonSource;
         private float themeLevel, themeTarget, seasonLevel, seasonTarget;
         private bool themeRunning;
         private SeasonVoice seasonVoice;
@@ -105,8 +105,43 @@ namespace Gamesim.Presentation
         public const string RoomResourceFolder = "Audio/Rooms/";
         /// <summary>The room whose bed is playing, or null when the generic air is.</summary>
         public string CurrentRoom { get; private set; }
-        /// <summary>Whether a room's own bed is playing right now.</summary>
-        public bool RoomTonePlaying => roomSource != null && roomSource.isPlaying;
+        /// <summary>
+        /// Whether a room's own bed is playing right now: the bed asked for, from the moment its
+        /// room is entered and while it fades in. The bed of a room just left, fading out under it,
+        /// does not count.
+        /// </summary>
+        public bool RoomTonePlaying => CurrentBedPlaying(room: true);
+
+        // The beds (§3.C room tone per room): two voices, so a room crossed - the generic air
+        // included - is a crossfade rather than a cut (RoomToneBlend). Each bed keeps its place in
+        // its loop when its voice lets it go, and comes back from there.
+        private readonly RoomToneBlend beds = new RoomToneBlend();
+        private readonly AudioSource[] bedVoices = new AudioSource[RoomToneBlend.Voices];
+        private readonly Dictionary<AudioClip, int> bedPlaces = new Dictionary<AudioClip, int>();
+
+        /// <summary>How many bed voices are sounding: two while a crossfade runs, one otherwise, none when the beds are off.</summary>
+        public int BedVoicesSounding
+        {
+            get
+            {
+                int sounding = 0;
+                foreach (var voice in bedVoices) if (voice != null && voice.isPlaying) sounding++;
+                return sounding;
+            }
+        }
+
+        /// <summary>How loud a room's bed is now, 0 to 1 of its full level, as its fade has it; null is the generic air.</summary>
+        public float BedLevel(string room) => beds.LevelOf(room ?? RoomToneBlend.Air);
+
+        /// <summary>Whether the preferences let the beds be heard: switched on, not reduced or muted, and some volume.</summary>
+        private bool HearBeds => isActiveAndEnabled && ambienceEnabled && !ReducedAudio && !Muted && volume > 0f && effectsShare > 0f;
+
+        private bool CurrentBedPlaying(bool room)
+        {
+            int voice = beds.Current;
+            if (voice < 0 || bedVoices[voice] == null || !bedVoices[voice].isPlaying) return false;
+            return room == (beds.KeyOf(voice) != RoomToneBlend.Air);
+        }
         private AudioClip ambience, themeBed, seasonBed;
         private Music music = Music.Silent;
         private bool initialized, ambienceEnabled = true;
@@ -121,8 +156,8 @@ namespace Gamesim.Presentation
         public bool ReducedAudio { get; private set; }
         /// <summary>The volume the cues are played at, after the preferences.</summary>
         public float CueVolume => volume * (ReducedAudio ? 0.5f : 1f);
-        /// <summary>Whether the room tone is playing right now.</summary>
-        public bool AmbiencePlaying => ambienceSource != null && ambienceSource.isPlaying;
+        /// <summary>Whether the room tone is playing right now: the generic air, as the bed asked for (see <see cref="RoomTonePlaying"/>).</summary>
+        public bool AmbiencePlaying => CurrentBedPlaying(room: false);
 
         // The three volumes beside the master (PLAN A, A11), each a share of it: the music, the
         // effects - the game's news and the house's air - and the interface's answers to a hand.
@@ -158,24 +193,92 @@ namespace Gamesim.Presentation
 
         /// <summary>
         /// The room the camera looks into (§3.C room tone per room). A room with a bed in
-        /// Resources plays it and the generic air stops; a room without one, or none, keeps the
-        /// air. Asked every time the focus crosses a threshold; the same room again costs nothing.
+        /// Resources plays it in place of the generic air; a room without one, or none, plays the
+        /// air. The bed that was playing fades out as the new one fades in, over
+        /// <see cref="RoomToneBlend.CrossfadeSeconds"/>, and a bed heard before carries on from where
+        /// it left off. Asked every time the focus crosses a threshold; the same room again costs nothing.
         /// </summary>
         public void SetRoom(string room)
         {
             if (room == CurrentRoom) return;
             CurrentRoom = room;
             Initialize();
-            if (roomSource == null) return;
-            AudioClip clip = null;
-            if (!string.IsNullOrEmpty(room) && !roomTones.TryGetValue(room, out clip))
+            if (!initialized) return;
+            EnterBed(room);
+            ApplySettings();
+        }
+
+        /// <summary>The room's bed asked of the voices: loaded into one when neither carries it.</summary>
+        private void EnterBed(string room)
+        {
+            string key = RoomClip(room) != null ? room : RoomToneBlend.Air;
+            int voice = beds.Enter(key, out bool given);
+            var source = bedVoices[voice];
+            if (!given || source == null) return;
+            // The voice's old bed is let go, its place kept for when it comes back.
+            KeepBedPlace(source);
+            source.Stop();
+            source.clip = key == RoomToneBlend.Air ? ambience : RoomClip(room);
+            source.volume = 0f;
+        }
+
+        /// <summary>A room's bed, or null for a room without one and for none.</summary>
+        private AudioClip RoomClip(string room)
+        {
+            if (string.IsNullOrEmpty(room)) return null;
+            if (!roomTones.TryGetValue(room, out var clip))
             {
                 clip = Resources.Load<AudioClip>(RoomResourceFolder + room);
                 roomTones[room] = clip;
             }
-            if (clip == null) { roomSource.Stop(); roomSource.clip = null; }
-            else if (roomSource.clip != clip) { roomSource.Stop(); roomSource.clip = clip; }
-            ApplySettings();
+            return clip;
+        }
+
+        /// <summary>Where a sounding bed is in its loop, kept for its return.</summary>
+        private void KeepBedPlace(AudioSource source)
+        {
+            if (source != null && source.clip != null && source.isPlaying) bedPlaces[source.clip] = source.timeSamples;
+        }
+
+        /// <summary>A bed voice started, from the place its bed was let go at when it has one.</summary>
+        private void ResumeBed(AudioSource source)
+        {
+            source.Play();
+            if (bedPlaces.TryGetValue(source.clip, out int place) && place > 0 && place < source.clip.samples)
+                source.timeSamples = place;
+        }
+
+        /// <summary>
+        /// Both bed voices moved on by <paramref name="seconds"/> of their crossfade, and a voice
+        /// that has faded all the way out let go, its place kept. Called once a frame on the real
+        /// clock, the music's clamp on a long frame included. Held while the beds are off, so the
+        /// bed asked for comes back in from silence rather than at whatever level the clock reached.
+        /// </summary>
+        private void TickBeds(float seconds)
+        {
+            if (!initialized || !HearBeds) return;
+            beds.Tick(seconds);
+            for (int i = 0; i < bedVoices.Length; i++)
+            {
+                var source = bedVoices[i];
+                if (source != null && source.isPlaying && !beds.Wanted(i))
+                {
+                    KeepBedPlace(source);
+                    source.Stop();
+                }
+            }
+            WriteBedVolumes();
+        }
+
+        /// <summary>Each bed voice's volume: its fade's level at its bed's peak, a share of the effects volume.</summary>
+        private void WriteBedVolumes()
+        {
+            for (int i = 0; i < bedVoices.Length; i++)
+            {
+                var source = bedVoices[i];
+                if (source == null) continue;
+                source.volume = volume * effectsShare * RoomToneBlend.PeakOf(beds.KeyOf(i)) * beds.LevelOf(i);
+            }
         }
 
         private void Awake()
@@ -259,6 +362,8 @@ namespace Gamesim.Presentation
         private void Update()
         {
             if (!ManualMusicClock) TickMusicFrame(Time.unscaledDeltaTime);
+            // The beds' crossfade is not the music's, and ManualMusicClock does not hold it.
+            TickBeds(MusicFade.FrameStep(Time.unscaledDeltaTime));
         }
 
         /// <summary>
@@ -412,8 +517,7 @@ namespace Gamesim.Presentation
                     seasonVoice = SeasonVoice.Stopped;
                 }
             }
-            if (ambienceSource != null) ambienceSource.Stop();
-            if (roomSource != null) roomSource.Stop();
+            foreach (var voice in bedVoices) if (voice != null) voice.Stop();
             ApplySettings();
         }
 
@@ -496,12 +600,17 @@ namespace Gamesim.Presentation
         {
             if (initialized || !Application.isPlaying) return;
             initialized = true;
-            // Own two new sources; do not edit another component's audio or global listener volume.
-            ambienceSource = gameObject.AddComponent<AudioSource>();
-            ambienceSource.playOnAwake = false;
-            ambienceSource.loop = true;
-            ambienceSource.spatialBlend = 0f;
-            ambienceSource.priority = 180;
+            // Own new sources; do not edit another component's audio or global listener volume.
+            for (int i = 0; i < bedVoices.Length; i++)
+            {
+                var voice = gameObject.AddComponent<AudioSource>();
+                voice.playOnAwake = false;
+                voice.loop = true;
+                voice.spatialBlend = 0f;
+                voice.priority = 180;
+                voice.volume = 0f;
+                bedVoices[i] = voice;
+            }
             cueSource = gameObject.AddComponent<AudioSource>();
             cueSource.playOnAwake = false;
             cueSource.spatialBlend = 0f;
@@ -523,12 +632,15 @@ namespace Gamesim.Presentation
             Preload(seasonBed);
 
             ambience = Own(BuildAmbience());
-            ambienceSource.clip = ambience;
-            roomSource = gameObject.AddComponent<AudioSource>();
-            roomSource.playOnAwake = false;
-            roomSource.loop = true;
-            roomSource.spatialBlend = 0f;
-            roomSource.priority = 190;
+            // The room beds decoded now too, for the same reason: their metas do not preload, and
+            // the first visit to each room decoded twelve seconds of its bed on the main thread.
+            foreach (var bed in Resources.LoadAll<AudioClip>(RoomResourceFolder.TrimEnd('/')))
+            {
+                if (bed == null) continue;
+                roomTones[bed.name] = bed;
+                Preload(bed);
+            }
+            EnterBed(CurrentRoom);
             clips[Cue.Button] = Recorded(Cue.Button) ?? Own(Compose("Button", 0.07f, new Tone(600, 0.06f, 0, 0.11f)));
             clips[Cue.Save] = Recorded(Cue.Save) ?? Own(Compose("Save", 0.24f, new Tone(1000, 0.08f, 0, 0.12f), new Tone(1200, 0.10f, 0.10f, 0.12f)));
             clips[Cue.SocialUp] = Recorded(Cue.SocialUp) ?? Own(Compose("Connection", 0.33f, new Tone(330, 0.18f, 0, 0.13f), new Tone(523.25f, 0.22f, 0.10f, 0.13f)));
@@ -555,32 +667,28 @@ namespace Gamesim.Presentation
         private void ApplySettings()
         {
             if (!initialized) return;
-            bool hearAmbience = isActiveAndEnabled && ambienceEnabled && !ReducedAudio && !Muted && volume > 0f && effectsShare > 0f;
-            if (ambienceSource != null)
+            bool hearAmbience = HearBeds;
+            // The beds - the house's air and the rooms' - are effects (A11). Stopped in this frame
+            // when the preferences take them away; the bed asked for comes back in from silence.
+            if (!hearAmbience) beds.Silence();
+            for (int i = 0; i < bedVoices.Length; i++)
             {
-                ambienceSource.mute = Muted;
-                // The house's air is an effect (A11).
-                ambienceSource.volume = volume * effectsShare;
-                // A room's own bed replaces the generic air while it plays.
-                bool roomBed = roomSource != null && roomSource.clip != null;
-                if (hearAmbience && !roomBed)
+                var source = bedVoices[i];
+                if (source == null) continue;
+                source.mute = Muted;
+                bool wanted = hearAmbience && source.clip != null && beds.Wanted(i);
+                if (wanted && !source.isPlaying) ResumeBed(source);
+                else if (!wanted && source.isPlaying)
                 {
-                    if (!ambienceSource.isPlaying) ambienceSource.Play();
+                    KeepBedPlace(source);
+                    source.Stop();
                 }
-                else ambienceSource.Stop();
             }
+            WriteBedVolumes();
             if (cueSource != null)
             {
                 cueSource.mute = Muted;
                 cueSource.volume = CueVolume;
-            }
-            if (roomSource != null)
-            {
-                roomSource.mute = Muted;
-                roomSource.volume = volume * 0.7f * effectsShare;
-                bool wanted = roomSource.clip != null && hearAmbience;
-                if (wanted && !roomSource.isPlaying) roomSource.Play();
-                else if (!wanted && roomSource.isPlaying) roomSource.Stop();
             }
             // The music's volumes, and only its volumes. Starting, stopping and fading the voices
             // belongs to EnterMusic and TickMusic, so a preference changed - or a room crossed -
@@ -736,8 +844,12 @@ namespace Gamesim.Presentation
         private void OnDisable()
         {
             AudioSettings.OnAudioConfigurationChanged -= OnAudioConfigurationChanged;
-            if (roomSource != null) roomSource.Stop();
-            if (ambienceSource != null) ambienceSource.Stop();
+            foreach (var voice in bedVoices)
+            {
+                KeepBedPlace(voice);
+                if (voice != null) voice.Stop();
+            }
+            beds.Silence();
             if (cueSource != null) cueSource.Stop();
             // The music too. A disabled component ticks no fades, and the bed used to play on under
             // one with nothing left to fade it or stop it. The theme goes; the bed keeps its place -
@@ -750,9 +862,8 @@ namespace Gamesim.Presentation
 
         private void OnDestroy()
         {
-            if (ambienceSource != null) { ambienceSource.Stop(); Release(ambienceSource); }
+            foreach (var voice in bedVoices) if (voice != null) { voice.Stop(); Release(voice); }
             if (cueSource != null) { cueSource.Stop(); Release(cueSource); }
-            if (roomSource != null) { roomSource.Stop(); Release(roomSource); }
             if (themeSource != null) { themeSource.Stop(); Release(themeSource); }
             if (seasonSource != null) { seasonSource.Stop(); Release(seasonSource); }
             foreach (var clip in owned) if (clip != null) Release(clip);

@@ -602,6 +602,9 @@
     -->
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/MusicFade.cs" />
     <Compile Include="$(EditMode)MusicFadeTests.cs" />
+    <!-- The house's two bed voices and the director's hold on a doorway, on the same fade arithmetic; the tests read the room beds' WAVs. -->
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/RoomToneBlend.cs" />
+    <Compile Include="$(EditMode)RoomToneBlendTests.cs" />
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/WardrobeSlots.cs" />
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/CharacterOutfits.cs" />
     <Compile Include="$(EditMode)WardrobeSlotsTests.cs" />

@@ -105,11 +105,25 @@ namespace Gamesim.Tests.PlayMode
             // A free move is a watching view from RS5: the room view watches the kitchen and draws it alone.
             Assert.That(cameraRig.ViewRoom, Is.EqualTo(RoomLayers.IndexOf("Kitchen")), "The free move to the kitchen's marker watches the kitchen,");
             Assert.That(director.ViewedRooms, Is.EqualTo(RoomSet.Of("Kitchen")), "and the view draws it.");
+            // The beds crossfade on the real clock (RoomToneBlend.CrossfadeSeconds, 0.75 s, no more
+            // than a twentieth of a second a frame): waited on the clock, with room for slow frames.
+            float fade = Time.realtimeSinceStartup + 10f;
+            while (audio.BedLevel("Kitchen") < 1f && Time.realtimeSinceStartup < fade) yield return null;
+            Assert.That(audio.BedLevel("Kitchen"), Is.EqualTo(1f), "The kitchen's bed fades all the way in.");
             cameraRig.MoveTo(yard.transform.position, 12f);
             deadline = Time.realtimeSinceStartup + 3f;
+            while (director.RoomUnderCamera == "Kitchen" && Time.realtimeSinceStartup < deadline) yield return null;
+            Assert.That(director.RoomUnderCamera, Is.Not.EqualTo("Kitchen"), "The camera leaves the kitchen,");
+            Assert.That(audio.BedVoicesSounding, Is.EqualTo(2), "and the next bed comes in under the kitchen's:");
+            Assert.That(audio.BedLevel("Kitchen"), Is.GreaterThan(0.5f), "the kitchen fades out rather than cutting.");
             while (director.RoomUnderCamera != "Yard" && Time.realtimeSinceStartup < deadline) yield return null;
             Assert.That(audio.CurrentRoom, Is.EqualTo("Yard"), "and the yard's when it moves on.");
             Assert.That(director.ViewedRooms, Is.EqualTo(RoomSet.Of("Yard")), "The free move to the yard's marker watches the yard.");
+            fade = Time.realtimeSinceStartup + 10f;
+            while ((audio.BedLevel("Kitchen") > 0f || audio.BedVoicesSounding != 1) && Time.realtimeSinceStartup < fade) yield return null;
+            Assert.That(audio.BedLevel("Kitchen"), Is.EqualTo(0f), "The kitchen's bed reaches silence");
+            Assert.That(audio.BedVoicesSounding, Is.EqualTo(1), "and lets its voice go,");
+            Assert.That(audio.RoomTonePlaying, Is.True, "leaving the yard's bed alone.");
         }
 
         [UnityTest]

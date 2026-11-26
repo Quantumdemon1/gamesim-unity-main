@@ -104,7 +104,8 @@ namespace Gamesim.Tests.PlayMode
         /// The result is taken in the chairs, and the goodbye comes between the card and the walk:
         /// the evicted stand and face the house, every seated head turns to them, whoever sits
         /// claps, the camera is on their face, their line is on the strip, the chrome is aside and
-        /// the warm key light on the red chairs - and only once it is over do they walk, slowly.
+        /// the warm key light has left the red chairs for their face, from the camera's side - and
+        /// only once it is over do they walk, slowly.
         /// </summary>
         [UnityTest]
         public IEnumerator StagedExit_TheGoodbyeComesBetweenTheCardAndTheWalk()
@@ -188,6 +189,39 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(director.CeremonySkipShowing, Is.True, "the chip names the press that moves it on,");
             Assert.That(director.EvictionKeyLightShowing, Is.True, "and the key light is still on.");
             Assert.That(Presentation(leaving).IsSeated, Is.False, "They are up out of the chair.");
+            // The key light leaves the red chairs for their face: it began on or before this frame and
+            // swings over 0.3 s. From then on, on every frame of the goodbye read here, it is aimed at
+            // their head from a little above the eyes, near enough to light the face, in the chairs' warm
+            // color and no brighter - and, on a frame whose camera has landed, from the camera's side.
+            float keyOnTheFaceBy = Time.unscaledTime + 0.35f;
+            int keyReadsFromTheLens = 0;
+            string KeyOffTheFace(bool fromTheLens)
+            {
+                var key = director.transform.Find(EpisodeDirector.EvictionKeyLightName);
+                var lamp = key != null ? key.GetComponent<Light>() : null;
+                if (lamp == null || !lamp.enabled) return "no key light is on";
+                var bone = Presentation(leaving).HeadBone;
+                var head = bone != null ? bone.position : leaving.transform.position + Vector3.up * 1.55f;
+                var lens = cameraRig.ViewCamera.transform.position;
+                var toKey = key.position - head;
+                var off = new List<string>();
+                if (fromTheLens && Vector3.Dot(toKey.normalized, (lens - head).normalized) <= 0.5f) off.Add("not on the camera's side of the face");
+                if (Vector3.Angle(key.forward, head - key.position) >= 8f) off.Add("not aimed at the head");
+                if (toKey.magnitude < 1.6f || toKey.magnitude > 2.6f) off.Add("not 1.6 to 2.6 m from the head");
+                if (toKey.y < 0.1f || toKey.y > 1f) off.Add("not a little above the eyes");
+                if (lamp.intensity > 6f) off.Add("brighter than on the chairs");
+                if (Mathf.Abs(lamp.color.r - 1f) > 0.01f || Mathf.Abs(lamp.color.g - 0.86f) > 0.01f || Mathf.Abs(lamp.color.b - 0.66f) > 0.01f)
+                    off.Add("not the chairs' warm color");
+                return off.Count == 0 ? null : string.Join(", ", off) + " (key " + key.position.ToString("F2") + ", head " + head.ToString("F2")
+                    + ", lens " + lens.ToString("F2") + ", intensity " + lamp.intensity.ToString("F2") + ")";
+            }
+            void WatchTheKey(string when)
+            {
+                if (Time.unscaledTime < keyOnTheFaceBy || director.CeremonyStagePhase != EpisodeDirector.CeremonyStageStep.Goodbye) return;
+                bool landed = cameraRig.HasArrived();
+                Assert.That(KeyOffTheFace(landed), Is.Null, "The key light is on the evicted's face " + when + ", not on the empty chair:");
+                if (landed) keyReadsFromTheLens++;
+            }
             // The goodbye is noncontact (the owner's decision): watched on every frame from the card
             // going down to the house getting up - the farewell's own frames among them - not only at the end.
             string embraceSeen = null;
@@ -231,9 +265,23 @@ namespace Gamesim.Tests.PlayMode
                 {
                     WatchTheGoodbye("during the farewell");
                     Assert.That(embraceSeen, Is.Null, "The farewell is the short noncontact one: " + embraceSeen);
+                    WatchTheKey("during the farewell");
                     yield return farewell.Current;
                 }
             }
+            // Read from a landed camera at least once: on the push in when nobody stands for the
+            // farewell, and on the farewell's own shot or the face after it when somebody does.
+            while ((Time.unscaledTime < keyOnTheFaceBy || keyReadsFromTheLens == 0)
+                && director.CeremonyStagePhase == EpisodeDirector.CeremonyStageStep.Goodbye
+                && Time.unscaledTime < closedAt + EpisodeDirector.GoodbyeSeconds - 0.5f)
+            {
+                WatchTheGoodbye("while the key light found their face");
+                WatchTheKey("as the camera settled on them");
+                yield return null;
+            }
+            WatchTheKey("once the camera settled on them");
+            Assert.That(keyReadsFromTheLens, Is.GreaterThan(0),
+                "The key light was read on the evicted's face from a landed camera during the goodbye. " + director.CeremonyStageReport("goodbye key light"));
             var face = leaving.transform.position + Vector3.up * 1.55f;
             Assert.That(cameraRig.HasShot, Is.True, "The camera is the goodbye's,");
             Assert.That(Vector3.Distance(cameraRig.DesiredFocus, face), Is.LessThan(0.3f), "on the evicted's face.");

@@ -49,7 +49,8 @@ namespace Gamesim.Episode
             // under the big moments; the Settings frame is not the card, so its sliders are heard
             // at the level they set. A level only: the state asked for above is untouched.
             bool menuCard = IsGameMenuOpen;
-            audioBed.SetDuck(MusicFade.MusicDuckFor(menuCard, IsMusicDuckMoment), MusicFade.BedDuckFor(menuCard));
+            // And under the player's own dance, whose beat is the music while it is heard.
+            audioBed.SetDuck(MusicFade.MusicDuckFor(menuCard, IsMusicDuckMoment, audioBed.ActivityDucksMusic), MusicFade.BedDuckFor(menuCard));
         }
 
         /// <summary>

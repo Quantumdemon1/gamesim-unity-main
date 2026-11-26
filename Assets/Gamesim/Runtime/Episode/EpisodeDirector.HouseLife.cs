@@ -162,14 +162,33 @@ namespace Gamesim.Episode
         /// </summary>
         private void TickActivityEffects()
         {
-            if (player == null) return;
+            if (player == null) { TickActivitySound(false); return; }
             if (activityEffects == null) activityEffects = HouseActivityEffects.Attach(gameObject.scene, transform);
             var pose = player.GetComponent<HouseFurniturePose>();
             bool doing = IsPlayerHouseActivityActive && pose != null && pose.IsPerforming && !pose.Ending;
+            TickActivitySound(doing);
             var seat = player.GetComponent<HouseSeatPresentation>();
             Vector3? swimmer = doing && playerActivityKind == HouseFurnitureActivity.Swim && seat != null && seat.Settled
                 ? seat.VisualFeet : (Vector3?)null;
             activityEffects.Tick(cameraRig != null && cameraRig.ReducedMotion, doing && playerActivityKind == HouseFurnitureActivity.Cook, swimmer);
+        }
+
+        /// <summary>The activities by their names, indexed by value: the enum is appended to, never reordered.</summary>
+        private static readonly string[] ActivityNames = Enum.GetNames(typeof(HouseFurnitureActivity));
+
+        /// <summary>
+        /// The sound of what the player is doing (ActivitySounds): the activity's loop while the
+        /// pose is under way, as the effects above, and from the moment they start to get up the
+        /// loop fades out. Reduced motion keeps it: a sound is not motion. Nothing is heard of it
+        /// behind a setup screen, where the house is not the game. Presentation only.
+        /// </summary>
+        private void TickActivitySound(bool doing)
+        {
+            if (audioBed == null) return;
+            bool setup = (mainMenu != null && mainMenu.IsShowing) || (castSelect != null && castSelect.IsShowing)
+                         || (characterCreator != null && characterCreator.IsShowing) || (seasonReport != null && seasonReport.IsShowing);
+            int kind = (int)playerActivityKind;
+            audioBed.SetActivity(doing && !setup && kind >= 0 && kind < ActivityNames.Length ? ActivityNames[kind] : null);
         }
 
         /// <summary>

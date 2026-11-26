@@ -168,6 +168,105 @@ namespace Gamesim.Presentation
             if (voice < 0 || bedVoices[voice] == null || !bedVoices[voice].isPlaying) return false;
             return room == (beds.KeyOf(voice) != RoomToneBlend.Air);
         }
+
+        // The player's activity (ActivitySounds): one voice for the loop of what they are doing - the
+        // sizzle at the hob, the strokes in the pool, the dance's beat - under the effects volume and
+        // the beds' duck, fading in as the activity gets under way and out as they get up (ActivityLoop).
+        private readonly ActivityLoop activity = new ActivityLoop();
+        private AudioSource activityVoice;
+        private string activityVoiceKey;
+        private readonly Dictionary<string, AudioClip> activityClips = new Dictionary<string, AudioClip>();
+
+        /// <summary>The loop the activity voice is sounding, by its activity's name, or null while it is silent.</summary>
+        public string ActivitySounding => ActivityPlaying ? activityVoiceKey : null;
+
+        /// <summary>Whether the activity voice is sounding as the engine has it: its source's own isPlaying.</summary>
+        public bool ActivityPlaying => activityVoice != null && activityVoice.isPlaying;
+
+        /// <summary>How loud the activity's loop is now, 0 to 1 of its full level, as its fade has it.</summary>
+        public float ActivityLevel => activity.Level;
+
+        /// <summary>The activity voice's volume as it is being played.</summary>
+        public float ActivityVolume => activityVoice != null ? activityVoice.volume : 0f;
+
+        /// <summary>
+        /// Whether the season's music steps back for the player's activity: a loop that is music (the
+        /// dance's beat) asked for, with its recording, and the preferences letting it be heard. The
+        /// director reads it every frame, with the game's other reasons to duck (ApplyMusic).
+        /// </summary>
+        public bool ActivityDucksMusic => HearActivity && ActivitySounds.DucksMusic(activity.Asked) && ActivityClip(activity.Asked) != null;
+
+        /// <summary>Whether the preferences let the activity's loop be heard: not reduced or muted, and some volume. Reduced motion is not asked: a sound is not motion.</summary>
+        private bool HearActivity => isActiveAndEnabled && !ReducedAudio && !Muted && volume > 0f && effectsShare > 0f;
+
+        /// <summary>
+        /// What the player is doing, by the activity's name (<c>HouseFurnitureActivity</c>), or null for
+        /// nothing: the director asks every frame while the activity is under way, and null from the
+        /// moment the player starts to get up. An activity with a loop (<see cref="ActivitySounds"/>)
+        /// fades it in over <see cref="ActivitySounds.FadeIn"/>; one without, or none, lets the loop
+        /// sounding fade out over <see cref="ActivitySounds.FadeOut"/>. Asking again changes nothing.
+        /// </summary>
+        public void SetActivity(string activityName)
+        {
+            string loop = ActivitySounds.LoopOf(activityName);
+            if (loop == activity.Asked) return;
+            activity.Ask(loop);
+            Initialize();
+            if (!initialized) return;
+            LoadActivityVoice();
+            WriteActivityVolume();
+        }
+
+        /// <summary>An activity's loop, or null for none and for one the project ships no recording of.</summary>
+        private AudioClip ActivityClip(string loop)
+        {
+            if (string.IsNullOrEmpty(loop)) return null;
+            if (!activityClips.TryGetValue(loop, out var clip))
+            {
+                clip = Resources.Load<AudioClip>(ActivitySounds.ResourceFolder + loop);
+                activityClips[loop] = clip;
+            }
+            return clip;
+        }
+
+        /// <summary>The activity voice given the loop its fade carries, and started or stopped as the fade and the preferences want.</summary>
+        private void LoadActivityVoice()
+        {
+            if (activityVoice == null) return;
+            if (activity.Key != activityVoiceKey)
+            {
+                // One loop at a time: the voice changes loops only once the old one has faded out.
+                activityVoice.Stop();
+                activityVoiceKey = activity.Key;
+                activityVoice.clip = ActivityClip(activityVoiceKey);
+                activityVoice.volume = 0f;
+            }
+            bool wanted = HearActivity && activityVoice.clip != null && activity.Sounding;
+            if (wanted && !activityVoice.isPlaying) activityVoice.Play();
+            else if (!wanted && activityVoice.isPlaying) activityVoice.Stop();
+        }
+
+        /// <summary>
+        /// The activity voice moved on by <paramref name="seconds"/> of its fade, once a frame on the
+        /// real clock as the beds are. Held while the preferences take it away, so the loop asked for
+        /// comes back in from silence.
+        /// </summary>
+        private void TickActivity(float seconds)
+        {
+            if (!initialized || !HearActivity) return;
+            activity.Tick(seconds);
+            LoadActivityVoice();
+            WriteActivityVolume();
+        }
+
+        /// <summary>The activity voice's volume: its fade's level and its loop's gain, a share of the effects volume, under the beds' duck.</summary>
+        private void WriteActivityVolume()
+        {
+            if (activityVoice == null) return;
+            activityVoice.mute = Muted;
+            activityVoice.volume = volume * effectsShare * ActivitySounds.GainOf(activityVoiceKey) * activity.Level * bedDuck.Level;
+        }
+
         private AudioClip ambience, themeBed, seasonBed;
         private Music music = Music.Silent;
         private bool initialized, ambienceEnabled = true;
@@ -394,6 +493,8 @@ namespace Gamesim.Presentation
             if (!ManualMusicClock) TickMusicFrame(Time.unscaledDeltaTime);
             // The beds' crossfade is not the music's, and ManualMusicClock does not hold it.
             TickBeds(MusicFade.FrameStep(Time.unscaledDeltaTime));
+            // Nor the activity's loop, which fades on the same real clock as the beds.
+            TickActivity(MusicFade.FrameStep(Time.unscaledDeltaTime));
         }
 
         /// <summary>
@@ -431,6 +532,7 @@ namespace Gamesim.Presentation
             ReleaseSilentVoices();
             WriteMusicVolumes();
             WriteBedVolumes();
+            WriteActivityVolume();
         }
 
         /// <summary>
@@ -552,6 +654,8 @@ namespace Gamesim.Presentation
                 }
             }
             foreach (var voice in bedVoices) if (voice != null) voice.Stop();
+            // The activity's loop too: ApplySettings starts it again if it is still wanted.
+            if (activityVoice != null) activityVoice.Stop();
             ApplySettings();
         }
 
@@ -661,6 +765,14 @@ namespace Gamesim.Presentation
             cueSource.priority = 80;
             themeSource = MusicVoice();
             seasonSource = MusicVoice();
+            // The activity's voice last, so every source before it keeps its place on the object.
+            // Above the beds in priority: it is the sound of what the player is doing.
+            activityVoice = gameObject.AddComponent<AudioSource>();
+            activityVoice.playOnAwake = false;
+            activityVoice.loop = true;
+            activityVoice.spatialBlend = 0f;
+            activityVoice.priority = 170;
+            activityVoice.volume = 0f;
 
             // A supplied recording wins over the synthesised bed, and neither is required.
             var recordedTheme = Resources.Load<AudioClip>("Audio/Theme");
@@ -683,6 +795,14 @@ namespace Gamesim.Presentation
                 if (bed == null) continue;
                 roomTones[bed.name] = bed;
                 Preload(bed);
+            }
+            // The activities' loops as well: a sizzle left for the first cook decoded on the main
+            // thread in the very frame the cooking got under way.
+            foreach (var loop in Resources.LoadAll<AudioClip>(ActivitySounds.ResourceFolder.TrimEnd('/')))
+            {
+                if (loop == null) continue;
+                activityClips[loop.name] = loop;
+                Preload(loop);
             }
             EnterBed(CurrentRoom);
             foreach (var composition in Compositions)
@@ -758,6 +878,11 @@ namespace Gamesim.Presentation
                 }
             }
             WriteBedVolumes();
+            // The player's activity, an effect too: stopped in this frame when the preferences take
+            // it away, and its loop comes back in from silence when they give it back.
+            if (!HearActivity) activity.Silence();
+            LoadActivityVoice();
+            WriteActivityVolume();
             if (cueSource != null)
             {
                 cueSource.mute = Muted;
@@ -936,6 +1061,8 @@ namespace Gamesim.Presentation
                 if (voice != null) voice.Stop();
             }
             beds.Silence();
+            if (activityVoice != null) activityVoice.Stop();
+            activity.Silence();
             if (cueSource != null) cueSource.Stop();
             // The music too. A disabled component ticks no fades, and the bed used to play on under
             // one with nothing left to fade it or stop it. The theme goes; the bed keeps its place -
@@ -952,6 +1079,7 @@ namespace Gamesim.Presentation
             if (cueSource != null) { cueSource.Stop(); Release(cueSource); }
             if (themeSource != null) { themeSource.Stop(); Release(themeSource); }
             if (seasonSource != null) { seasonSource.Stop(); Release(seasonSource); }
+            if (activityVoice != null) { activityVoice.Stop(); Release(activityVoice); }
             foreach (var clip in owned) if (clip != null) Release(clip);
             owned.Clear();
             clips.Clear();

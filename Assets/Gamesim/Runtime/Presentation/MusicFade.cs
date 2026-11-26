@@ -131,6 +131,25 @@ namespace Gamesim.Presentation
         public static float BedDuckFor(bool gameMenuOpen) => gameMenuOpen ? PausedBedDuck : 1f;
 
         /// <summary>
+        /// The music's level while the player's activity plays music of its own - the dance's beat
+        /// (<see cref="ActivitySounds.DucksMusic"/>): a quarter, so the beat is the music in the room
+        /// and the season's bed is only under it.
+        /// </summary>
+        public const float ActivityMusicDuck = 0.25f;
+
+        /// <summary>
+        /// How far the music is ducked, with the player's activity in it: as
+        /// <see cref="MusicDuckFor(bool, bool)"/>, and to <see cref="ActivityMusicDuck"/> while an
+        /// activity's own music is heard. The deepest wins, so the game menu card opened over a dance
+        /// leaves the music where the dance put it.
+        /// </summary>
+        public static float MusicDuckFor(bool gameMenuOpen, bool bigMoment, bool activityMusic)
+        {
+            float duck = MusicDuckFor(gameMenuOpen, bigMoment);
+            return activityMusic && ActivityMusicDuck < duck ? ActivityMusicDuck : duck;
+        }
+
+        /// <summary>
         /// A duck's level moved toward <paramref name="target"/> for <paramref name="seconds"/>, in a
         /// straight line: a fall from full to <paramref name="deepest"/> takes <see cref="DuckIn"/>, and
         /// the way back from it to full takes <see cref="DuckOut"/>, so a duck turned round halfway

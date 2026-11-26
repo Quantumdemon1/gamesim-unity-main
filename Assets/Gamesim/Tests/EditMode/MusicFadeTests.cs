@@ -244,5 +244,26 @@ namespace Gamesim.Tests.EditMode
             Assert.That(MusicFade.Competition(0.5f, 0f, 0.75f), Is.EqualTo(0f), "Half the way down is half the time.");
             Assert.That(MusicFade.CompetitionPeak, Is.EqualTo(MusicFade.SeasonPeak), "At full, at the season bed's gain.");
         }
+
+        /// <summary>
+        /// The main menu's title loop comes up gently, over 2 s, and goes over 1.5 s as the player
+        /// leaves the menu - so by the time the intro's theme starts it is gone - at any frame rate;
+        /// at full it plays at 60 percent of the theme's gain, so the menu is quieter than the show.
+        /// </summary>
+        [Test]
+        public void TheTitleLoopRisesInTwoSecondsAndFallsInOneAndAHalfAtSixtyPercentOfTheTheme()
+        {
+            foreach (var frame in Frames)
+            {
+                Assert.That(Ramp(MusicFade.Title, 0f, 1f, 2.0, frame), Is.EqualTo(1f), "Silence to full in 2 s, in steps of " + frame + " s.");
+                Assert.That(Ramp(MusicFade.Title, 0f, 1f, 1.98, frame), Is.EqualTo(0.99f).Within(1e-3f),
+                    "and not before: a straight line, in steps of " + frame + " s.");
+                Assert.That(Ramp(MusicFade.Title, 1f, 0f, 1.5, frame), Is.EqualTo(0f), "Full to silence in 1.5 s, in steps of " + frame + " s.");
+                Assert.That(Ramp(MusicFade.Title, 1f, 0f, 1.49, frame), Is.GreaterThan(0f), "and not before, in steps of " + frame + " s.");
+            }
+            Assert.That(MusicFade.Title(0.5f, 1f, 1f), Is.EqualTo(1f), "Half the way up is half the time.");
+            Assert.That(MusicFade.TitlePeak, Is.EqualTo(MusicFade.ThemePeak * 0.6f).Within(1e-6f), "At full, 60 percent of the theme's gain.");
+            Assert.That(MusicFade.TitlePeak, Is.LessThan(MusicFade.ThemePeak));
+        }
     }
 }

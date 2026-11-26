@@ -26,6 +26,10 @@ namespace Gamesim.Episode
         /// commands scattered through the code, so there is one place that decides and no way for two
         /// screens to disagree about what is playing.</para>
         ///
+        /// <para>One departure: the main menu plays a quiet title loop made from the theme, where the
+        /// reference's is silent. Cast select, the creator and the final stats stay silent, and the
+        /// house's air is off behind all of them.</para>
+        ///
         /// <para>Safe to call from anywhere and often: <see cref="HouseAudio.SetMusic"/> ignores a
         /// state it is already in, so this does not restart the track on every render. The director
         /// asks it every frame as well (Update), because two of its inputs - the opening's loading
@@ -36,15 +40,21 @@ namespace Gamesim.Episode
         {
             if (audioBed == null) return;
 
-            bool setup = (mainMenu != null && mainMenu.IsShowing)
-                         || (castSelect != null && castSelect.IsShowing)
+            // The main menu has its title loop, and so do the Settings it opens, which lead back to
+            // it; the other setup screens - and the Settings the creator's gear opens - are silent.
+            bool title = (mainMenu != null && mainMenu.IsShowing) || (settingsOpen && settingsFromMainMenu);
+            bool setup = (castSelect != null && castSelect.IsShowing)
                          || (characterCreator != null && characterCreator.IsShowing)
-                         || (seasonReport != null && seasonReport.IsShowing);
+                         || (seasonReport != null && seasonReport.IsShowing)
+                         || (settingsOpen && settingsFromFrontDoor && !settingsFromMainMenu);
             // A skipped show has no theme left to play: the skip hands over to the season's bed at
             // the press, not after the house has been put back behind black.
             bool show = opening != null && opening.IsPlaying && !opening.WasSkipped;
             audioBed.SetMusic(MusicFor(musicOn, setup, show, opening != null ? opening.CurrentBeat : null,
-                opening != null && opening.MusicHeld, opening != null && opening.MusicClosing, CompetitionUnderWay));
+                opening != null && opening.MusicHeld, opening != null && opening.MusicClosing, CompetitionUnderWay, title));
+            // The house's air and the rooms' beds are off behind the front door, where the house is
+            // not the game, and come back in from silence when it is.
+            audioBed.SetAmbienceEnabled(!(title || setup));
             // The music steps back while the game menu card is open (the rooms' beds with it) and
             // under the big moments; the Settings frame is not the card, so its sliders are heard
             // at the level they set. A level only: the state asked for above is untouched.
@@ -98,6 +108,20 @@ namespace Gamesim.Episode
         {
             var music = MusicFor(musicOn, setupShowing, openingPlaying, beat, themeHeld, themeClosing);
             return competition && music == HouseAudio.Music.Season ? HouseAudio.Music.Competition : music;
+        }
+
+        /// <summary>
+        /// The same rule with the main menu in it: with the music on, the main menu - and the
+        /// Settings it opens - plays its quiet title loop over anything behind it, an intro or a
+        /// competition included. <paramref name="setupShowing"/> here is the other setup screens -
+        /// cast select, the creator and the season's report - which stay silent and win over the
+        /// menu. A departure from the reference build, whose menu is silent.
+        /// </summary>
+        public static HouseAudio.Music MusicFor(bool musicOn, bool setupShowing, bool openingPlaying, string beat,
+            bool themeHeld, bool themeClosing, bool competition, bool titleShowing)
+        {
+            if (musicOn && !setupShowing && titleShowing) return HouseAudio.Music.Title;
+            return MusicFor(musicOn, setupShowing, openingPlaying, beat, themeHeld, themeClosing, competition);
         }
 
         /// <summary>

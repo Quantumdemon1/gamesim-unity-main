@@ -115,6 +115,25 @@ namespace Gamesim.Presentation
         public static float Competition(float level, float target, float seconds) =>
             Step(level, target, target > level ? CompetitionFadeIn : CompetitionFadeOut, seconds);
 
+        /// <summary>
+        /// Seconds from silence to full for the main menu's title loop, and from full to silence. It
+        /// comes up gently, over 2 s, as the season's bed does; it goes over the theme's 1.5 s as the
+        /// player leaves the menu, so it is gone before the intro's theme starts from silence.
+        /// </summary>
+        public const float TitleFadeIn = 2.0f;
+        public const float TitleFadeOut = 1.5f;
+
+        /// <summary>
+        /// The title loop's gain at full level, as a share of the master volume: 60 percent of the
+        /// theme's, so the menu is quieter than the show it opens. Its recording is about as loud as
+        /// the theme's, so this share alone sets the difference, a little under 4.5 dB.
+        /// </summary>
+        public const float TitlePeak = ThemePeak * 0.6f;
+
+        /// <summary>The title loop's fade: 2 s up, 1.5 s down.</summary>
+        public static float Title(float level, float target, float seconds) =>
+            Step(level, target, target > level ? TitleFadeIn : TitleFadeOut, seconds);
+
         /// <summary>Seconds a duck takes to fall from full to its level.</summary>
         public const float DuckIn = 0.3f;
 

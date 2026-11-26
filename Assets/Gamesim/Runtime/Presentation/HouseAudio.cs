@@ -49,8 +49,11 @@ namespace Gamesim.Presentation
         /// <para>One departure from it: <see cref="Competition"/>, a competition's own driving loop,
         /// from the attempt opening or the show starting to the result card. The season's bed steps
         /// aside for it and carries on from where it paused once the card comes.</para>
+        ///
+        /// <para>And a second: <see cref="Title"/>, a quiet loop made from the theme, on the main
+        /// menu (and the Settings it opens) only. Cast select and the creator stay silent.</para>
         /// </summary>
-        public enum Music { Silent, Theme, Season, Competition }
+        public enum Music { Silent, Theme, Season, Competition, Title }
 
         // Two music voices, so the theme can be let go while the season's bed comes up: each has
         // its own source, and a level from 0 to 1 that moves toward its target at the reference
@@ -67,6 +70,13 @@ namespace Gamesim.Presentation
         private float competitionLevel, competitionTarget;
         private bool competitionRunning;
         private AudioClip competitionBed;
+
+        // A fourth, for the main menu's title loop: it starts from the top each time the menu asks
+        // for it, and whatever else was playing falls away under it as it does under silence.
+        private AudioSource titleSource;
+        private float titleLevel, titleTarget;
+        private bool titleRunning;
+        private AudioClip titleBed;
 
         /// <summary>
         /// The bed's source, in the three states it can be in. Its own bookkeeping rather than
@@ -139,6 +149,21 @@ namespace Gamesim.Presentation
 
         /// <summary>Whether the competitions' loop is the project's recording (<c>Resources/Audio/Competition</c>) rather than the synthesized stand-in.</summary>
         public bool HasRecordedCompetition { get; private set; }
+
+        /// <summary>How loud the main menu's title loop is now, 0 to 1 of its full level, as its fade has it.</summary>
+        public float TitleLevel => titleLevel;
+
+        /// <summary>The title voice's volume as it is being played: the fade's level at the loop's peak, under the preferences and the duck.</summary>
+        public float TitleVolume => titleSource != null ? titleSource.volume : 0f;
+
+        /// <summary>Whether the title loop is sounding as the engine has it: its source's own isPlaying.</summary>
+        public bool TitlePlaying => titleSource != null && titleSource.isPlaying;
+
+        /// <summary>Whether the title loop is the project's recording (<c>Resources/Audio/Title</c>) rather than the synthesized stand-in.</summary>
+        public bool HasRecordedTitle { get; private set; }
+
+        /// <summary>Whether the beds - the house's air and the rooms' - are switched on: off behind the front door's screens (<see cref="SetAmbienceEnabled"/>).</summary>
+        public bool AmbienceEnabled => ambienceEnabled;
 
         /// <summary>
         /// Whether the fades wait for <see cref="TickMusic"/> instead of following the real clock.
@@ -470,8 +495,15 @@ namespace Gamesim.Presentation
             ApplySettings();
         }
 
+        /// <summary>
+        /// Switches the beds - the house's air and the rooms' - on or off, beside the preferences:
+        /// the director turns them off behind the front door's screens, where the house is not the
+        /// game, and on again in the house, where the bed asked for comes back in from silence and
+        /// from the place it was let go at. Asked every frame; the same answer again costs nothing.
+        /// </summary>
         public void SetAmbienceEnabled(bool value)
         {
+            if (ambienceEnabled == value) return;
             ambienceEnabled = value;
             ApplySettings();
         }
@@ -480,8 +512,9 @@ namespace Gamesim.Presentation
         /// Puts the music bed into a state, idempotently.
         ///
         /// <para>Callers say what is happening rather than what to play — the opening sequence asks
-        /// for <see cref="Music.Theme"/>, the house asks for <see cref="Music.Season"/>, and every
-        /// screen that is not the game asks for <see cref="Music.Silent"/>. Repeating the state a
+        /// for <see cref="Music.Theme"/>, the house asks for <see cref="Music.Season"/>, the main menu
+        /// for <see cref="Music.Title"/>, and every other screen that is not the game asks for
+        /// <see cref="Music.Silent"/>. Repeating the state a
         /// caller is already in does nothing, so a screen can assert its own music every time it
         /// renders without restarting the track under the player.</para>
         ///
@@ -551,6 +584,7 @@ namespace Gamesim.Presentation
             themeLevel = MusicFade.Theme(themeLevel, themeTarget, seconds);
             seasonLevel = MusicFade.Season(seasonLevel, seasonTarget, seconds);
             competitionLevel = MusicFade.Competition(competitionLevel, competitionTarget, seconds);
+            titleLevel = MusicFade.Title(titleLevel, titleTarget, seconds);
             musicDuck.Tick(seconds);
             bedDuck.Tick(seconds);
             ReleaseSilentVoices();
@@ -578,16 +612,23 @@ namespace Gamesim.Presentation
         /// Asked for again while it is still falling - the attempt opened again as its card went - it
         /// turns round where it is. When the bed is asked for, the loop falls over 1.5 s and stops.</para>
         ///
+        /// <para><b>The title loop</b> - the main menu's - rises from silence, from the top, over 2 s,
+        /// while whatever else is sounding falls away as it does under silence: the bed pauses where
+        /// it is, to carry on from there in the house. Asked for again while still falling, it turns
+        /// round where it is. Leaving the menu lets it fall over 1.5 s and stop, except into the
+        /// intro: the theme cuts it, and so starts from silence as it always has.</para>
+        ///
         /// <para><b>Silence</b> fades out whatever is sounding over 1.5 s.</para>
         /// </summary>
         private void EnterMusic()
         {
-            if (!initialized || !isActiveAndEnabled || themeSource == null || seasonSource == null || competitionSource == null) return;
+            if (!initialized || !isActiveAndEnabled || themeSource == null || seasonSource == null || competitionSource == null || titleSource == null) return;
             switch (music)
             {
                 case Music.Theme:
                     CutSeason();
                     CutCompetition();
+                    CutTitle();
                     themeSource.Stop();
                     themeSource.clip = themeBed;
                     themeLevel = 0f;
@@ -600,6 +641,8 @@ namespace Gamesim.Presentation
                     CutTheme();
                     // A competition's loop goes over its own fall while the bed comes back up.
                     competitionTarget = 0f;
+                    // And the title's, when the menu hands the house back.
+                    titleTarget = 0f;
                     seasonTarget = 1f;
                     // Marked playing but not playing: a reset stopped the source under the
                     // bookkeeping. It is a stopped bed, and starts again as one, or asking for the
@@ -618,6 +661,7 @@ namespace Gamesim.Presentation
                     CutTheme();
                     // The bed falls and pauses where it is (ReleaseSilentVoices), to carry on from there after the card.
                     seasonTarget = 0f;
+                    titleTarget = 0f;
                     competitionTarget = 1f;
                     // Marked running but not playing: a reset stopped it behind the bookkeeping.
                     if (competitionRunning && !competitionSource.isPlaying) competitionRunning = false;
@@ -631,10 +675,29 @@ namespace Gamesim.Presentation
                         competitionRunning = true;
                     }
                     break;
+                case Music.Title:
+                    // Everything else falls away as it does under silence; the bed pauses where it is.
+                    themeTarget = 0f;
+                    seasonTarget = 0f;
+                    competitionTarget = 0f;
+                    titleTarget = 1f;
+                    // Marked running but not playing: a reset stopped it behind the bookkeeping.
+                    if (titleRunning && !titleSource.isPlaying) titleRunning = false;
+                    if (!titleRunning)
+                    {
+                        titleSource.Stop();
+                        titleSource.clip = titleBed;
+                        titleLevel = 0f;
+                        titleSource.volume = 0f;
+                        titleSource.Play();
+                        titleRunning = true;
+                    }
+                    break;
                 default:
                     themeTarget = 0f;
                     seasonTarget = 0f;
                     competitionTarget = 0f;
+                    titleTarget = 0f;
                     break;
             }
             // A voice asked for silence while already silent lets go now, not a frame later: the
@@ -648,6 +711,7 @@ namespace Gamesim.Presentation
             if (themeRunning && themeTarget <= 0f && themeLevel <= 0f) CutTheme();
             if (seasonVoice == SeasonVoice.Playing && seasonTarget <= 0f && seasonLevel <= 0f) PutSeasonAway();
             if (competitionRunning && competitionTarget <= 0f && competitionLevel <= 0f) CutCompetition();
+            if (titleRunning && titleTarget <= 0f && titleLevel <= 0f) CutTitle();
         }
 
         /// <summary>
@@ -697,6 +761,8 @@ namespace Gamesim.Presentation
             if (themeRunning && themeSource != null) themeSource.Play();
             // A competition's loop from the top too: the reset lost its place.
             if (competitionRunning && competitionSource != null) competitionSource.Play();
+            // And the title's.
+            if (titleRunning && titleSource != null) titleSource.Play();
             if (seasonSource != null)
             {
                 if (seasonVoice == SeasonVoice.Playing) seasonSource.Play();
@@ -744,6 +810,16 @@ namespace Gamesim.Presentation
             competitionSource.volume = 0f;
         }
 
+        /// <summary>The title loop off at once and rewound: the menu starts it from the top next time.</summary>
+        private void CutTitle()
+        {
+            titleLevel = titleTarget = 0f;
+            titleRunning = false;
+            if (titleSource == null) return;
+            titleSource.Stop();
+            titleSource.volume = 0f;
+        }
+
         /// <summary>
         /// Each voice's volume: its fade's level at its peak, under the preferences and the music's duck.
         ///
@@ -769,6 +845,11 @@ namespace Gamesim.Presentation
             {
                 competitionSource.mute = Muted;
                 competitionSource.volume = preferences * MusicFade.CompetitionPeak * competitionLevel;
+            }
+            if (titleSource != null)
+            {
+                titleSource.mute = Muted;
+                titleSource.volume = preferences * MusicFade.TitlePeak * titleLevel;
             }
         }
 
@@ -843,6 +924,8 @@ namespace Gamesim.Presentation
             activityVoice.volume = 0f;
             // The competitions' music voice after it, last, for the same reason.
             competitionSource = MusicVoice();
+            // And the main menu's title voice after that, last of all.
+            titleSource = MusicVoice();
 
             // A supplied recording wins over the synthesised bed, and neither is required.
             var recordedTheme = Resources.Load<AudioClip>("Audio/Theme");
@@ -861,6 +944,11 @@ namespace Gamesim.Presentation
             competitionBed = recordedCompetition != null ? recordedCompetition : Own(BuildBed("Competition bed", CompetitionChords, 0.9375f));
             HasRecordedCompetition = recordedCompetition != null;
             Preload(competitionBed);
+            // The title loop too: its first Play() is the launch's first frame at the front door.
+            var recordedTitle = Resources.Load<AudioClip>("Audio/Title");
+            titleBed = recordedTitle != null ? recordedTitle : Own(BuildBed("Title bed", ThemeChords, 2.25f));
+            HasRecordedTitle = recordedTitle != null;
+            Preload(titleBed);
 
             ambience = Own(BuildAmbience());
             // The room beds decoded now too, for the same reason: their metas do not preload, and
@@ -1154,6 +1242,8 @@ namespace Gamesim.Presentation
             CutTheme();
             // A competition's loop goes as the theme does: it starts from the top when it is asked for again.
             CutCompetition();
+            // And the title's.
+            CutTitle();
             if (seasonVoice == SeasonVoice.Playing) PutSeasonAway();
             seasonLevel = seasonTarget = 0f;
             WriteMusicVolumes();
@@ -1166,6 +1256,7 @@ namespace Gamesim.Presentation
             if (themeSource != null) { themeSource.Stop(); Release(themeSource); }
             if (seasonSource != null) { seasonSource.Stop(); Release(seasonSource); }
             if (competitionSource != null) { competitionSource.Stop(); Release(competitionSource); }
+            if (titleSource != null) { titleSource.Stop(); Release(titleSource); }
             if (activityVoice != null) { activityVoice.Stop(); Release(activityVoice); }
             foreach (var clip in owned) if (clip != null) Release(clip);
             owned.Clear();

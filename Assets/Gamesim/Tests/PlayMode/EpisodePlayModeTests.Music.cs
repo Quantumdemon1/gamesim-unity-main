@@ -506,6 +506,74 @@ namespace Gamesim.Tests.PlayMode
         }
 
         /// <summary>
+        /// The main menu plays its quiet title loop: from the top, rising from silence over 2 s, at
+        /// 60 percent of the theme's gain, while the season's bed falls and pauses and the house's air
+        /// goes quiet behind the menu. Start a new season leads to cast select, which is silent: the
+        /// loop is let go, not cut, and the air stays off. And the intro's theme still starts from
+        /// silence, cutting whatever is left of the loop. The season starting is stood in for by what
+        /// the cast screen's commit does - the screen hidden and the opening begun - without staging
+        /// a season.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator Music_TheMainMenuPlaysItsTitleLoopAndTheIntroStartsTheThemeFromSilence()
+        {
+            var audio = SteppedAudio();
+            Assert.That(audio.HasRecordedTitle, Is.True, "The project ships its title loop.");
+            Assert.That(audio.CurrentMusic, Is.EqualTo(HouseAudio.Music.Season), "The house plays the season's bed");
+            audio.TickMusic(MusicFade.SeasonFadeIn);
+            Assert.That(audio.SeasonLevel, Is.EqualTo(1f));
+            Assert.That(audio.AmbienceEnabled, Is.True, "and its air:");
+            Assert.That(audio.BedVoicesSounding, Is.GreaterThan(0), "a bed is sounding in the house.");
+
+            director.OpenMainMenu();
+            yield return null;
+            Assert.That(Menu().IsShowing, Is.True);
+            Assert.That(audio.CurrentMusic, Is.EqualTo(HouseAudio.Music.Title), "The main menu plays its title loop");
+            Assert.That(audio.TitlePlaying, Is.True);
+            Assert.That(audio.TitleLevel, Is.EqualTo(0f), "from silence,");
+            Assert.That(audio.AmbienceEnabled, Is.False, "with the house's air off behind the menu");
+            Assert.That(audio.BedVoicesSounding, Is.EqualTo(0), "and no bed sounding.");
+            audio.TickMusic(MusicFade.TitleFadeIn / 2f);
+            Assert.That(audio.TitleLevel, Is.EqualTo(0.5f).Within(1e-4f), "It rises in a straight line");
+            audio.TickMusic(MusicFade.TitleFadeIn / 2f);
+            Assert.That(audio.TitleLevel, Is.EqualTo(1f), "to full over 2 s,");
+            Assert.That(audio.TitleVolume, Is.EqualTo(audio.Volume * MusicFade.ThemePeak * 0.6f * audio.MusicDuckLevel).Within(1e-5f),
+                "at 60 percent of the theme's gain.");
+            Assert.That(audio.SeasonLevel, Is.EqualTo(0f));
+            Assert.That(audio.SeasonPaused, Is.True, "The season's bed has fallen and paused where it was.");
+
+            var start = CastButtons(MainMenu.NewSeasonCaption);
+            Assert.That(start, Has.Length.EqualTo(1), "The menu offers a new season.");
+            start[0].onClick.Invoke();
+            yield return null;
+            Assert.That(CastScreen().IsShowing, Is.True, "Start leads to cast select,");
+            Assert.That(audio.CurrentMusic, Is.EqualTo(HouseAudio.Music.Silent), "which is silent.");
+            Assert.That(audio.TitleLevel, Is.EqualTo(1f), "The loop is let go, not cut:");
+            audio.TickMusic(MusicFade.TitleFadeOut / 2f);
+            Assert.That(audio.TitleLevel, Is.EqualTo(0.5f).Within(1e-4f), "it falls in a straight line.");
+            Assert.That(audio.TitlePlaying, Is.True, "still sounding while it does.");
+            Assert.That(audio.AmbienceEnabled, Is.False, "The air stays off behind cast select.");
+            Assert.That(audio.BedVoicesSounding, Is.EqualTo(0));
+
+            // What the cast screen's commit does, without staging a season: the screen goes, the opening begins.
+            CastScreen().Hide();
+            CastScreen().ReleasePreview();
+            director.PlayOpeningForVerification(holdUntilAdvanced: true);
+            yield return Frames(2);
+            Assert.That(director.Opening.CurrentBeat, Is.EqualTo(OpeningBeat.Intro));
+            Assert.That(audio.CurrentMusic, Is.EqualTo(HouseAudio.Music.Theme), "The intro has its theme,");
+            Assert.That(audio.TitleLevel, Is.EqualTo(0f), "which cuts what was left of the title loop");
+            Assert.That(audio.TitlePlaying, Is.False, "and stops it,");
+            Assert.That(audio.ThemeLevel, Is.EqualTo(0f), "and starts from silence");
+            audio.TickMusic(MusicFade.ThemeFadeIn / 2f);
+            Assert.That(audio.ThemeLevel, Is.EqualTo(0.5f).Within(1e-4f), "rising as it always has.");
+            Assert.That(audio.AmbienceEnabled, Is.True, "Past the front door, the house's air is on again.");
+
+            director.Opening.Skip();
+            yield return null;
+        }
+
+        /// <summary>
         /// What a reset of the audio system does to the house's sound, without the reset: every source
         /// the audio owns stopped, behind its bookkeeping's back.
         /// </summary>

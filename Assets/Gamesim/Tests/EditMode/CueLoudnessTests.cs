@@ -13,7 +13,8 @@ namespace Gamesim.Tests.EditMode
     /// tick over the ballot's - until each row of the sound table carried its place in the mix
     /// (<see cref="SoundPictures.Row.GainDb"/>). A cue's loudness here is its recording's loudest
     /// 400 milliseconds (the whole of a shorter one) plus its row's gain. Unity-free: it reads the
-    /// WAVs' bytes. The competitions' loop is measured here too, whole, against the season's bed.
+    /// WAVs' bytes. The competitions' loop is measured here too, whole, against the season's bed, and
+    /// the main menu's title loop against the theme.
     /// </summary>
     public sealed class CueLoudnessTests
     {
@@ -50,6 +51,47 @@ namespace Gamesim.Tests.EditMode
             Assert.That(competition - bed, Is.InRange(-1.0, 3.0),
                 "The competition loop plays at " + competition.ToString("0.00") + " dB against the season bed's " + bed.ToString("0.00") + ".");
             Assert.That(MusicFade.CompetitionPeak, Is.EqualTo(MusicFade.SeasonPeak), "Both play at the same gain, so the recordings decide.");
+        }
+
+        /// <summary>
+        /// The main menu's title loop is a soft one: its recording is about as loud as the theme's,
+        /// measured whole, and it plays at 60 percent of the theme's gain (<see cref="MusicFade.TitlePeak"/>),
+        /// so the menu is heard 3 to 6 dB under the theme that opens the show. And it is a loop worth
+        /// sitting on a menu with: 30 to 40 seconds before it comes round.
+        /// </summary>
+        [Test]
+        public void TheTitleLoopPlaysSofterThanTheTheme()
+        {
+            double theme = LoudestDecibels(Music("Theme"), whole: true);
+            double title = LoudestDecibels(Music("Title"), whole: true);
+            Assert.That(title - theme, Is.InRange(-1.0, 1.0),
+                "The title recording is " + title.ToString("0.00") + " dB against the theme's " + theme.ToString("0.00") + ".");
+            double heard = title + 20.0 * Math.Log10(MusicFade.TitlePeak) - (theme + 20.0 * Math.Log10(MusicFade.ThemePeak));
+            Assert.That(heard, Is.InRange(-6.0, -3.0), "As played, the title sits " + heard.ToString("0.00") + " dB against the theme.");
+            Assert.That(LengthSeconds(Music("Title")), Is.InRange(30.0, 40.0), "A 30 to 40 second loop.");
+        }
+
+        /// <summary>A 16-bit PCM WAV's length in seconds, from its format and the size of its data.</summary>
+        private static double LengthSeconds(string path)
+        {
+            byte[] bytes = File.ReadAllBytes(path);
+            int channels = 0, rate = 0;
+            for (int at = 12; at + 8 <= bytes.Length;)
+            {
+                string id = Encoding.ASCII.GetString(bytes, at, 4);
+                int size = BitConverter.ToInt32(bytes, at + 4);
+                int body = at + 8;
+                if (id == "fmt ")
+                {
+                    channels = BitConverter.ToInt16(bytes, body + 2);
+                    rate = BitConverter.ToInt32(bytes, body + 4);
+                }
+                else if (id == "data" && channels > 0 && rate > 0)
+                    return Math.Min(size, bytes.Length - body) / (2.0 * channels) / rate;
+                at = body + size + (size & 1);
+            }
+            Assert.Fail(path + " has no data chunk after its format.");
+            return 0.0;
         }
 
         private static string Music(string name)

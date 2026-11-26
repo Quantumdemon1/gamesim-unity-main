@@ -429,8 +429,11 @@ namespace Gamesim.Tests.EditMode
             Valid(after);
         }
 
-        /// <summary>What a betrayer says when the player cuts ties with them (HouseDialogue.Response).</summary>
-        private static readonly object[] BetrayersReplies =
+        /// <summary>
+        /// What a betrayer says when the player cuts ties with them (HouseDialogue.Response): the five's own lines and the
+        /// plain one, then every line the voices' bank holds for the slot, which anyone else speaks.
+        /// </summary>
+        private static readonly object[] BetrayersReplies = new object[]
         {
             "That's fair. I made my choice first; you're only answering it.",
             "Fine. I'd have done the same in your shoes.",
@@ -438,7 +441,7 @@ namespace Gamesim.Tests.EditMode
             "Yeah. I figured that was coming. No hard feelings, honestly.",
             "Understood. My move cost me your trust. That was the price.",
             "Fair enough. I gave you every reason to.",
-        };
+        }.Concat(HouseDialogue.VoicedLines("cut-ties")).ToArray();
 
         [Test]
         public void C2_TheFreeExitIsGoneTheNextWeekAndLeavingCostsWhatItAlwaysDid()

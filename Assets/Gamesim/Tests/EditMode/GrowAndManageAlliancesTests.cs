@@ -1082,8 +1082,11 @@ namespace Gamesim.Tests.EditMode
                 "A pair's leave ends it, and the one told says so.");
         }
 
-        /// <summary>What the one asked says when a member would not have them (HouseDialogue.Response), in each voice.</summary>
-        private static readonly object[] MembersNoReplies =
+        /// <summary>
+        /// What the one asked says when a member would not have them (HouseDialogue.Response), in each voice: the five's own
+        /// lines and the plain one, then every line the voices' bank holds for the slot, which anyone else speaks.
+        /// </summary>
+        private static readonly object[] MembersNoReplies = new object[]
         {
             "If they won't have me, I'm not going to beg to be let in. Thank you for asking, though.",
             "Sounds like your people have opinions about me. Noted.",
@@ -1091,10 +1094,13 @@ namespace Gamesim.Tests.EditMode
             "Rejected by committee. A new low, and I've sat on the block.",
             "A pact needs everyone's yes, and I didn't get one. That's how it should work.",
             "It sounds like the others aren't ready for me. Thanks for asking.",
-        };
+        }.Concat(HouseDialogue.VoicedLines("member-no")).ToArray();
 
-        /// <summary>What the one told a leave from a pact that goes on without the player says in its first week (HouseDialogue.Response), in each voice.</summary>
-        private static readonly object[] GoesOnReplies =
+        /// <summary>
+        /// What the one told a leave from a pact that goes on without the player says in its first week (HouseDialogue.Response),
+        /// in each voice: the five's week-one lines, the plain voice's three, and the voices' bank for the slot.
+        /// </summary>
+        private static readonly object[] GoesOnReplies = new object[]
         {
             "You've left us. The rest of us will keep it going, and I'll remember that you walked.",
             "You're out. We keep the pact; you keep whatever you think you've won.",
@@ -1102,10 +1108,15 @@ namespace Gamesim.Tests.EditMode
             "One down, and the band plays on. Without you on lead vocals.",
             "Noted: one member fewer. The pact continues; your place in it does not.",
             "You've left. The rest of us are keeping it going.",
-        };
+            "You've gone. We'll manage.",
+            "We go on without you. Good luck.",
+        }.Concat(HouseDialogue.VoicedLines("left-goes-on")).ToArray();
 
-        /// <summary>What the one told a leave that ends their pact says in its first week (HouseDialogue.Response), in each voice.</summary>
-        private static readonly object[] LeftReplies =
+        /// <summary>
+        /// What the one told a leave that ends their pact says in its first week (HouseDialogue.Response), in each voice: the
+        /// five's week-one lines, the plain voice's three, and the voices' bank for the slot.
+        /// </summary>
+        private static readonly object[] LeftReplies = new object[]
         {
             "You've left our alliance. I'll treat that as a change in our agreement, not an unspoken favor.",
             "You left our alliance. All right. I'm playing my own game from here.",
@@ -1113,7 +1124,9 @@ namespace Gamesim.Tests.EditMode
             "So our alliance is over. Awkward, but at least nobody has to guess.",
             "The alliance is over. I'll stop making plans that depend on it.",
             "Our alliance has ended. We'll need to rebuild trust before making another plan.",
-        };
+            "You've left. I'll plan without you.",
+            "The alliance is done. Good luck.",
+        }.Concat(HouseDialogue.VoicedLines("left-ended")).ToArray();
 
         /// <summary>A season with the one asked's answer and the members' say set, after the asking.</summary>
         private static EpisodeState Asked(bool willing, bool welcome, out string inviteeId)

@@ -391,6 +391,7 @@ namespace Gamesim.Episode
             TickRoomScope();
             TickTravelBeacons();
             TickSleepLight();
+            TickConversationKey();
             // The staged ceremony before the ceremonies' bookkeeping: its card starts here, and the
             // hold on the chrome reads whether it is still telling its story.
             TickCeremonyStage();
@@ -1755,6 +1756,8 @@ namespace Gamesim.Episode
         {
             // Before anything can return early: the lamps' hook goes, with every lamp it has off (RS3).
             UnhookLampScope();
+            // And the conversation's key light, at once (EpisodeDirector.ShotLights.cs).
+            EndConversationKey();
             // A framing goes with its cards: its coroutine dies with the object, and a flag it never cleared
             // would keep the room scope's ceremony source on after re-activation (RS6a).
             if (ceremonyFrame != null) { StopCoroutine(ceremonyFrame); ceremonyFrame = null; }

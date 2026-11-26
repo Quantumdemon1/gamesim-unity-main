@@ -907,7 +907,8 @@ Gamesim.EditModeTests 11351
 # 1721 = 1704 + 16 landscape phone cases + 1 waiting-nominee case.
 # 1726 = 1721 + 5, 2026-11-25. Codex's sound settings (Audio 2), caption timing (CaptionTime 1) and the goodbye on short arrivals (StagedExit 2).
 # 1728 = 1726 + 2, 2026-11-26. The competition close-up gives way to the yard wide on a skip or after its hold (CompetitionAssembly 2).
-Gamesim.PlayModeTests 1728
+# 1729 = 1728 + 1, 2026-11-26. The station fill lights the player while the competition holds the camera (CompetitionAssembly 1).
+Gamesim.PlayModeTests 1729
 # The UMA build of the same assembly, read by a plan built without -WithoutUma. 1281 = the 1241 above + the
 # 40 tests that compile only under GAMESIM_UMA, as run at r1 (2026-10-16): in EpisodePlayModeTests,
 # GroundedFarewell 11, Creator 9, HouseLife 8, Emotes 3, OpeningCaptures 2, and one each in CreatorEntry,
@@ -1158,7 +1159,8 @@ Gamesim.PlayModeTests 1728
 # 1766 = 1749 + 16 landscape phone cases + 1 waiting-nominee case.
 # 1772 = 1766 + 6, 2026-11-25. The same 5, and the floor walk that settles into standing (Travel 1, UMA build only).
 # 1774 = 1772 + 2, 2026-11-26. The same 2 competition close-up cases (CompetitionAssembly 2).
-Gamesim.PlayModeTests.UmaBuild 1774
+# 1775 = 1774 + 1, 2026-11-26. The same station fill case (CompetitionAssembly 1).
+Gamesim.PlayModeTests.UmaBuild 1775
 # The UMA bodies: runs only where the GAMESIM_UMA define is set (the working tree and the D: copy).
 # 82 = the 89 run on 2026-10-15, less the 7 farewell probes moved to Gamesim.Uma.DiagnosticsPlayModeTests;
 # 85 = 82 + the 3 farewell readiness decision tests (UmaFarewellReadinessDecisionPlayModeTests, 2026-10-16);

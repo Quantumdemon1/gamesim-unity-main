@@ -204,6 +204,10 @@ namespace Gamesim.Episode
             private CharacterPresentation lead;
             private float walkInHeadHeight;
             private Light walkInLight;
+            // What could stand between the push-in's eye and the lead, read once as the walk-in is framed,
+            // and the eye kept clear of it (LT4).
+            private List<Bounds> walkInSight;
+            private readonly WalkInEye walkInEye = new WalkInEye();
 
             // A failed binding abandons the stage. Only a bound stage with a real player who
             // completed their personal reveal can claim that player for another walk.
@@ -232,6 +236,8 @@ namespace Gamesim.Episode
                 if (lead == null || !Arrived(director.projected.playerId, walkInMark))
                     return walkInFraming = WalkInKeys;
                 walkInHeadHeight = lead.HeadBone != null ? lead.HeadBone.position.y - lead.transform.position.y : 1.5f;
+                walkInSight = WalkInEye.SightBoxes(lead.transform.position + Vector3.up * walkInHeadHeight, WalkInEye.SightRadius);
+                walkInEye.Reset();
                 walkInFraming = (HouseCameraRig.Shot[])WalkInKeys.Clone();
                 for (int i = OpeningSequence.WalkInPushFrom; i <= OpeningSequence.WalkInDoorway; i++)
                 {
@@ -247,13 +253,15 @@ namespace Gamesim.Episode
                 // Track the real root along the western half of the doorway. At its tightest
                 // the eye passes x = -.72 between the exterior jamb and the room divider.
                 // Head-bob and glances animate inside the frame without steering the camera.
+                // That path is the eye whenever it sees the head clearly; otherwise the eye
+                // eases to the nearest place near it that does (WalkInEye).
                 var root = lead.transform.position;
                 var head = root + Vector3.up * walkInHeadHeight;
                 focus = head - Vector3.up * .26f;
                 float push = director.opening.CurrentBeat == OpeningBeat.WalkIn
                     ? Mathf.SmoothStep(0f, 1f, director.opening.WalkInSeconds) : 0f;
-                var eye = new Vector3(Mathf.Min(-.72f, root.x - .25f), head.y + .56f,
-                    root.z - Mathf.Lerp(2.55f, 2.18f, push));
+                var eye = walkInEye.Place(new Vector3(Mathf.Min(-.72f, root.x - .25f), head.y + .56f,
+                    root.z - Mathf.Lerp(2.55f, 2.18f, push)), head, walkInSight, Time.unscaledDeltaTime);
                 var forward = focus - eye;
                 distance = forward.magnitude;
                 yaw = Mathf.Atan2(forward.x, forward.z) * Mathf.Rad2Deg;
@@ -398,6 +406,7 @@ namespace Gamesim.Episode
             {
                 ReleaseWalkInLight();
                 walkInFraming = null;
+                walkInSight = null;
                 lead = null;
                 gatherFor.Clear();
                 if (director.npcMeetings != null) director.npcMeetings.EndOpeningStage();

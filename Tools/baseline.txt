@@ -580,7 +580,8 @@
 # disjoint cases, so the floor is their sum (the trivia landing of 23 November 2026). Counted from the two sides.
 # 11340 = 11339 + 1, 2026-11-23. One phone input-hint case checks the touch wording.
 # 11351 = 11340 + 11, 2026-11-25. Codex's commitment story (StoryMechanicsTests): new or existing agreement, pending offer, refusal, cooldown and older saves.
-Gamesim.EditModeTests 11351
+# 11357 = 11351 + 6, 2026-11-26. The walk-in's eye kept clear of the house (WalkInEyeTests 6, EditMode only).
+Gamesim.EditModeTests 11357
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and

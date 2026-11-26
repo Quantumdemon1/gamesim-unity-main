@@ -56,7 +56,10 @@ namespace Gamesim.Tests.EditMode
     /// cell: the shipped Regular season every new season is since the enrolment, on Blame and tuning rules 1, saved after a
     /// houseguest's veto and played on through another, so the Blame rule decides a holder's grudge on both sides of the
     /// save. Main after the Ring Tower (c1a7f40e) wrote the competition-rules-5 cell: the same shipped season at competition
-    /// rules 5, saved at the veto meeting right after the season's first Ring Tower.</para>
+    /// rules 5, saved at the veto meeting right after the season's first Ring Tower. The first schema-31 cell is the shipped
+    /// season every new season is since the trivia and free talk's level 3, at competition rules 6 and talk rules 3, walked by
+    /// the recorder's talker (every free talk on offer taken) and saved with a free talk's standing line and a friendship
+    /// stage in it; it loads as it is, with no migration, and is checkpointed at 31 whole (CurrentOldSaveTrace).</para>
     ///
     /// <para>Three digests (<see cref="OldSaveTrace"/>): the season's - the cross-build gate - must be the reference
     /// build's; the whole state's, blind to prose, and the verbatim text are this build's, pinned when the fixture was
@@ -143,6 +146,10 @@ namespace Gamesim.Tests.EditMode
             // story rules 11 and tuning rules 1: a fresh shipped Regular season, saved at the veto meeting right after the
             // season's first Ring Tower.
             "s30-mode2-allweek-story11-competition5-tuning1-w1-veto-meeting",
+            // Written by this branch's head with the recorder's talker walk (OLD-SAVE-ACCEPTANCE 2.15), the first schema-31
+            // cell: a fresh shipped Regular season at talk rules 3 and competition rules 6, saved with a free talk's standing
+            // line and a friendship stage logged, so free talk replays after the load.
+            FreeTalkCell,
         };
 
         /// <summary>
@@ -205,6 +212,9 @@ namespace Gamesim.Tests.EditMode
                     // Since the competition-rules-5 cell (OLD-SAVE-ACCEPTANCE 2.14) the competition rules name a cell from the
                     // Ring Tower on, so they are read back from the save too.
                     Assert.That((int)entry["rules"]["competitionRulesVersion"], Is.EqualTo((int)saved["competitionRulesVersion"]), (string)entry["id"] + ": the save's own competition rules.");
+                    // From schema 31 (OLD-SAVE-ACCEPTANCE 2.15) a cell names its free talk level, read back from the save too.
+                    if ((int)entry["schema"] >= 31)
+                        Assert.That((int)entry["story"]["talkRules"], Is.EqualTo((int)saved["story"]["talkRules"]), (string)entry["id"] + ": the save's own talk rules.");
                 }
             }
             // One replayed fixture per cell of the plan's matrix: every schema a build wrote (not 1 or 8, which no surviving
@@ -222,7 +232,9 @@ namespace Gamesim.Tests.EditMode
             // build whose chip starts rules 2, and from story rules 10's enrolment the shipped Regular season at story rules 10,
             // which every new season starts on (a cell names its story rules only from Blame on, so every earlier cell keeps its
             // name), and from the role moments' enrolment the same season at story rules 11, and from the Ring Tower the same
-            // season at competition rules 5 (a cell names its competition rules only from the Ring Tower on). A cell counts only a fixture saved in a week, before the
+            // season at competition rules 5 (a cell names its competition rules only from the Ring Tower on), and from schema 31
+            // the same season at competition rules 6 and talk rules 3 walked by the talker (a cell names its talk rules from schema
+            // 31 on, where they are defined). A cell counts only a fixture saved in a week, before the
             // finale, with a script to play: one saved at the finale or after it is read, never a cell's replay.
             var replayed = Manifest["episodes"].Where(e => (int)e["commands"] > 0 && !FinalePhases.Contains((string)e["phase"])).ToList();
             Assert.That(Manifest["episodes"].Except(replayed).Select(e => (string)e["id"]), Is.EquivalentTo(ReadOnly),
@@ -258,10 +270,11 @@ namespace Gamesim.Tests.EditMode
                 "30/director/uc2/allweek1/leaks1/plans1/dialogue0/alumni0/regular/tuning1/story10",
                 "30/director/uc2/allweek1/leaks1/plans1/dialogue0/alumni0/regular/tuning1/story11",
                 "30/director/uc2/allweek1/leaks1/plans1/dialogue0/alumni0/regular/tuning1/story11/competition5",
+                "31/director/uc2/allweek1/leaks1/plans1/dialogue0/alumni0/regular/tuning1/story11/competition6/talk3/talker",
             }));
         }
 
-        /// <summary>A fixture's cell: schema, profile, the rules the readers branch on, for the director's schema 22 which of its shapes, from schema 29 the dialogue rules, from schema 30 the alumni rules and the cast, from B9 the tuning rules where they are on, the story rules from Blame on (OLD-SAVE-ACCEPTANCE 2.12), and the recorder's walker where it is not the plain one (OLD-SAVE-ACCEPTANCE 2.9).</summary>
+        /// <summary>A fixture's cell: schema, profile, the rules the readers branch on, for the director's schema 22 which of its shapes, from schema 29 the dialogue rules, from schema 30 the alumni rules and the cast, from B9 the tuning rules where they are on, the story rules from Blame on (OLD-SAVE-ACCEPTANCE 2.12), the competition rules from the Ring Tower on (2.14), the talk rules from schema 31 (2.15), and the recorder's walker where it is not the plain one (OLD-SAVE-ACCEPTANCE 2.9).</summary>
         private static string Cell(JToken e)
         {
             int On(string rule) => Math.Min(1, (int?)e["rules"][rule] ?? 0);
@@ -275,6 +288,7 @@ namespace Gamesim.Tests.EditMode
                 + (schema >= 30 && ((int?)e["rules"]["tuningRulesVersion"] ?? 0) != 0 ? "/tuning" + (int)e["rules"]["tuningRulesVersion"] : "")
                 + (e["story"] is JObject story && (int)story["rulesVersion"] >= StoryRules.Blame ? "/story" + (int)story["rulesVersion"] : "")
                 + (((int?)e["rules"]["competitionRulesVersion"] ?? 0) >= CompetitionRules.RingTower ? "/competition" + (int)e["rules"]["competitionRulesVersion"] : "")
+                + (schema >= 31 ? "/talk" + (int)e["story"]["talkRules"] : "")
                 + ((string)e["walker"] is string walker && walker != "plain" ? "/" + walker : "");
         }
 
@@ -292,9 +306,10 @@ namespace Gamesim.Tests.EditMode
             // The source-bound current adapter owns the live schema's admission; since SCH30 a schema-29 fixture migrates
             // to 30 in memory like every older one. Historical fixtures and their reference-schema checkpoint algorithm
             // are not rewritten.
-            // Since schema 31 (the free talk's S0) the live schema is one past the newest reference schema (Current, 30):
-            // every fixture migrates in memory, and its checkpoints are still taken at its reference schema.
-            const int current = CurrentOldSaveTrace.Current;
+            // Since schema 31 (the free talk's S0) every fixture saved at 30 or below migrates in memory, and its checkpoints are
+            // still taken at its reference schema; it is compared at 30 (Retained), as before. Since the first schema-31 cell
+            // (OLD-SAVE-ACCEPTANCE 2.15) a schema-31 fixture loads as it is and is compared at 31 (CurrentOldSaveTrace.ComparedAt).
+            int current = CurrentOldSaveTrace.ComparedAt(schema);
             const int live = EpisodeState.LiveSchema;
             Assert.That(slot.Store.TryLoad(out var loaded, out string message), Is.True, message);
             if (schema < live) Assert.That(message, Does.Contain("Schema " + schema + " history was migrated to schema " + live + " in memory."));
@@ -916,11 +931,11 @@ namespace Gamesim.Tests.EditMode
                 void Check(EpisodeState s, int at)
                 {
                     string recorded = (string)checkpoints[at]["season"];
-                    string season = CurrentOldSaveTrace.Checkpoint(s, CurrentOldSaveTrace.Current).season;
+                    string season = CurrentOldSaveTrace.Checkpoint(s, CurrentOldSaveTrace.Retained).season;
                     asItIs.Add(season);
                     if (partsAsItIs < 0 && season.Substring(0, 16) != recorded) partsAsItIs = at;
                     s.story.rulesVersion = StoryRules.Blame;
-                    season = CurrentOldSaveTrace.Checkpoint(s, CurrentOldSaveTrace.Current).season;
+                    season = CurrentOldSaveTrace.Checkpoint(s, CurrentOldSaveTrace.Retained).season;
                     s.story.rulesVersion = StoryRules.Threads;
                     putBack.Add(season);
                     if (partsPutBack < 0 && season.Substring(0, 16) != recorded) partsPutBack = at;
@@ -1267,11 +1282,11 @@ namespace Gamesim.Tests.EditMode
             void Check(EpisodeState s, int at)
             {
                 string recorded = (string)checkpoints[at]["season"];
-                string season = CurrentOldSaveTrace.Checkpoint(s, CurrentOldSaveTrace.Current).season;
+                string season = CurrentOldSaveTrace.Checkpoint(s, CurrentOldSaveTrace.Retained).season;
                 asItIs.Add(season);
                 if (partsAsItIs < 0 && season.Substring(0, 16) != recorded) partsAsItIs = at;
                 s.competitionRulesVersion = CompetitionRules.RingTower;
-                var back = CurrentOldSaveTrace.Checkpoint(s, CurrentOldSaveTrace.Current);
+                var back = CurrentOldSaveTrace.Checkpoint(s, CurrentOldSaveTrace.Retained);
                 s.competitionRulesVersion = CompetitionRules.Widened;
                 putBack.Add(back.season); putBackState.Add(back.blind); putBackText.Add(back.text);
                 if (partsPutBack < 0 && back.season.Substring(0, 16) != recorded) partsPutBack = at;
@@ -1327,6 +1342,164 @@ namespace Gamesim.Tests.EditMode
             return result.state;
         }
 
+        // ------------------------------------------------------------------ the first schema-31 cell: free talk
+
+        private const string FreeTalkCell = "s31-mode2-allweek-story11-talk3-competition6-tuning1-w4-hoh";
+
+        /// <summary>
+        /// The first schema-31 cell (OLD-SAVE-ACCEPTANCE 2.15): the shipped Regular season of 8 as every new season starts since
+        /// the trivia's switch-on and free talk's level 3, on Roles, competition rules 6, tuning rules 1 and talk rules 3, walked by
+        /// the recorder's talker (every free talk on offer taken, in the reply that lands best, never a Flirt) and saved by its
+        /// writer's store at the first state of week 4's Head of Household. The four cases every fixture has load and replay it
+        /// (at 31, with no migration), read it with every reader, pin its seventeen holds and recover it from the backup; this one
+        /// holds the file to the point it was saved at and to what it was chosen for: a free talk's standing line saved (Alex
+        /// Chen's, of week 3), the friendship stages logged (Alex Chen a Friend since week 3's campaign), and a script that takes
+        /// 26 free talks after the load, the first a new standing snapshot. Its checkpoints are the state whole, at 31: a season
+        /// with free talk had has no schema-30 view. Seed 3133, the first from 3131 at 8 whose talker walk holds both at a phase
+        /// start from week 2 with the player in the house and free talk after it.
+        /// </summary>
+        [Test]
+        public void TheFreeTalkCellIsSavedAtWeekFoursHeadOfHouseholdWithAStandingLineAndAFriendStageLogged()
+        {
+            var entry = Entry(FreeTalkCell);
+            using var slot = new Slot((string)entry["save"]);
+            Assert.That(slot.Store.TryLoad(out var s, out string message), Is.True, message);
+            Assert.That(message, Does.Not.Contain("migrated"), "Saved at the live 31, it loads as it is.");
+            Assert.That(s.schemaVersion, Is.EqualTo(31));
+            Assert.That((int)entry["schema"], Is.EqualTo(31));
+            Assert.That(s.story.talkRules, Is.EqualTo(TalkRules.Romance), "Saved at talk rules 3, every new season's since free talk's level 3.");
+            Assert.That((int)entry["story"]["talkRules"], Is.EqualTo(TalkRules.Romance));
+            Assert.That(s.story.mindRules, Is.EqualTo(MindRules.Off));
+            Assert.That(s.story.rulesVersion, Is.EqualTo(StoryRules.Roles), "On story rules 11, as every fresh season its writer starts.");
+            Assert.That(s.story.rulesStartWeek, Is.EqualTo(1));
+            Assert.That(s.competitionRulesVersion, Is.EqualTo(CompetitionRules.Trivia), "At competition rules 6, every new season's since the trivia's switch-on.");
+            Assert.That(s.tuningRulesVersion, Is.EqualTo(TuningRules.Bands), "On tuning rules 1, as every fresh season from B9.");
+            Assert.That(s.dialogueRulesVersion, Is.EqualTo(0), "A shipped season without the conversation preview.");
+            Assert.That(s.alumniRulesVersion, Is.EqualTo(0), "The Regular cast: no alumnus, alumni rules 0.");
+            Assert.That(s.alumniCatalogEdition, Is.Null);
+            Assert.That(s.unifiedCommitmentRulesVersion, Is.EqualTo(2), "The shipped mode 2.");
+            Assert.That(s.contestants.Count, Is.EqualTo(8));
+            Assert.That(s.Find(s.playerId).name, Is.EqualTo("You"));
+
+            // The stop point: the first state of week 4's Head of Household, five in the house.
+            Assert.That(s.week, Is.EqualTo(4));
+            Assert.That(s.phase, Is.EqualTo(EpisodePhase.HoH));
+            Assert.That(s.revision, Is.EqualTo(129));
+            var replay = JObject.Parse(File.ReadAllText(Path.Combine(Root, (string)entry["replay"])));
+            Assert.That((int)replay["checkpoints"][0]["revision"], Is.EqualTo(s.revision), "The script starts where the file stops.");
+            Assert.That(s.Active.Select(c => c.id), Is.EquivalentTo(new[] { s.playerId, "alex-chen", "casey-wilson", "riley-johnson", "quinn-martinez" }));
+
+            // What free talk saved: Alex Chen's standing line of week 3, his Friend stage among the log's stage rows, and the
+            // player's lean; no romance, since the talker never flirts.
+            Assert.That(FreeTalk.On(s), Is.True);
+            var alex = FreeTalk.Contact(s, "alex-chen");
+            Assert.That(alex.standingWeek, Is.EqualTo(3));
+            Assert.That(alex.standing, Is.EqualTo("\"Riley Johnson is my person in here. Casey Wilson worries me, a lot. And me? I'm good. Now you know.\""));
+            Assert.That(s.story.contacts.Count(c => c.standing != ""), Is.EqualTo(1), "One standing line saved, his.");
+            Assert.That(TalkFriendship.Stage(s, "alex-chen"), Is.EqualTo(FriendStage.Friend));
+            var stages = s.events.Where(e => e.kind == TalkFriendship.StageEventKind).ToList();
+            Assert.That(stages, Has.Count.EqualTo(10), "Seven housemates Acquainted, two Friendly and Alex Chen a Friend.");
+            Assert.That(stages.Last().text, Is.EqualTo(TalkFriendship.EventLine(FriendStage.Friend, "Alex Chen")));
+            Assert.That(stages.Last().week, Is.EqualTo(3));
+            Assert.That(stages.Last().phase, Is.EqualTo(EpisodePhase.Campaign));
+            Assert.That(s.story.talkLean, Is.EqualTo(-4), "The player's read from the tones they answered in (talk rules 2).");
+            Assert.That(s.story.contacts.All(c => c.romance == "" && c.spark == 0 && c.flirts == 0), Is.True);
+            Assert.That(EpisodeValidation.TryValidate(s, out string error), Is.True, error);
+
+            // Checkpointed at 31 whole, as the recorder hashes it; a season with free talk had has no schema-30 view.
+            Assert.That(CurrentOldSaveTrace.Checkpoint(s, CurrentOldSaveTrace.Current), Is.EqualTo(OldSaveTrace.Checkpoint(s, 31)));
+            Assert.That(CurrentOldSaveTrace.Checkpoint(s, CurrentOldSaveTrace.Current).season.Substring(0, 16), Is.EqualTo((string)replay["checkpoints"][0]["season"]));
+            Assert.Throws<InvalidDataException>(() => CurrentOldSaveTrace.Checkpoint(s, CurrentOldSaveTrace.Retained), "No schema-30 view.");
+
+            // What the script plays after the load: 26 free talks, the first (command 3) Alex Chen's standing talk, which takes
+            // week 4's snapshot.
+            var commands = (JArray)replay["commands"];
+            var talks = commands.Where(c => (string)c["kindName"] == nameof(EpisodeCommandKind.JustTalk)).ToList();
+            Assert.That(talks, Has.Count.EqualTo(26));
+            Assert.That(talks[0], Is.SameAs(commands[2]));
+            Assert.That((string)talks[0]["targetId"], Is.EqualTo("alex-chen"));
+            var engine = new EpisodeEngine(s.Clone());
+            foreach (JObject row in commands.Take(3))
+                Assert.That(engine.Apply(row.ToObject<EpisodeCommand>()).accepted, Is.True);
+            var third = FreeTalk.Contact(engine.Snapshot, "alex-chen");
+            Assert.That(third.standingWeek, Is.EqualTo(4), "The first free talk after the load takes week 4's standing snapshot.");
+            Assert.That(third.standing, Is.Not.Empty.And.Not.EqualTo(alex.standing));
+        }
+
+        /// <summary>
+        /// The control: the same file with its talk rules resealed (the save's story.talkRules rewritten and its checksum computed
+        /// again, as the store computes it). At 0 the store refuses it - "A season without free talk has none of its records." -
+        /// and leaves it as it was: the contacts' talk fields are free talk's own. At 1 (free talk without the chemistry, the
+        /// stages or romance) it loads and every command of the script is accepted, but its free talks resolve by level 1's rules,
+        /// so the season parts from the record at the first free talk after the load (command 3), even hashed with the level put
+        /// back to 3. So the cell pins talk rules 3: no season at 0 or 1 can stand in for it.
+        /// </summary>
+        [Test]
+        public void TheFreeTalkCellResealedAtTalkRulesZeroIsRefusedAndAtOnePartsAtTheFirstFreeTalkAfterTheLoad()
+        {
+            var entry = Entry(FreeTalkCell);
+            var replay = JObject.Parse(File.ReadAllText(Path.Combine(Root, (string)entry["replay"])));
+            var checkpoints = (JArray)replay["checkpoints"];
+            var commands = (JArray)replay["commands"];
+            Assert.That((string)commands[2]["kindName"], Is.EqualTo(nameof(EpisodeCommandKind.JustTalk)), "Command 3 is the first free talk after the load.");
+            Assert.That(commands.Take(2).Count(c => (string)c["kindName"] == nameof(EpisodeCommandKind.JustTalk)), Is.EqualTo(0));
+            foreach (int level in new[] { TalkRules.Off, TalkRules.Talk })
+            {
+                using var slot = new Slot((string)entry["save"]);
+                var resealed = Reseal(slot, payload =>
+                {
+                    Assert.That((int)payload["story"]["talkRules"], Is.EqualTo(TalkRules.Romance));
+                    payload["story"]["talkRules"] = level;
+                });
+                bool loaded = new EpisodeSaveStore(slot.Store.SavePath).TryLoad(out var forced, out string message);
+                Assert.That(File.ReadAllBytes(slot.Store.SavePath), Is.EqualTo(resealed), "Loading never rewrites the save.");
+                if (level == TalkRules.Off)
+                {
+                    Assert.That(loaded, Is.False, "A season at talk rules 0 holding free talk's records is refused.");
+                    Assert.That(forced, Is.Null);
+                    Assert.That(message, Does.Contain("A season without free talk has none of its records."));
+                    Assert.That(message, Does.Not.Contain("checksum"), "Refused for what it holds, not for a damaged file.");
+                    continue;
+                }
+                Assert.That(loaded, Is.True, message);
+                Assert.That(forced.story.talkRules, Is.EqualTo(TalkRules.Talk));
+                int partsPutBack = -1;
+                void Check(EpisodeState x, int at)
+                {
+                    x.story.talkRules = TalkRules.Romance;
+                    string season = CurrentOldSaveTrace.Checkpoint(x, CurrentOldSaveTrace.Current).season;
+                    x.story.talkRules = TalkRules.Talk;
+                    if (partsPutBack < 0 && season.Substring(0, 16) != (string)checkpoints[at]["season"]) partsPutBack = at;
+                }
+                Check(forced, 0);
+                var engine = new EpisodeEngine(forced);
+                int i = 0;
+                foreach (JObject row in commands)
+                {
+                    var applied = engine.Apply(row.ToObject<EpisodeCommand>());
+                    i++;
+                    Assert.That(applied.accepted, Is.True, "At talk rules 1, command " + i + " refused: " + applied.reason);
+                    Assert.That(applied.state.story.talkRules, Is.EqualTo(TalkRules.Talk), "A season keeps the talk rules it was loaded at.");
+                    Check(applied.state, i);
+                }
+                Assert.That(i, Is.EqualTo(checkpoints.Count - 1), "Every command of the script is played at talk rules 1 too.");
+                Assert.That(partsPutBack, Is.EqualTo(3), "With the level put back, the season is the recorded one up to the first free talk after the load, and parts there.");
+            }
+        }
+
+        /// <summary>The slot's save with its state changed by <paramref name="change"/> and its checksum computed again, as the store computes it; returns the bytes written.</summary>
+        private static byte[] Reseal(Slot slot, Action<JObject> change)
+        {
+            var saveJson = typeof(EpisodeSaveStore).Assembly.GetType("Gamesim.Persistence.SaveJson", true);
+            var envelope = (JObject)saveJson.GetMethod("ParseObject", BindingFlags.Public | BindingFlags.Static)
+                .Invoke(null, new object[] { File.ReadAllText(slot.Store.SavePath) });
+            change((JObject)envelope["state"]);
+            string canonical = (string)saveJson.GetMethod("Canonical", BindingFlags.Public | BindingFlags.Static).Invoke(null, new object[] { envelope["state"] });
+            envelope["checksum"] = (string)saveJson.GetMethod("Hash", BindingFlags.Public | BindingFlags.Static).Invoke(null, new object[] { canonical });
+            File.WriteAllText(slot.Store.SavePath, envelope.ToString(Formatting.None));
+            return File.ReadAllBytes(slot.Store.SavePath);
+        }
+
         // ------------------------------------------------------------------ refused on purpose
 
         /// <summary>
@@ -1366,7 +1539,7 @@ namespace Gamesim.Tests.EditMode
         {
             var entry = Entry(id);
             int schema = (int)entry["schema"];
-            const int current = CurrentOldSaveTrace.Current;
+            int current = CurrentOldSaveTrace.ComparedAt(schema); // 30 for a fixture saved at 30 or below, as before; 31 for a schema-31 one.
             using var reference = new Slot((string)entry["save"]);
             var payload = (JObject)Envelope(reference.Store.SavePath)["state"];
             Assert.That(reference.Store.TryLoad(out var loaded, out string loadMessage), Is.True, loadMessage);

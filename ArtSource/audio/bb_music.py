@@ -1,8 +1,9 @@
-"""The theme, the season bed and the competitions' bed (MASTER-PLAN §3.C), rendered as seamless loops.
+"""The theme, the season bed, the competitions' bed and the main menu's title loop (MASTER-PLAN §3.C),
+rendered as seamless loops.
 
     blender --background --python ArtSource/audio/bb_music.py -- Assets/Gamesim/Resources/Audio
 
-or under plain Python with numpy, naming the loops to render (all three when none is named):
+or under plain Python with numpy, naming the loops to render (all four when none is named):
 
     python ArtSource/audio/bb_music.py Assets/Gamesim/Resources/Audio Competition
 
@@ -15,10 +16,13 @@ on two and four, hats, a bass pulsing in eighths, a pad and an ostinato in sixte
 circle E minor; the next eight lift (sixteenth hats, stabs, a brighter ostinato), climb and end on B
 with a clap fill, which leads back into the top of the loop. It plays under a competition, from the
 attempt opening or the show starting to the result card.
+Title.wav: the theme slowed to 80 and softened - its chords on a pad, its arpeggio in quiet eighths and
+its phrase on a soft lead, answered - twelve bars, exactly thirty-six seconds, about the theme's
+loudness. It plays on the main menu only, at 60 percent of the theme's gain.
 
-HouseAudio loads Audio/Theme, Audio/Season and Audio/Competition from Resources and falls back to its
-synthesized chords when they are absent; these files are what makes HasRecordedMusic and
-HasRecordedCompetition true.
+HouseAudio loads Audio/Theme, Audio/Season, Audio/Competition and Audio/Title from Resources and falls
+back to its synthesized chords when they are absent; these files are what makes HasRecordedMusic,
+HasRecordedCompetition and HasRecordedTitle true.
 """
 import math
 import os
@@ -189,6 +193,55 @@ def competition(track, offset):
                 track.add(snap * (0.10 + 0.025 * k), b0 + 2.0 * beat + k * sixteenth, pan=0.05)
 
 
+# The main menu's title loop: the theme's chords and its lead, slowed to 80 and softened - a pad, a
+# sine bass on the roots, the theme's arpeggio pattern in quiet eighths and its phrase on a soft lead.
+# Three bars a chord, twelve bars, exactly thirty-six seconds. Its loudness is about the theme's (-17.2,
+# measured whole), since the game plays it at 60 percent of the theme's gain (MusicFade.TitlePeak).
+TITLE_BPM = 80.0
+TITLE_BARS_PER_CHORD = 3
+TITLE_RMS_DB = -17.2
+TITLE_PEAK_DB = -3.0
+
+# (pad, bass, arpeggio): the theme's own voicings, C - Am - F - G.
+TITLE_CHORDS = (
+    (("C3", "E3", "G3", "C4"), "C2", ("C4", "E4", "G4", "C5")),
+    (("A2", "C3", "E3", "A3"), "A1", ("A3", "C4", "E4", "A4")),
+    (("F2", "A2", "C3", "F3"), "F1", ("F3", "A3", "C4", "F4")),
+    (("G2", "B2", "D3", "G3"), "G1", ("G3", "B3", "D4", "G4")),
+)
+
+# The lead, (note, beat, beats): the theme's phrase half as fast again over C and Am, answered over F
+# and G, ending on D to lead back into the E at the top.
+TITLE_LEAD = (
+    ("E5", 0.0, 2.25), ("G5", 2.25, 0.75), ("C6", 3.0, 3.0), ("B5", 6.0, 1.5), ("A5", 7.5, 1.5), ("G5", 9.0, 3.0),
+    ("F5", 12.0, 2.25), ("A5", 14.25, 0.75), ("C6", 15.0, 1.5), ("A5", 16.5, 1.5), ("G5", 18.0, 4.5), ("E5", 22.5, 1.5),
+    ("A5", 24.0, 3.0), ("C6", 27.0, 1.5), ("A5", 28.5, 1.5), ("G5", 30.0, 6.0),
+    ("B5", 36.0, 3.0), ("D6", 39.0, 1.5), ("B5", 40.5, 1.5), ("G5", 42.0, 4.5), ("D5", 46.5, 1.5),
+)
+
+
+def title(track, offset):
+    beat = 60.0 / TITLE_BPM
+    bar = 4 * beat
+    span = TITLE_BARS_PER_CHORD * bar
+    pattern = (0, 1, 2, 3, 2, 1, 0, 2)                                       # the theme's arpeggio
+    for index, (pad, bass, arp) in enumerate(TITLE_CHORDS):
+        start = offset + index * span
+        # The pad held a little past its chord, so its release crosses the next one's rise.
+        track.add(s.chorus_pad([s.hz(n) for n in pad], span + 1.2, cutoff=1000.0, env=(1.2, 0.8, 0.85, 1.6), gain=0.14), start)
+        for b in range(TITLE_BARS_PER_CHORD):                                # the bass: the root, once a bar
+            track.add(s.note("sine", s.hz(bass) * 2.0, bar * 0.95, env=(0.08, 0.4, 0.8, 0.6), gain=0.22), start + b * bar)
+        for eighth in range(TITLE_BARS_PER_CHORD * 8):                       # the arpeggio, in quiet eighths
+            f = s.hz(arp[pattern[eighth % 8]])
+            track.add(s.note("tri", f, beat, env=(0.006, 0.3, 0.15, 0.35), cutoff=2000.0, gain=0.07),
+                      start + eighth * beat / 2.0, pan=(-0.3 if eighth % 2 else 0.3))
+    for name, at, dur in TITLE_LEAD:
+        f = s.hz(name)
+        m = s.note("sine", f, dur * beat, env=(0.08, 0.3, 0.75, 0.6), gain=0.20) \
+            + s.note("tri", f, dur * beat, env=(0.08, 0.3, 0.75, 0.6), cutoff=1800.0, gain=0.05)
+        track.add(m, offset + at * beat, pan=0.1)
+
+
 def at_level(stereo, rms_db, ceiling_db):
     """The loop scaled so its RMS is rms_db, unless that would put its peak over ceiling_db."""
     rms = float(np.sqrt(np.mean(stereo ** 2)))
@@ -227,7 +280,19 @@ def render_competition():
     return at_level(stereo, COMPETITION_RMS_DB, COMPETITION_PEAK_DB)
 
 
-RENDERS = (("Theme", render_theme), ("Season", render_season), ("Competition", render_competition))
+def render_title():
+    length = len(TITLE_CHORDS) * TITLE_BARS_PER_CHORD * 4 * 60.0 / TITLE_BPM
+    n = s.seconds(length)
+    # Twice end to end with the room on both passes, the second kept, as the competitions' loop is.
+    track = s.Track(length * 2.0)
+    title(track, 0.0)
+    title(track, length)
+    track.process(lambda ch: s.reverb(ch, size=0.8, mix=0.3))
+    stereo = track.stereo()[n:n * 2]
+    return at_level(stereo, TITLE_RMS_DB, TITLE_PEAK_DB)
+
+
+RENDERS = (("Theme", render_theme), ("Season", render_season), ("Competition", render_competition), ("Title", render_title))
 
 if __name__ == "__main__":
     args = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else sys.argv[1:]
@@ -235,7 +300,7 @@ if __name__ == "__main__":
     wanted = args[1:] or [name for name, _ in RENDERS]
     unknown = [name for name in wanted if name not in dict(RENDERS)]
     if unknown:
-        sys.exit("unknown loop: " + ", ".join(unknown) + " (Theme, Season or Competition)")
+        sys.exit("unknown loop: " + ", ".join(unknown) + " (Theme, Season, Competition or Title)")
     for name, render in RENDERS:
         if name in wanted:
             print(name.lower(), "->", s.write_wav(os.path.join(out, name + ".wav"), render()))

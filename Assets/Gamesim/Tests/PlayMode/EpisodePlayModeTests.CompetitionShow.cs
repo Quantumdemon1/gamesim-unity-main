@@ -183,6 +183,48 @@ namespace Gamesim.Tests.PlayMode
             yield return CommitAndFollowTheShow(EpisodeHud.SimulateCompetitionCaption, playerInField: true, skip: true);
         }
 
+        /// <summary>
+        /// The winner's fanfare comes with the card that names the winner, not with the commit that
+        /// starts the show: nothing is asked at the commit or while the field holds on, and the
+        /// competition's win is asked once, as the standings card comes up saying who won.
+        /// </summary>
+        [UnityTest, Timeout(300000)]
+        public IEnumerator CompetitionShow_TheWinnersFanfarePlaysWithTheCardThatNamesTheWinner()
+        {
+            yield return InstallShowAtFirstHoH("Endurance");
+            var audio = director.GetComponent<HouseAudio>();
+            Assert.That(audio, Is.Not.Null);
+            var asks = new List<string>();
+            var faults = new List<string>();
+            System.Action<HouseAudio.Cue> listen = cue =>
+            {
+                if (cue != HouseAudio.Cue.CompetitionWin) return;
+                // Never throw through the director's own sound call.
+                try
+                {
+                    var card = SceneComponents<CompetitionResult>().LastOrDefault(item => item.IsPlaying);
+                    string line = card == null ? "no card" : card.GetComponentsInChildren<TMPro.TMP_Text>(true)
+                        .Where(label => label.name == "Winner").Select(label => label.text).LastOrDefault() ?? "no winner line";
+                    asks.Add((director.IsCompetitionShowRunning ? "show running" : "show over") + " | " + line);
+                }
+                catch (System.Exception error) { faults.Add(error.GetType().Name + ": " + error.Message); }
+            };
+            audio.CueAsked += listen;
+            try
+            {
+                yield return CommitAndFollowTheShow(EpisodeHud.SimulateCompetitionCaption, playerInField: true);
+                var after = director.Snapshot;
+                var champion = after.Find(CommittedStandings(after)[0]);
+                Assert.That(champion, Is.Not.Null);
+                string named = champion.isPlayer ? "You win!" : champion.name + " wins!";
+                yield return null;
+                Assert.That(faults, Is.Empty);
+                Assert.That(asks, Is.EqualTo(new[] { "show over | " + named }),
+                    "One fanfare, asked as the card names the winner: none at the commit that started the show, none while it ran.");
+            }
+            finally { audio.CueAsked -= listen; }
+        }
+
         [UnityTest, Timeout(300000)]
         public IEnumerator CompetitionShow_ReducedMotionHoldsAStillFieldAndThenTheCard()
         {

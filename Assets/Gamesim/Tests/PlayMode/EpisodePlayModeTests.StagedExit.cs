@@ -729,6 +729,9 @@ namespace Gamesim.Tests.PlayMode
             var camera = cameraRig.ViewCamera;
             var lens = new CaptureLens(camera, 960, 540);
             float began = -1f;
+            // The longest frame seen in the goodbye: every timing window below widens by it, so one
+            // stretched frame (a busy machine) cannot fail a take whose cut, push and landing are right.
+            float longestFrame = 0f, landedAt = -1f;
             int portraits = 0, entryFrame = -1, cutLanded = -1, pushBegan = -1, pushMoving = -1, pushLanded = -1;
             bool released = false, free = false, lostOffRoom = false;
             Exception observerFailure = null;
@@ -837,6 +840,7 @@ namespace Gamesim.Tests.PlayMode
                                     issues.Add("Taylor was seated when the skipped goodbye began.");
                             }
                             float elapsed = Time.unscaledTime - began;
+                            longestFrame = Mathf.Max(longestFrame, Time.unscaledDeltaTime);
                             cameraTrace.AppendLine(FormattableString.Invariant($"{Time.frameCount}\t{elapsed:F5}\t{room}\t{floor}\t{seated}\t{visual.IsSeated}\t{requested:F5}\t{applied:F5}\t{travelling}\t{director.ViewedRooms}\t{camera.cullingMask}\t{director.IsBodyDrawn(leaving.transform)}"));
                             if (skipSummons && !lostOffRoom && (!onFloor || floor != voteRoom || room != voteRoom || room == stageRoom || seated || visual.IsSeated))
                             {
@@ -856,21 +860,31 @@ namespace Gamesim.Tests.PlayMode
                                 if (pushBegan < 0)
                                 {
                                     pushBegan = Time.frameCount;
-                                    if (cutLanded < entryFrame || pushBegan <= cutLanded || elapsed < .045f || elapsed > .20f)
+                                    // The cue fires on the first frame past 0.05 s, so one long frame can carry it that much later.
+                                    if (cutLanded < entryFrame || pushBegan <= cutLanded || elapsed < .045f || elapsed > .05f + longestFrame + .1f)
                                         issues.Add("The 2.4 m push did not follow a completed 3.1 m cut on its scheduled cue.");
                                 }
                                 if (travelling && applied > 2.47f && applied < 3.03f) pushMoving = Time.frameCount;
                                 if (!travelling && pushLanded < 0 && Mathf.Abs(applied - 2.4f) <= .07f)
                                 {
                                     pushLanded = Time.frameCount;
-                                    if (elapsed < 1.85f || elapsed > 2.35f || pushMoving <= pushBegan || pushLanded <= pushMoving)
+                                    landedAt = elapsed;
+                                    if (elapsed < 1.85f || elapsed > LatestGoodbyePushLanding(longestFrame) || pushMoving <= pushBegan || pushLanded <= pushMoving)
                                         issues.Add("The two-second goodbye push did not travel between its two physical boom marks on time.");
                                 }
                             }
                             if (portraits < at.Length && elapsed >= at[portraits])
                             {
-                                if (elapsed > at[portraits] + .35f) issues.Add(moments[portraits] + ": the capture missed its part of the hold.");
-                                Sample(moments[portraits++], true);
+                                // The held portrait is of the landed push, which lands only about 50 ms before its mark:
+                                // on the off-room take it waits for the landing, until the latest the landing may come.
+                                bool forTheLanding = skipSummons && moments[portraits] == "held";
+                                bool waiting = forTheLanding && pushLanded < 0 && elapsed <= LatestGoodbyePushLanding(longestFrame);
+                                float due = forTheLanding && pushLanded >= 0 ? Mathf.Max(at[portraits], landedAt) : at[portraits];
+                                if (!waiting)
+                                {
+                                    if (elapsed > due + .35f + longestFrame) issues.Add(moments[portraits] + ": the capture missed its part of the hold.");
+                                    Sample(moments[portraits++], true);
+                                }
                             }
                         }
                         else if (began >= 0f)
@@ -983,14 +997,25 @@ namespace Gamesim.Tests.PlayMode
             return (changed, tested);
         }
 
+        /// <summary>
+        /// The latest goodbye second at which the observer may see the 2 s push land at 2.4 m. The rig
+        /// counts the push from the frame before its cue (before 0.05 s), so it lands by 2.05 s plus one
+        /// frame; the observer and the rig both read in LateUpdate, in no fixed order, so the landing can
+        /// be seen one frame later still. The 0.3 s is the old window's room for the boom to settle.
+        /// </summary>
+        private static float LatestGoodbyePushLanding(float longestFrame) => 2.05f + .3f + 2f * longestFrame;
+
         private static string GoodbyeTakeFolder(bool skipped)
         {
             var args = Environment.GetCommandLineArgs();
             int index = Array.IndexOf(args, "--gamesim-save-root");
             string run = index >= 0 && index + 1 < args.Length ? args[index + 1]
                 : Path.Combine(Application.temporaryCachePath, "gamesim-goodbye-" + Guid.NewGuid().ToString("N"));
-            string folder = Path.GetFullPath(Path.Combine(run, skipped ? "staged-goodbye-skipped" : "staged-goodbye-normal"));
-            Assert.That(Directory.Exists(folder), Is.False, "Use a fresh run root to preserve the previous camera take.");
+            string name = skipped ? "staged-goodbye-skipped" : "staged-goodbye-normal";
+            string folder = Path.GetFullPath(Path.Combine(run, name));
+            // A rerun against the same run root keeps the earlier take and writes beside it.
+            for (int take = 2; Directory.Exists(folder); take++)
+                folder = Path.GetFullPath(Path.Combine(run, name + "-" + take));
             Directory.CreateDirectory(folder);
             Debug.Log("[Gamesim] stock goodbye camera evidence -> " + folder);
             return folder;

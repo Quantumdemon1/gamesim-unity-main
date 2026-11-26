@@ -645,6 +645,8 @@ namespace Gamesim.Episode
                     director.HasDiaryRoom && !recovery && state.Find(state.playerId)?.status == ContestantStatus.Active;
                 RailButton(next, CompetitionTravelCaption, UiTheme.Icon("trophy"), 1, () => director.GoToPlayDestination(true),
                     EpisodeEngine.IsCompetition(state.phase)).interactable = !recovery;
+                // The caption stays; with a decision of the player's own waiting, the press opens the
+                // screen where they stand rather than walking them there (EpisodeDirector.OpenWaitingDecision).
                 var episode = RailButton(next, EpisodeTravelCaption, UiTheme.Icon("camera"), 2, () => director.GoToPlayDestination(false),
                     !EpisodeEngine.IsCompetition(state.phase));
                 episode.interactable = !recovery;

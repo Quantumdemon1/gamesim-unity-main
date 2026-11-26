@@ -69,13 +69,17 @@ namespace Gamesim.Tests.EditMode
             var atlas = AtlasFor(RoomSet.WholeHouse, out int lamps);
             Assert.That(lamps, Is.EqualTo(14), "The whole house: every lamp stays on.");
             Assert.That(atlas.slicesRequested, Is.EqualTo(85), "84 lamp faces and the follow spotlight's one.");
-            Assert.That(atlas.scale, Is.EqualTo(8), "Every map reduced by 8,");
-            Assert.That(atlas.largestSlice, Is.EqualTo(128), "to 128 px: today's house.");
+            // SB1: the Medium tier's 512 px reduced by 4 (High's 1024 was reduced by 8): 128 px as before.
+            Assert.That(atlas.scale, Is.EqualTo(4), "Every map reduced by 4,");
+            Assert.That(atlas.largestSlice, Is.EqualTo(128), "to 128 px: an eighth of High, today's house.");
+            Assert.That(atlas.smallestSlice, Is.EqualTo(64), "The follow spotlight's 256 px reduced by 4 (by 8 before SB1).");
         }
 
         /// <summary>
-        /// The lamps a view keeps on, soft at the High tier (six 1024 px faces), at the plan's homes,
-        /// and the follow spotlight (hard, Low tier, 256 px, one face), laid in a 2048 atlas as URP 17.6 does.
+        /// The lamps a view keeps on, soft at the tier SB1 authors for their home room
+        /// (<see cref="VerificationViews.LampShadowTier"/>: six 512 px faces in today's pipeline), at
+        /// the plan's homes, and the follow spotlight (hard, Low tier, 256 px, one face), laid in a 2048
+        /// atlas as URP 17.6 does. Each room view's sizes are those the High tier's 1024 px gave.
         /// </summary>
         private static VerificationShadowAtlas AtlasFor(RoomSet viewed, out int lamps)
         {
@@ -86,7 +90,9 @@ namespace Gamesim.Tests.EditMode
                 {
                     if (HouseRoomScope.LampOutsideScope(home, viewed)) continue;
                     lamps++;
-                    lights.Add(new VerificationShadowLight(RoomLayers.RoomIds[home] + " lamp " + n, home * 2 + n, 1, 0, 6, false, true, 1024));
+                    int tier = VerificationViews.LampShadowTier(LampsAtHome[home], 2048, 256, 512, 1024, 256);
+                    lights.Add(new VerificationShadowLight(RoomLayers.RoomIds[home] + " lamp " + n, home * 2 + n, 1, 0, 6, false, true,
+                        VerificationViews.TierResolution(tier, 256, 512, 1024)));
                 }
             lights.Add(new VerificationShadowLight("follow spot", 0, 4.2, 0, 6.7, true, false, 256));
             return VerificationViews.LayoutShadowAtlas(lights, 0, 12, -10, 2048);

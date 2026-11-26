@@ -211,6 +211,39 @@ namespace Gamesim.Tests.EditMode
             });
         }
 
+        /// <summary>
+        /// SB1: each lamp asks for the shadow tier its home room's lamp count gives
+        /// (<see cref="VerificationViews.LampShadowTier"/> with the PC pipeline's atlas and tiers, the follow
+        /// spotlight at the Low tier), as the cinematic lighting pass writes it: Medium for all fourteen today,
+        /// so no frame of a room's lamps gets fewer pixels than the High tier gave.
+        /// </summary>
+        [Test]
+        public void EachLampAsksForTheShadowTierItsHomeRoomsLampsGive()
+        {
+            var pipeline = new UnityEditor.SerializedObject(UnityEditor.AssetDatabase.LoadMainAssetAtPath("Assets/Settings/PC_RPAsset.asset"));
+            int Size(string name) => pipeline.FindProperty(name).intValue;
+            int atlas = Size("m_AdditionalLightsShadowmapResolution"), low = Size("m_AdditionalLightsShadowResolutionTierLow");
+            int medium = Size("m_AdditionalLightsShadowResolutionTierMedium"), high = Size("m_AdditionalLightsShadowResolutionTierHigh");
+            WithScope(EpisodeScene, (scene, scope) =>
+            {
+                var homes = new List<HouseRoomScope.LampHome>();
+                scope.LampHomes(homes);
+                Assert.That(homes.Count, Is.EqualTo(14), "Fourteen lamps.");
+                var tiers = new List<int>();
+                foreach (var home in homes)
+                {
+                    int lamps = homes.Count(other => other.Room == home.Room);
+                    var data = home.Light.GetComponents<MonoBehaviour>().SingleOrDefault(c => c != null && c.GetType().Name == "UniversalAdditionalLightData");
+                    Assert.That(data, Is.Not.Null, home.Light.name + " carries URP's light data.");
+                    int tier = new UnityEditor.SerializedObject(data).FindProperty("m_AdditionalLightsShadowResolutionTier").intValue;
+                    tiers.Add(tier);
+                    Assert.That(tier, Is.EqualTo(VerificationViews.LampShadowTier(lamps, atlas, low, medium, high, low)),
+                        home.Light.name + " in the " + RoomLayers.RoomIds[home.Room] + ", one of " + lamps + " lamps.");
+                }
+                Assert.That(tiers, Is.All.EqualTo(VerificationViews.ShadowTierMedium), "Today's pipeline: every lamp Medium.");
+            });
+        }
+
         [Test]
         public void TheRoomLayersAreNamedAndUnused()
         {

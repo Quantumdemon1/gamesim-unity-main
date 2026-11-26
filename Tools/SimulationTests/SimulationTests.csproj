@@ -146,6 +146,11 @@
     <Compile Include="$(EditMode)TourDockTests.cs" />
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/TourDock.cs" />
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/TourOfferWords.cs" />
+    <!-- SB1: the lamps' shadow tiers against the shadow-map model; the model and its rooms are plain C#, so they run here too. -->
+    <Compile Include="$(EditMode)LampShadowTierTests.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Episode/VerificationViews.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Episode/VerificationPerformance.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/House/RoomLayers.cs" />
     <!-- Menu slice 2, part d: the decisions' and the cards' one way out, held in the source; pure, so it runs here too. -->
     <Compile Include="$(EditMode)MenuOneWayBackDecisionsScanTests.cs" />
     <!-- No slogan on a screen or a sign (the owner, 2026-11-14 and 2026-11-21), held in the source and the scenes. -->

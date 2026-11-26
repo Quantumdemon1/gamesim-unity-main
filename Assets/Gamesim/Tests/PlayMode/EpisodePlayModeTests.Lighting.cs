@@ -55,10 +55,27 @@ namespace Gamesim.Tests.PlayMode
             var shadowedLamps = fitted.GetComponentsInChildren<Light>(true)
                 .Where(l => l.type == LightType.Point && l.shadows != LightShadows.None).ToArray();
             Assert.That(shadowedLamps, Has.Length.EqualTo(14), "All fourteen authored practicals keep their shadows.");
-            Assert.That(shadowedLamps.All(l => l.shadowResolution == LightShadowResolution.FromQualitySettings
-                && l.GetUniversalAdditionalLightData().additionalLightsShadowResolutionTier
-                    == UniversalAdditionalLightData.AdditionalLightsShadowResolutionTierHigh), Is.True,
-                "The authored per-light settings remain intact; unsupported numeric enum overrides must not run at startup.");
+            // SB1: each lamp's tier is the one its home room's lamp count gives (authored by the cinematic
+            // lighting pass; VerificationViews numbers the tiers as URP does).
+            Assert.That(new[] { Gamesim.Episode.VerificationViews.ShadowTierLow, Gamesim.Episode.VerificationViews.ShadowTierMedium, Gamesim.Episode.VerificationViews.ShadowTierHigh },
+                Is.EqualTo(new[] { UniversalAdditionalLightData.AdditionalLightsShadowResolutionTierLow, UniversalAdditionalLightData.AdditionalLightsShadowResolutionTierMedium,
+                    UniversalAdditionalLightData.AdditionalLightsShadowResolutionTierHigh }), "The rule's tiers are URP's.");
+            var shadowPipeline = GraphicsSettings.currentRenderPipeline as UniversalRenderPipelineAsset;
+            Assert.That(shadowPipeline, Is.Not.Null, "The project renders through URP.");
+            var lampHomes = new System.Collections.Generic.List<Gamesim.House.HouseRoomScope.LampHome>();
+            ScopeOf(director).LampHomes(lampHomes);
+            var wrongTier = shadowedLamps.Where(l =>
+            {
+                int home = lampHomes.Single(h => h.Light == l).Room;
+                int tier = Gamesim.Episode.VerificationViews.LampShadowTier(lampHomes.Count(h => h.Room == home),
+                    shadowPipeline.additionalLightsShadowmapResolution, shadowPipeline.additionalLightsShadowResolutionTierLow,
+                    shadowPipeline.additionalLightsShadowResolutionTierMedium, shadowPipeline.additionalLightsShadowResolutionTierHigh,
+                    shadowPipeline.additionalLightsShadowResolutionTierLow);
+                return l.shadowResolution != LightShadowResolution.FromQualitySettings
+                    || l.GetUniversalAdditionalLightData().additionalLightsShadowResolutionTier != tier;
+            }).Select(l => l.name + " (tier " + l.GetUniversalAdditionalLightData().additionalLightsShadowResolutionTier + ")").ToArray();
+            Assert.That(wrongTier, Is.Empty,
+                "The authored per-light settings remain intact, each lamp at its home room's tier; unsupported numeric enum overrides must not run at startup.");
 
             var camera = cameraRig.ViewCamera;
             Assert.That(camera, Is.Not.Null);

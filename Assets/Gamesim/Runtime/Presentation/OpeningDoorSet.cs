@@ -32,8 +32,9 @@ namespace Gamesim.Presentation
     ///
     /// <para><b>The far wall is a light, and it is opaque.</b> The houseguests who have not been
     /// revealed yet wait behind the facade, and the doorway is a hole in it. The vestibule closes that
-    /// hole: two side flats, a ceiling, and at the back a plane of unlit white that reads as daylight
-    /// beyond the door. From the door camera every sight line through the aperture ends on one of those
+    /// hole: two side flats, a ceiling, and at the back an unlit plane that reads as the light beyond
+    /// the door - a cool sky for the welcome, a warm lit room no brighter than 0.8 for an exit
+    /// (<see cref="DoorLighting"/>). From the door camera every sight line through the aperture ends on one of those
     /// faces, so nobody queued behind can be seen with the doors wide open. That plane is deliberately
     /// NOT one of the additive glow pieces: an additive plane adds light over whatever is behind it
     /// instead of hiding it.</para>
@@ -53,6 +54,12 @@ namespace Gamesim.Presentation
     {
         /// <summary>The scene root's name, which the stage and its tests find the set by.</summary>
         public const string RootName = "Opening door set runtime";
+
+        /// <summary>The plane closing the vestibule from behind, which the camera sees through the open doors.</summary>
+        public const string OutsideLightName = "Outside light";
+
+        /// <summary>The light the open doors throw over the threshold.</summary>
+        public const string BurstLightName = "Burst light";
 
         // The geometry the stage and its sight-line test measure against, in world metres. The yard
         // set's root stands at the origin, so every local position below is a world position too;
@@ -129,9 +136,13 @@ namespace Gamesim.Presentation
         private float burstClock, burstLevel, lightLevel, rampFromLevel, rampFromLight;
 
         private DoorLayout layout = DoorLayout.Yard;
+        private DoorLighting lighting = DoorLighting.Exit;
 
         /// <summary>Where this set stands, with its world geometry: the yard's front door, or the living room's.</summary>
         public DoorLayout Layout => layout;
+
+        /// <summary>How the set is lit: for the evicted going out by it, or for the opening's entrants coming in.</summary>
+        public DoorLighting Lighting => lighting;
 
         /// <summary>Whether the doors have been told to open and not since told to close.</summary>
         public bool IsOpen => open;
@@ -196,9 +207,17 @@ namespace Gamesim.Presentation
         /// Builds the set where <paramref name="where"/> puts it, closed and dark: its root at the
         /// layout's origin, every piece where the yard's would be relative to it.
         /// </summary>
-        public static OpeningDoorSet Build(Scene scene, DoorLayout where) => Build(scene, where, entranceLighting: false);
+        public static OpeningDoorSet Build(Scene scene, DoorLayout where) => Build(scene, where, DoorLighting.Exit);
 
-        public static OpeningDoorSet Build(Scene scene, DoorLayout where, bool entranceLighting)
+        /// <summary>The opening's form of <see cref="Build(Scene, DoorLayout, DoorLighting)"/>: true is <see cref="DoorLighting.Entrance"/>.</summary>
+        public static OpeningDoorSet Build(Scene scene, DoorLayout where, bool entranceLighting) =>
+            Build(scene, where, entranceLighting ? DoorLighting.Entrance : DoorLighting.Exit);
+
+        /// <summary>
+        /// Builds the set where <paramref name="where"/> puts it, closed and dark, lit for
+        /// <paramref name="how"/>: somebody leaving by it, or the opening's entrants.
+        /// </summary>
+        public static OpeningDoorSet Build(Scene scene, DoorLayout where, DoorLighting how)
         {
             var root = new GameObject(RootName);
             if (scene.IsValid() && scene.isLoaded && root.scene != scene)
@@ -206,7 +225,8 @@ namespace Gamesim.Presentation
             root.transform.position = where.Origin;
             var set = root.AddComponent<OpeningDoorSet>();
             set.layout = where;
-            set.Assemble(entranceLighting);
+            set.lighting = how;
+            set.Assemble();
             return set;
         }
 
@@ -364,8 +384,15 @@ namespace Gamesim.Presentation
         {
             if (emblemMaterial == null) return;
             float blend = reduced ? 0.5f : 0.5f + 0.5f * Mathf.Sin(clock * EmblemRate);
-            Tint(emblemMaterial, Hdr(Color.Lerp(emblemDeep, emblemBright, blend), 2f));
+            Tint(emblemMaterial, Hdr(Color.Lerp(emblemDeep, emblemBright, blend), EmblemGlow));
         }
+
+        /// <summary>
+        /// How far past its own colour the emblem glows: twice for the welcome, which the bloom
+        /// reads as light; once for an exit, where it is a sign over a door somebody is leaving by
+        /// and must not pull the eye off their back.
+        /// </summary>
+        private float EmblemGlow => lighting == DoorLighting.Entrance ? 2f : 1f;
 
         private void ApplyPose(float leftJitter, float rightJitter)
         {
@@ -409,7 +436,7 @@ namespace Gamesim.Presentation
 
         // ---------------------------------------------------------------- building
 
-        private void Assemble(bool entranceLighting)
+        private void Assemble()
         {
             var facade = Solid("Opening facade", UiTheme.Hex("0A0F1E"), 0f, 0.3f, Color.black);
             var leaf = Solid("Opening door leaf", UiTheme.Hex("0A0A14"), 0.4f, 0.4f, Color.black);
@@ -422,8 +449,8 @@ namespace Gamesim.Presentation
             BuildLeaves(leaf, panel, gold);
             BuildSign();
             BuildEmblem();
-            BuildVestibule(facade, floor, entranceLighting);
-            BuildBurst(entranceLighting);
+            BuildVestibule(facade, floor);
+            BuildBurst();
             BuildSparkles();
 
             ApplyPose(0f, 0f);
@@ -579,14 +606,29 @@ namespace Gamesim.Presentation
             if (texture == null) texture = Own(EyeTexture());
             else if (icon.rect.height > 0f) aspect = icon.rect.width / icon.rect.height;
 
-            emblemMaterial = Glow("Opening eye emblem", texture, Hdr(emblemBright, 2f));
+            emblemMaterial = Glow("Opening eye emblem", texture, Hdr(emblemBright, EmblemGlow));
             if (emblemMaterial != null && icon != null && icon.texture != null) MapSprite(emblemMaterial, icon);
             Piece("Eye emblem", PrimitiveType.Quad, transform, new Vector3(-3.17f, 3.42f, DoorCentre.z), FacingYard,
                 new Vector3(0.34f * aspect, 0.34f, 1f), emblemMaterial, false);
         }
 
-        private void BuildVestibule(Material walls, Material floor, bool entranceLighting)
+        /// <summary>
+        /// What an exit's vestibule backing shows through the open doors: a warm, lit room beyond,
+        /// no brighter than 0.8 in any channel, so the departing figure reads against it rather
+        /// than burning out into a white sheet. The owner tunes the color in play.
+        /// </summary>
+        private static readonly Color ExitBacking = new Color(0.70f, 0.64f, 0.56f);
+
+        /// <summary>The exit's spill at rest: about 0.6 on the walker's shoulders from 1.6 m, under the walk's own key.</summary>
+        private const float ExitSpill = 1.6f;
+        /// <summary>Where the exit's spill hangs, in the yard's frame: 0.7 m out from the facade on the camera's side, above the lintel.</summary>
+        private static readonly Vector3 ExitSpillFrom = new Vector3(-2.5f, 2.85f, DoorCentre.z);
+        /// <summary>Where it points: just inside the doorway at shoulder height, so the crown and the sign over the lintel stay out of its cone.</summary>
+        private static readonly Vector3 ExitSpillAt = new Vector3(-3.6f, 1.35f, DoorCentre.z);
+
+        private void BuildVestibule(Material walls, Material floor)
         {
+            bool entranceLighting = lighting == DoorLighting.Entrance;
             var group = Group("Vestibule", transform);
             float length = FacadeX - VestibuleFarX;
             float middle = (FacadeX + VestibuleFarX) / 2f;
@@ -597,9 +639,10 @@ namespace Gamesim.Presentation
                 Quaternion.Euler(90f, 0f, 0f), new Vector3(FacadeFrontX - VestibuleFarX, ApertureMaxZ - ApertureMinZ, 1f), floor, true);
 
             // Keep the queue behind an opaque sky. The arrival lens looks directly into it throughout the portrait.
+            // An exit's is a lit room beyond the door rather than a blinding white one.
             var outside = Lamp("Opening outside light", entranceLighting
-                ? new Color(0.53f, 0.62f, 0.72f) : Hdr(Color.white, 2f));
-            Piece("Outside light", PrimitiveType.Quad, group, new Vector3(VestibuleFarX, (VestibuleCeiling + 0.05f) / 2f, DoorCentre.z),
+                ? new Color(0.53f, 0.62f, 0.72f) : ExitBacking);
+            Piece(OutsideLightName, PrimitiveType.Quad, group, new Vector3(VestibuleFarX, (VestibuleCeiling + 0.05f) / 2f, DoorCentre.z),
                 FacingYard, new Vector3(2.4f, VestibuleCeiling + 0.05f, 1f), outside, false);
 
             var amber = Glow("Opening vestibule strip", null, Hdr(UiTheme.Hex("F59E0B"), 2f));
@@ -611,36 +654,58 @@ namespace Gamesim.Presentation
         }
 
         /// <summary>
-        /// The light over the threshold: an additive glow in the doorway, which is what the camera sees,
-        /// and a point light, which is what lands on the guest walking through it.
+        /// The light over the threshold: an additive glow at the vestibule's back, which is what the
+        /// camera sees, and a light on the camera's side, which is what lands on the guest walking
+        /// through: a point light on the entrant's face for the welcome, a spot down onto the back
+        /// and shoulders of whoever walks away through an exit.
         /// </summary>
-        private void BuildBurst(bool entranceLighting)
+        private void BuildBurst()
         {
-            burstTint = Hdr(UiTheme.Hex("FFFBE6"), 1.5f);
+            bool entranceLighting = lighting == DoorLighting.Entrance;
+            // An exit's glow adds no more than its own color to the backing, so the doorway glows rather than blinds.
+            burstTint = Hdr(UiTheme.Hex("FFFBE6"), entranceLighting ? 1.5f : 1f);
             // The set's own radial glow rather than the pack's: that one is cyan and squarish, and
             // tinted warm it read as a green smear at the door's edge instead of daylight.
             burstMaterial = Glow("Opening door burst", Radial(), new Color(burstTint.r, burstTint.g, burstTint.b, 0f));
-            // Keep the entrance glow behind the first walking mark so it cannot veil the face crossing the threshold.
-            float glowX = entranceLighting ? VestibuleFarX + 0.05f : -3.1f;
+            // Keep the glow at the vestibule's back wall, behind the walker either way through: behind the
+            // entrance's first walking mark, so it cannot veil the face crossing the threshold, and behind an
+            // exit's close line (the yard's is that wall itself), so it never sits over the back of somebody leaving.
+            float glowX = VestibuleFarX + 0.05f;
             burstRenderer = Piece("Burst", PrimitiveType.Quad, transform, new Vector3(glowX, 1.4f, DoorCentre.z), FacingYard,
                 new Vector3(3f, 3f, 1f), burstMaterial, false).GetComponent<Renderer>();
 
-            var lamp = new GameObject("Burst light");
+            var lamp = new GameObject(BurstLightName);
             lamp.layer = 0;
             lamp.transform.SetParent(transform, false);
-            // The opening holds on the entrant from the threshold through the posing mark.
-            // Put the key on the camera side, clear of both marks, with a steady fill after the flash.
             if (entranceLighting)
             {
+                // The opening holds on the entrant from the threshold through the posing mark.
+                // Put the key on the camera side, clear of both marks, with a steady fill after the flash.
                 settledSpill = 12f;
                 peakSpill = 19f;
+                lamp.transform.localPosition = new Vector3(0.15f, 2.3f, DoorCentre.z + 0.85f);
+                burstLight = lamp.AddComponent<Light>();
+                burstLight.type = LightType.Point;
+                burstLight.range = 8f;
             }
-            lamp.transform.localPosition = entranceLighting
-                ? new Vector3(0.15f, 2.3f, DoorCentre.z + 0.85f)
-                : new Vector3(-3.0f, 1.8f, DoorCentre.z);
-            burstLight = lamp.AddComponent<Light>();
-            burstLight.type = LightType.Point;
-            burstLight.range = 8f;
+            else
+            {
+                // An exit is watched from behind the one leaving: the spill comes from the camera's
+                // side, above the threshold, down into the doorway, and lights their back and shoulders
+                // where the lens sees them. A spot, so the crown and the sign over the lintel stay dark.
+                settledSpill = ExitSpill;
+                // The unstaged walk's flourish, kept to twice the spill so the doorway never whites out.
+                peakSpill = ExitSpill * 2f;
+                lamp.transform.localPosition = ExitSpillFrom;
+                lamp.transform.localRotation = Quaternion.LookRotation(ExitSpillAt - ExitSpillFrom);
+                burstLight = lamp.AddComponent<Light>();
+                burstLight.type = LightType.Spot;
+                // Far enough to reach the vestibule's floor from above the lintel, and no further.
+                burstLight.range = 4f;
+                // 70 degrees wide, soft from 40: the doorway and the threshold, not the frame round it.
+                burstLight.spotAngle = 70f;
+                burstLight.innerSpotAngle = 40f;
+            }
             burstLight.color = UiTheme.Hex("FFFBE6");
             burstLight.intensity = 0f;
             burstLight.shadows = LightShadows.None;
@@ -979,5 +1044,18 @@ namespace Gamesim.Presentation
         public float FacadeMaxZ => LocalFacadeMaxZ + Origin.z;
         /// <summary>How far in front of the facade the open leaves reach.</summary>
         public float SweepFrontX => FacadeFrontX + OpeningDoorSet.LeafWidth;
+    }
+
+    /// <summary>How a door set is lit, by who goes through it.</summary>
+    public enum DoorLighting
+    {
+        /// <summary>
+        /// The evicted going out, watched from behind: a warm lit room beyond the doors, the glow at
+        /// the vestibule's back, a spill from the camera's side onto their back and shoulders, and
+        /// the emblem at its own color. Every walk out's.
+        /// </summary>
+        Exit,
+        /// <summary>The opening's entrants coming in, watched from the front: a cool sky, and the key on the yard side for their faces.</summary>
+        Entrance,
     }
 }

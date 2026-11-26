@@ -629,6 +629,9 @@
     <Compile Include="$(EditMode)DecisionPickTests.cs" />
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/ObjectiveWords.cs" />
     <Compile Include="$(EditMode)ObjectiveWordsTests.cs" />
+    <!-- One phase-word table (UI-UX plan D15): the week chip's word and the status line's news line. -->
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/PhaseWords.cs" />
+    <Compile Include="$(EditMode)PhaseWordsTests.cs" />
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/CompetitionMiniGames.cs" />
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/MiniGameRun.cs" />
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/MiniGameRun.Dice.cs" />

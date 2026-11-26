@@ -542,6 +542,8 @@
     <Compile Include="$(EditMode)HouseTalkRulesTests.cs" />
     <!-- Explicit, and compiled out of Unity: story rules 11's held seasons, the house talk's replay guard, run on demand. -->
     <Compile Include="$(EditMode)RolesSeasonDigests.cs" />
+    <!-- Explicit, and compiled out of Unity: story rules 12's held seasons since A-ON, Stack B's replay guard, run on demand. -->
+    <Compile Include="$(EditMode)MannersSeasonDigests.cs" />
     <!-- Compiled out of Unity as well: every held replay digests the state below the live schema, through its observer. -->
     <Compile Include="$(EditMode)HeldReplayShapeTests.cs" />
     <!-- Compiled out of Unity as well: every held replay plays the free talk and minds levels it was recorded at, by name. -->

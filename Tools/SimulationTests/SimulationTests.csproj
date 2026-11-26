@@ -608,6 +608,9 @@
     <!-- The player's activities' loops and their one voice, on the same fade arithmetic; the tests read the loops' WAVs. -->
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/ActivitySounds.cs" />
     <Compile Include="$(EditMode)ActivitySoundsTests.cs" />
+    <!-- The player's footsteps: the stride a speed implies, each room's ground and the takes in turn; the tests read the steps' WAVs. -->
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/HouseSteps.cs" />
+    <Compile Include="$(EditMode)HouseStepsTests.cs" />
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/WardrobeSlots.cs" />
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/CharacterOutfits.cs" />
     <Compile Include="$(EditMode)WardrobeSlotsTests.cs" />

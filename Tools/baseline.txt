@@ -585,7 +585,8 @@
 # 11362 = 11359 + 3, 2026-11-26. The interface's cues sit under the news and a hover sweep ticks once in 60 ms (CueLoudnessTests 1, SoundPicturesTests 2).
 # 11365 = 11362 + 3, 2026-11-26. The game menu and the big moments duck the music, and the menu the rooms' beds (MusicFadeTests 3).
 # 11369 = 11365 + 4, 2026-11-26. The player's activities are heard: their loops, their one voice and the dance's duck (ActivitySoundsTests 4).
-Gamesim.EditModeTests 11369
+# 11374 = 11369 + 5, 2026-11-26. The player's footsteps: their stride, the rooms' grounds and takes, and the strides read off the body's own takes (HouseStepsTests 5).
+Gamesim.EditModeTests 11374
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and
@@ -915,7 +916,8 @@ Gamesim.EditModeTests 11369
 # 1728 = 1727 + every cue decoded at the start and a quick second hover not heard (EpisodePlayModeTests.Audio 1), 2026-11-26.
 # 1729 = 1728 + the game menu ducks the music and its Settings frame does not (EpisodePlayModeTests.Music 1), 2026-11-26.
 # 1730 = 1729 + cooking is heard until the player gets up (EpisodePlayModeTests.HouseActivities 1), 2026-11-26.
-Gamesim.PlayModeTests 1730
+# 1731 = 1730 + a walk across the kitchen is heard on tile every stride, and not under Reduce sound (EpisodePlayModeTests.Footsteps 1), 2026-11-26.
+Gamesim.PlayModeTests 1731
 # The UMA build of the same assembly, read by a plan built without -WithoutUma. 1281 = the 1241 above + the
 # 40 tests that compile only under GAMESIM_UMA, as run at r1 (2026-10-16): in EpisodePlayModeTests,
 # GroundedFarewell 11, Creator 9, HouseLife 8, Emotes 3, OpeningCaptures 2, and one each in CreatorEntry,
@@ -1169,7 +1171,8 @@ Gamesim.PlayModeTests 1730
 # 1774 = 1773 + the same cue-decoding and hover case (EpisodePlayModeTests.Audio 1), 2026-11-26.
 # 1775 = 1774 + the same game menu duck case (EpisodePlayModeTests.Music 1), 2026-11-26.
 # 1777 = 1775 + the same cooking case and the dance's beat over the music stepped back (EpisodePlayModeTests.HouseActivities 2, the dance UMA build only), 2026-11-26.
-Gamesim.PlayModeTests.UmaBuild 1777
+# 1778 = 1777 + the same footsteps case (EpisodePlayModeTests.Footsteps 1), 2026-11-26.
+Gamesim.PlayModeTests.UmaBuild 1778
 # The UMA bodies: runs only where the GAMESIM_UMA define is set (the working tree and the D: copy).
 # 82 = the 89 run on 2026-10-15, less the 7 farewell probes moved to Gamesim.Uma.DiagnosticsPlayModeTests;
 # 85 = 82 + the 3 farewell readiness decision tests (UmaFarewellReadinessDecisionPlayModeTests, 2026-10-16);
@@ -1677,4 +1680,5 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # 23458 = 23455 + 3, 2026-11-26. The same 3 cases the EditMode floor counts (CueLoudnessTests 1, SoundPicturesTests 2), which run without Unity.
 # 23461 = 23458 + 3, 2026-11-26. The same 3 MusicFadeTests cases the EditMode floor counts, which run without Unity.
 # 23465 = 23461 + 4, 2026-11-26. The same 4 ActivitySoundsTests cases the EditMode floor counts, which run without Unity.
-Gamesim.SimulationTests 23465
+# 23469 = 23465 + 4, 2026-11-26. 4 of the 5 HouseStepsTests cases the EditMode floor counts, which run without Unity (the strides read off the body's own takes run in Unity only).
+Gamesim.SimulationTests 23469

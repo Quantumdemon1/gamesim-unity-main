@@ -323,6 +323,12 @@ namespace Gamesim.Tests.PlayMode
                     return motion.LeaseId != null && motion.LeaseId.StartsWith("departure:");
                 }, 3f, "the walk out takes its first route");
             Assert.That(motion.Speed, Is.LessThanOrEqualTo(EpisodeDirector.StagedWalkSpeed + 0.05f), "They walk slowly while the house watches.");
+            // The walk has its own key light from its first route, aimed at their head from the
+            // camera's side, where the goodbye's no longer reaches.
+            Assert.That(director.WalkingOutId, Is.EqualTo(evicted), "They are still walking,");
+            Assert.That(director.transform.Find(EpisodeDirector.WalkOutKeyLightName), Is.Not.Null, "and the walk has a key light of its own,");
+            Assert.That(WalkKeyOffTheHead(leaving, cameraRig.HasArrived(), out _), Is.Null, "on their head from the camera's side:");
+            Assert.That(director.EvictionKeyLightShowing, Is.False, "the goodbye's stays off.");
 
             director.SkipWalkOut();
             yield return WaitFor(() =>
@@ -335,8 +341,51 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(embraceSeen, Is.Null, "and nobody embraces after it either.");
             Assert.That(Hud.IsHeldForReveal, Is.False, "The chrome is back once the door is shut behind them,");
             Assert.That(director.transform.Find(EpisodeDirector.EvictionKeyLightName), Is.Null, "the key light is gone,");
+            Assert.That(ExitLightsOn(), Is.Empty, "no light of the exit's is left on after the press,");
             Assert.That(director.NpcAutonomyDiagnostic, Is.Null, "and the house's world runs on.");
             Assert.That(motion.Speed, Is.EqualTo(HouseNpcMotion.DefaultSpeed), "The pace is the house's own again.");
+        }
+
+        /// <summary>
+        /// Why the staged walk's own key light is not on the departing head from the camera's side,
+        /// or null. A key gone dark is no fault - a wall between the head and the lens puts it out
+        /// rather than paint the wall - and <paramref name="lit"/> says whether it was read lit.
+        /// </summary>
+        private string WalkKeyOffTheHead(Component body, bool fromTheLens, out bool lit)
+        {
+            lit = false;
+            var key = director.transform.Find(EpisodeDirector.WalkOutKeyLightName);
+            var lamp = key != null ? key.GetComponent<Light>() : null;
+            if (lamp == null) return "there is no walk-out key light";
+            if (lamp.type != LightType.Spot || lamp.shadows != LightShadows.None || lamp.range > 4.5f)
+                return "the walk-out key is not an unshadowed spot reaching 4.5 m at most (" + lamp.type + ", " + lamp.shadows + ", range " + lamp.range.ToString("F2") + ")";
+            if (!lamp.enabled) return null;
+            lit = true;
+            var bone = Presentation(body).HeadBone;
+            var head = bone != null ? bone.position : body.transform.position + Vector3.up * 1.55f;
+            var lens = cameraRig.ViewCamera.transform.position;
+            var toKey = key.position - head;
+            var off = new List<string>();
+            if (fromTheLens && Vector3.Dot(toKey.normalized, (lens - head).normalized) <= 0.5f) off.Add("not on the camera's side of the head");
+            if (Vector3.Angle(key.forward, head - key.position) >= 8f) off.Add("not aimed at the head");
+            return off.Count == 0 ? null : string.Join(", ", off) + " (key " + key.position.ToString("F2") + ", head " + head.ToString("F2")
+                + ", lens " + lens.ToString("F2") + ") at frame " + Time.frameCount;
+        }
+
+        /// <summary>The exit's lights still on: the walk's key, and the door's spill over the threshold.</summary>
+        private static string[] ExitLightsOn() => Object.FindObjectsByType<Light>(FindObjectsSortMode.None)
+            .Where(lamp => lamp != null && lamp.enabled
+                && (lamp.name == EpisodeDirector.WalkOutKeyLightName || lamp.name == OpeningDoorSet.BurstLightName))
+            .Select(lamp => lamp.name + " under " + lamp.transform.root.name).ToArray();
+
+        /// <summary>The brightest channel the door's backing is drawn in, or -1 when it has none.</summary>
+        private static float BackingBrightest(GameObject root)
+        {
+            var plane = root.GetComponentsInChildren<Renderer>(true).LastOrDefault(each => each.name == OpeningDoorSet.OutsideLightName);
+            var material = plane != null ? plane.sharedMaterial : null;
+            if (material == null) return -1f;
+            var colour = material.HasProperty("_BaseColor") ? material.GetColor("_BaseColor") : material.color;
+            return colour.maxColorComponent;
         }
 
         /// <summary>
@@ -344,7 +393,10 @@ namespace Gamesim.Tests.PlayMode
         /// house, and the shot holds on the shut door for its whole hold; only then does their body
         /// go, behind a dip, and the door with it. The chrome is aside until then. The yard's door,
         /// the fallback: it is built only at the cut to it, where the living room's stands closed
-        /// from the goodbye (StagedExit_TheLivingRoomsDoorLetsThemOut).
+        /// from the goodbye (StagedExit_TheLivingRoomsDoorLetsThemOut). The light beyond the open
+        /// door is a lit room, not a white sheet; the walk has its own key light on their head from
+        /// the camera's side until the door closes, the goodbye's staying off; and no light of the
+        /// exit's is left on once they are gone.
         /// </summary>
         [UnityTest]
         public IEnumerator StagedExit_TheDoorShutsBehindThemBeforeTheyGo()
@@ -354,11 +406,15 @@ namespace Gamesim.Tests.PlayMode
             yield return PlayTheStagedEvictionToItsWalkOut();
             string leaving = stagedLeaving;
             var body = HouseguestBody(leaving);
+            var motion = body.GetComponent<HouseNpcMotion>();
             Assert.That(director.WalkOutIsStaged, Is.True, "The walk out is the stage's.");
             Assert.That(DoorSetUp(), Is.False, "The door is not standing in the yard while the house watches them go.");
 
-            float widest = 0f, shutAt = 0f;
+            float widest = 0f, shutAt = 0f, backing = -1f;
             bool sawOpen = false, onTheDoor = false, shut = false, inTheHouseWhenShut = false, heldThrough = true;
+            bool goodbyeKeyOn = false;
+            string walkKeyOff = null;
+            int walkKeyReads = 0, walkKeyReadsFromTheLens = 0;
             float by = Time.realtimeSinceStartup + EpisodeDirector.WalkOutSeconds + 2f;
             while (director.WalkingOutId != null && Time.realtimeSinceStartup < by)
             {
@@ -371,6 +427,7 @@ namespace Gamesim.Tests.PlayMode
                         sawOpen = true;
                         // The opening's door shot, whose focus the push-in keeps.
                         onTheDoor = Vector3.Distance(cameraRig.DesiredFocus, DoorShotFocusForTests) < 0.2f;
+                        backing = BackingBrightest(root);
                     }
                     widest = Mathf.Max(widest, door.Openness);
                     if (!shut && widest >= 0.35f && !door.IsOpen && door.Openness <= 0.01f)
@@ -379,6 +436,17 @@ namespace Gamesim.Tests.PlayMode
                         shutAt = Time.unscaledTime;
                         inTheHouseWhenShut = body.gameObject.activeInHierarchy;
                     }
+                }
+                goodbyeKeyOn |= director.EvictionKeyLightShowing;
+                // From the walk's first route until the door is told to close behind them.
+                bool closing = door != null && widest >= 0.35f && !door.IsOpen;
+                if (walkKeyOff == null && director.WalkingOutId == leaving && !closing
+                    && motion != null && motion.LeaseId != null && motion.LeaseId.StartsWith("departure:"))
+                {
+                    bool landed = cameraRig.HasArrived();
+                    walkKeyOff = WalkKeyOffTheHead(body, landed, out bool lit);
+                    if (lit) walkKeyReads++;
+                    if (lit && landed) walkKeyReadsFromTheLens++;
                 }
                 heldThrough &= Hud.IsHeldForReveal;
                 yield return null;
@@ -393,9 +461,15 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(inTheHouseWhenShut, Is.True, "while their body was still in the house:");
             Assert.That(held, Is.GreaterThanOrEqualTo(EpisodeDirector.DoorHoldSeconds - 0.05f), "the shot held on the shut door before they went.");
             Assert.That(heldThrough, Is.True, "The chrome was aside for the whole walk.");
+            Assert.That(backing, Is.InRange(0f, 0.8f), "The light beyond the open door is a lit room, no brighter than 0.8, not a white sheet.");
+            Assert.That(goodbyeKeyOn, Is.False, "The goodbye's key light stayed off for the walk;");
+            Assert.That(walkKeyOff, Is.Null, "the walk's own key light is on their head from the camera's side until the door closes:");
+            Assert.That(walkKeyReadsFromTheLens, Is.GreaterThan(0),
+                "and it was read lit from a landed camera (" + walkKeyReads + " lit reads in all).");
             Assert.That(body.gameObject.activeInHierarchy, Is.False, "They are gone,");
             yield return null;
-            Assert.That(DoorSetUp(), Is.False, "and the door with them.");
+            Assert.That(DoorSetUp(), Is.False, "and the door with them,");
+            Assert.That(ExitLightsOn(), Is.Empty, "and no light of the exit's is left on.");
             yield return WaitFor(() => !director.IsCeremonyStaged, 3f, "the house gets up");
             yield return null;
             Assert.That(Hud.IsHeldForReveal, Is.False, "The chrome is back.");

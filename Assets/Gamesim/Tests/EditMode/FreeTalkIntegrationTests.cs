@@ -55,7 +55,8 @@ namespace Gamesim.Tests.EditMode
                 Assert.That(offer.Available, Is.True, offer.Reason);
                 var result = FreeTalk.Result(s, npc.id, offer.Talk.Id, offer.Talk.Replies[0].Tone);
                 Assert.That(result, Is.Not.Null);
-                Assert.That(result.Reply, Is.EqualTo("(leaning in) \"Tell me, " + npc.name + ".\""), "Said with the housemate's name, as its button showed it.");
+                Assert.That(result.Reply, Is.EqualTo("(leaning in) \"Tell me, " + CharacterNames.FirstName(npc.name) + ".\""),
+                    "Said with the housemate's first name, as its button showed it.");
                 Assert.That(TalkText.Spoken(result.Reply), Is.EqualTo(TalkScreenLines.Replies(s, npc.id, offer.Talk)[0].Words),
                     "The third beat's line is the words on the button pressed.");
             }

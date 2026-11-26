@@ -83,6 +83,42 @@ namespace Gamesim.Tests.PlayMode
             finally { audio.CueAsked -= markers.Add; }
         }
 
+        /// <summary>
+        /// Every cue's recording is decoded when the house's audio starts rather than by its first
+        /// sounding, and a hover asked again inside its spacing is counted but not heard.
+        /// </summary>
+        [Test]
+        public void Audio_EveryCueIsDecodedAtTheStart_AndAQuickSecondHoverIsCountedButNotHeard()
+        {
+            var cues = (HouseAudio.Cue[])System.Enum.GetValues(typeof(HouseAudio.Cue));
+            // Each recording let go first, so a clip an earlier test sounded cannot pass for one decoded here.
+            foreach (var cue in cues)
+            {
+                var recording = Resources.Load<AudioClip>(HouseAudio.CueResourceFolder + cue);
+                Assert.That(recording, Is.Not.Null, cue + " ships a recording.");
+                recording.UnloadAudioData();
+                Assert.That(recording.loadState, Is.EqualTo(AudioDataLoadState.Unloaded), cue + " is let go before the house starts.");
+            }
+            var host = new GameObject("Cue preload");
+            try
+            {
+                var audio = host.AddComponent<HouseAudio>();
+                Assert.That(audio.CuesPreloaded, Is.EqualTo(cues.Length), "Every cue is decoded when the house's audio starts.");
+                audio.SetMuted(false);
+                audio.SetVolume(.35f);
+                audio.SetChannelVolumes(1f, 1f, 1f);
+                int asked = audio.CuesAsked, voices = audio.CueVoicesStarted;
+                audio.PlayCue(HouseAudio.Cue.Hover);
+                audio.PlayCue(HouseAudio.Cue.Hover);
+                Assert.That(audio.CuesAsked - asked, Is.EqualTo(2), "Both hovers are asked for and counted,");
+                Assert.That(audio.LastCue, Is.EqualTo(HouseAudio.Cue.Hover));
+                Assert.That(audio.CueVoicesStarted - voices, Is.EqualTo(1), "but the second, in the same instant, is not heard.");
+                audio.PlayCue(HouseAudio.Cue.Button);
+                Assert.That(audio.CueVoicesStarted - voices, Is.EqualTo(2), "A press beside it still sounds.");
+            }
+            finally { Object.DestroyImmediate(host); }
+        }
+
         [UnityTest]
         public IEnumerator Audio_TheRoomToneFollowsTheCamerasFocus()
         {

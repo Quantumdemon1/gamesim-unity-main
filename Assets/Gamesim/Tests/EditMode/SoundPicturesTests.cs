@@ -1,3 +1,4 @@
+using System;
 using System.Linq;
 using Gamesim.Presentation;
 using NUnit.Framework;
@@ -36,6 +37,51 @@ namespace Gamesim.Tests.EditMode
                 Assert.That(SoundPictures.IsInformation(cue), Is.False, cue + " answers a hand.");
             Assert.That(SoundPictures.IsInformation("SomeCueNotYetInTheTable"), Is.True, "A cue with no row is treated as news until it has one.");
             Assert.That(SoundPictures.ChannelOf("SomeCueNotYetInTheTable"), Is.EqualTo(SoundChannel.Effects));
+        }
+
+        [Test]
+        public void TheNewsPlaysAsRecorded_AndEveryInterfaceAnswerUnderIt()
+        {
+            foreach (var row in SoundPictures.Rows)
+            {
+                if (row.Kind == SoundKind.Information)
+                {
+                    Assert.That(row.GainDb, Is.EqualTo(0f), row.Cue + " is news and stays where it was.");
+                    Assert.That(SoundPictures.GainOf(row.Cue), Is.EqualTo(1f), row.Cue);
+                }
+                else
+                {
+                    Assert.That(row.GainDb, Is.LessThan(0f), row.Cue + " answers a hand and sits under the news.");
+                    Assert.That(SoundPictures.GainOf(row.Cue), Is.EqualTo((float)Math.Pow(10.0, row.GainDb / 20.0)).Within(1e-6f), row.Cue);
+                }
+            }
+            Assert.That(SoundPictures.Find("Hover").GainDb, Is.LessThan(SoundPictures.Find("Button").GainDb), "The hover's tick sits under the press's click.");
+            Assert.That(SoundPictures.GainOf("SomeCueNotYetInTheTable"), Is.EqualTo(1f), "A cue with no row plays as recorded.");
+        }
+
+        [Test]
+        public void ASweepDownAListTicksOnceIn60Milliseconds_AndEveryOtherCueEveryTime()
+        {
+            Assert.That(SoundPictures.SpacingOf("Hover"), Is.EqualTo(0.06f));
+            foreach (var row in SoundPictures.Rows.Where(row => row.Cue != "Hover"))
+                Assert.That(SoundPictures.SpacingOf(row.Cue), Is.EqualTo(0f), row.Cue + " sounds every time it is asked.");
+            Assert.That(SoundPictures.SpacingOf("SomeCueNotYetInTheTable"), Is.EqualTo(0f));
+
+            // Twelve rows entered one a frame at 60 frames a second: ticks at the first, the fifth and the ninth.
+            float spacing = SoundPictures.SpacingOf("Hover"), last = float.NaN;
+            var heard = new System.Collections.Generic.List<int>();
+            for (int frame = 0; frame < 12; frame++)
+            {
+                float now = 10f + frame / 60f;
+                if (!SoundPictures.Sounds(now, last, spacing)) continue;
+                heard.Add(frame);
+                last = now;
+            }
+            Assert.That(heard, Is.EqualTo(new[] { 0, 4, 8 }), "Three ticks for twelve rows, not twelve.");
+            Assert.That(SoundPictures.Sounds(10.2f, 10.1f, spacing), Is.True, "A hover a tenth of a second after the last is heard.");
+            Assert.That(SoundPictures.Sounds(10.13f, 10.1f, spacing), Is.False, "One inside the spacing is not.");
+            Assert.That(SoundPictures.Sounds(2f, 10.1f, spacing), Is.True, "A clock that went back (a new session) is heard.");
+            Assert.That(SoundPictures.Sounds(10.1f, 10.1f, 0f), Is.True, "A cue with no spacing is heard every time.");
         }
 
         [Test]

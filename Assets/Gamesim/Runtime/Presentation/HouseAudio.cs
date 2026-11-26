@@ -27,6 +27,8 @@ namespace Gamesim.Presentation
         // Ballots can catch up in one UI frame. Every reveal still reaches the caption and board.
         private int lastVoteVoiceFrame = -1;
         public int CueVoicesStarted { get; private set; }
+        // When each spaced cue last sounded, on the real clock (SoundPictures.Row.Spacing).
+        private readonly Dictionary<Cue, float> lastSounded = new Dictionary<Cue, float>();
 
         private const int SampleRate = 22050;
         private readonly Dictionary<Cue, AudioClip> clips = new Dictionary<Cue, AudioClip>();
@@ -176,8 +178,12 @@ namespace Gamesim.Presentation
 
         private static float Share(float value) => float.IsNaN(value) ? 1f : Mathf.Clamp01(value);
 
-        /// <summary>The volume a cue plays at, after the master, reduced audio and its channel's share.</summary>
-        public float VolumeOf(Cue cue) => CueVolume * ChannelVolume(SoundPictures.ChannelOf(cue.ToString()));
+        /// <summary>The volume a cue plays at, after the master, reduced audio, its channel's share and its place in the mix (<see cref="SoundPictures.Row.GainDb"/>).</summary>
+        public float VolumeOf(Cue cue)
+        {
+            string name = cue.ToString();
+            return CueVolume * ChannelVolume(SoundPictures.ChannelOf(name)) * SoundPictures.GainOf(name);
+        }
 
         /// <summary>
         /// Every cue asked for, muted or not, as it is asked: what a test listens to for the picture
@@ -573,13 +579,23 @@ namespace Gamesim.Presentation
             CueAsked?.Invoke(cue);
             if (!isActiveAndEnabled || Muted || volume <= 0f) return;
             Initialize();
-            // At its channel's share of the master (A11): the source carries the master.
-            float gain = ChannelVolume(SoundPictures.ChannelOf(cue.ToString()));
+            // At its channel's share of the master (A11), and at its place in the mix: the source carries the master.
+            string name = cue.ToString();
+            float gain = ChannelVolume(SoundPictures.ChannelOf(name)) * SoundPictures.GainOf(name);
             if (gain <= 0f || !clips.TryGetValue(cue, out var clip)) return;
             if (cue == Cue.Vote)
             {
                 if (lastVoteVoiceFrame == Time.frameCount) return;
                 lastVoteVoiceFrame = Time.frameCount;
+            }
+            // A cue that keeps a spacing (the hover's tick) is heard at most once inside it, on the
+            // real clock: a sweep down a list asks once a row, and every ask is still counted above.
+            float spacing = SoundPictures.SpacingOf(name);
+            if (spacing > 0f)
+            {
+                float now = Time.unscaledTime;
+                if (!SoundPictures.Sounds(now, lastSounded.TryGetValue(cue, out float last) ? last : float.NaN, spacing)) return;
+                lastSounded[cue] = now;
             }
             cueSource.PlayOneShot(clip, gain);
             CueVoicesStarted++;
@@ -641,27 +657,56 @@ namespace Gamesim.Presentation
                 Preload(bed);
             }
             EnterBed(CurrentRoom);
-            clips[Cue.Button] = Recorded(Cue.Button) ?? Own(Compose("Button", 0.07f, new Tone(600, 0.06f, 0, 0.11f)));
-            clips[Cue.Save] = Recorded(Cue.Save) ?? Own(Compose("Save", 0.24f, new Tone(1000, 0.08f, 0, 0.12f), new Tone(1200, 0.10f, 0.10f, 0.12f)));
-            clips[Cue.SocialUp] = Recorded(Cue.SocialUp) ?? Own(Compose("Connection", 0.33f, new Tone(330, 0.18f, 0, 0.13f), new Tone(523.25f, 0.22f, 0.10f, 0.13f)));
-            clips[Cue.SocialDown] = Recorded(Cue.SocialDown) ?? Own(Compose("Tension", 0.33f, new Tone(523.25f, 0.18f, 0, 0.12f), new Tone(330, 0.22f, 0.10f, 0.12f)));
-            clips[Cue.CompetitionStart] = Recorded(Cue.CompetitionStart) ?? Own(Compose("Competition begins", 0.65f, new Tone(220, 0.6f, 0, 0.15f), new Tone(330, 0.55f, 0.05f, 0.10f)));
-            clips[Cue.CompetitionWin] = Recorded(Cue.CompetitionWin) ?? Own(Compose("Competition result", 1.1f,
-                new Tone(523.25f, 0.3f, 0, 0.14f), new Tone(659.25f, 0.3f, 0.23f, 0.14f),
-                new Tone(783.99f, 0.45f, 0.46f, 0.14f), new Tone(1046.5f, 0.35f, 0.72f, 0.10f)));
-            clips[Cue.Nomination] = Recorded(Cue.Nomination) ?? Own(Compose("Nomination", 0.85f, new Tone(110, 0.75f, 0, 0.16f), new Tone(220, 0.5f, 0.2f, 0.07f)));
-            clips[Cue.Veto] = Recorded(Cue.Veto) ?? Own(Compose("Veto result", 0.75f,
-                new Tone(587.33f, 0.28f, 0, 0.13f), new Tone(739.99f, 0.3f, 0.18f, 0.13f), new Tone(880, 0.36f, 0.37f, 0.12f)));
-            clips[Cue.Vote] = Recorded(Cue.Vote) ?? Own(Compose("Vote recorded", 0.20f, new Tone(880, 0.18f, 0, 0.11f)));
-            clips[Cue.Eviction] = Recorded(Cue.Eviction) ?? Own(Compose("Eviction", 0.95f, new Tone(82.41f, 0.85f, 0, 0.15f), new Tone(164.81f, 0.6f, 0.12f, 0.07f)));
-            clips[Cue.PanelOpen] = Recorded(Cue.PanelOpen) ?? Own(Compose("Panel opens", 0.28f, new Tone(520, 0.12f, 0, 0.08f), new Tone(780, 0.14f, 0.1f, 0.08f)));
-            clips[Cue.PanelClose] = Recorded(Cue.PanelClose) ?? Own(Compose("Panel closes", 0.24f, new Tone(760, 0.1f, 0, 0.08f), new Tone(460, 0.12f, 0.09f, 0.08f)));
-            clips[Cue.Hover] = Recorded(Cue.Hover) ?? Own(Compose("Hover", 0.09f, new Tone(1800, 0.07f, 0, 0.05f)));
-            clips[Cue.TutorialStep] = Recorded(Cue.TutorialStep) ?? Own(Compose("Tutorial step", 0.1f, new Tone(500, 0.1f, 0, 0.15f, 700)));
-            clips[Cue.Finale] = Recorded(Cue.Finale) ?? Own(Compose("Final result", 1.5f,
-                new Tone(523.25f, 1.35f, 0, 0.10f), new Tone(659.25f, 1.25f, 0.10f, 0.09f),
-                new Tone(783.99f, 1.15f, 0.20f, 0.09f), new Tone(1046.5f, 0.75f, 0.55f, 0.065f)));
+            foreach (var composition in Compositions)
+            {
+                var clip = Recorded(composition.cue) ?? Own(Compose(composition.name, composition.duration, composition.tones));
+                // Decoded here too: the cues' metas do not preload either, so a cue's first sounding
+                // decoded its recording on the main thread in the very frame it was asked for.
+                Preload(clip);
+                clips[composition.cue] = clip;
+            }
             ApplySettings();
+        }
+
+        /// <summary>
+        /// Every cue the house plays, one row a cue, with the composition it falls back to when the
+        /// project ships no recording of it (<see cref="CueResourceFolder"/>). A slice that adds a cue
+        /// adds its row here, its row in <see cref="SoundPictures"/> and its recording.
+        /// </summary>
+        private static readonly Composition[] Compositions =
+        {
+            new Composition(Cue.Button, "Button", 0.07f, new Tone(600, 0.06f, 0, 0.11f)),
+            new Composition(Cue.Save, "Save", 0.24f, new Tone(1000, 0.08f, 0, 0.12f), new Tone(1200, 0.10f, 0.10f, 0.12f)),
+            new Composition(Cue.SocialUp, "Connection", 0.33f, new Tone(330, 0.18f, 0, 0.13f), new Tone(523.25f, 0.22f, 0.10f, 0.13f)),
+            new Composition(Cue.SocialDown, "Tension", 0.33f, new Tone(523.25f, 0.18f, 0, 0.12f), new Tone(330, 0.22f, 0.10f, 0.12f)),
+            new Composition(Cue.CompetitionStart, "Competition begins", 0.65f, new Tone(220, 0.6f, 0, 0.15f), new Tone(330, 0.55f, 0.05f, 0.10f)),
+            new Composition(Cue.CompetitionWin, "Competition result", 1.1f,
+                new Tone(523.25f, 0.3f, 0, 0.14f), new Tone(659.25f, 0.3f, 0.23f, 0.14f),
+                new Tone(783.99f, 0.45f, 0.46f, 0.14f), new Tone(1046.5f, 0.35f, 0.72f, 0.10f)),
+            new Composition(Cue.Nomination, "Nomination", 0.85f, new Tone(110, 0.75f, 0, 0.16f), new Tone(220, 0.5f, 0.2f, 0.07f)),
+            new Composition(Cue.Veto, "Veto result", 0.75f,
+                new Tone(587.33f, 0.28f, 0, 0.13f), new Tone(739.99f, 0.3f, 0.18f, 0.13f), new Tone(880, 0.36f, 0.37f, 0.12f)),
+            new Composition(Cue.Vote, "Vote recorded", 0.20f, new Tone(880, 0.18f, 0, 0.11f)),
+            new Composition(Cue.Eviction, "Eviction", 0.95f, new Tone(82.41f, 0.85f, 0, 0.15f), new Tone(164.81f, 0.6f, 0.12f, 0.07f)),
+            new Composition(Cue.Finale, "Final result", 1.5f,
+                new Tone(523.25f, 1.35f, 0, 0.10f), new Tone(659.25f, 1.25f, 0.10f, 0.09f),
+                new Tone(783.99f, 1.15f, 0.20f, 0.09f), new Tone(1046.5f, 0.75f, 0.55f, 0.065f)),
+            new Composition(Cue.PanelOpen, "Panel opens", 0.28f, new Tone(520, 0.12f, 0, 0.08f), new Tone(780, 0.14f, 0.1f, 0.08f)),
+            new Composition(Cue.PanelClose, "Panel closes", 0.24f, new Tone(760, 0.1f, 0, 0.08f), new Tone(460, 0.12f, 0.09f, 0.08f)),
+            new Composition(Cue.Hover, "Hover", 0.09f, new Tone(1800, 0.07f, 0, 0.05f)),
+            new Composition(Cue.TutorialStep, "Tutorial step", 0.1f, new Tone(500, 0.1f, 0, 0.15f, 700)),
+        };
+
+        /// <summary>How many of the cues' clips are loaded, or loading, rather than waiting for their first sounding: every cue once the house has started.</summary>
+        public int CuesPreloaded
+        {
+            get
+            {
+                int loaded = 0;
+                foreach (var clip in clips.Values)
+                    if (clip != null && (clip.loadState == AudioDataLoadState.Loaded || clip.loadState == AudioDataLoadState.Loading)) loaded++;
+                return loaded;
+            }
         }
 
         private void ApplySettings()
@@ -790,6 +835,19 @@ namespace Gamesim.Presentation
             {
                 this.frequency = frequency; this.duration = duration; this.start = start; this.gain = gain;
                 this.endFrequency = endFrequency > 0f ? endFrequency : frequency;
+            }
+        }
+
+        /// <summary>A cue and the composition it falls back to: its clip's name, its length in seconds and its voices.</summary>
+        private readonly struct Composition
+        {
+            public readonly Cue cue;
+            public readonly string name;
+            public readonly float duration;
+            public readonly Tone[] tones;
+            public Composition(Cue cue, string name, float duration, params Tone[] tones)
+            {
+                this.cue = cue; this.name = name; this.duration = duration; this.tones = tones;
             }
         }
 

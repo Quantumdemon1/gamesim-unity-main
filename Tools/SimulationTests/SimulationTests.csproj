@@ -739,6 +739,8 @@
     <!-- Every sound has a picture, and the three volumes beside the master (A11). -->
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/SoundPictures.cs" />
     <Compile Include="$(EditMode)SoundPicturesTests.cs" />
+    <!-- The cues' mix, read from the recordings: every interface answer under the news. -->
+    <Compile Include="$(EditMode)CueLoudnessTests.cs" />
     <!-- The sound a commit makes, by its cue's name: the final eviction sounds like an eviction. -->
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/CommitSound.cs" />
     <Compile Include="$(EditMode)CommitSoundTests.cs" />

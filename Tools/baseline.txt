@@ -582,7 +582,8 @@
 # 11351 = 11340 + 11, 2026-11-25. Codex's commitment story (StoryMechanicsTests): new or existing agreement, pending offer, refusal, cooldown and older saves.
 # 11357 = 11351 + 6, 2026-11-26. The room beds' crossfade, the director's hold on a doorway and the beds' loudness (RoomToneBlendTests 6).
 # 11359 = 11357 + 2, 2026-11-26. The final eviction sounds like an eviction, and every ceremony a commit appends has a sound (CommitSoundTests 2).
-Gamesim.EditModeTests 11359
+# 11362 = 11359 + 3, 2026-11-26. The interface's cues sit under the news and a hover sweep ticks once in 60 ms (CueLoudnessTests 1, SoundPicturesTests 2).
+Gamesim.EditModeTests 11362
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and
@@ -909,7 +910,8 @@ Gamesim.EditModeTests 11359
 # 1721 = 1704 + 16 landscape phone cases + 1 waiting-nominee case.
 # 1726 = 1721 + 5, 2026-11-25. Codex's sound settings (Audio 2), caption timing (CaptionTime 1) and the goodbye on short arrivals (StagedExit 2).
 # 1727 = 1726 + the staged show's fanfare with its card (EpisodePlayModeTests.CompetitionShow 1), 2026-11-26.
-Gamesim.PlayModeTests 1727
+# 1728 = 1727 + every cue decoded at the start and a quick second hover not heard (EpisodePlayModeTests.Audio 1), 2026-11-26.
+Gamesim.PlayModeTests 1728
 # The UMA build of the same assembly, read by a plan built without -WithoutUma. 1281 = the 1241 above + the
 # 40 tests that compile only under GAMESIM_UMA, as run at r1 (2026-10-16): in EpisodePlayModeTests,
 # GroundedFarewell 11, Creator 9, HouseLife 8, Emotes 3, OpeningCaptures 2, and one each in CreatorEntry,
@@ -1160,7 +1162,8 @@ Gamesim.PlayModeTests 1727
 # 1766 = 1749 + 16 landscape phone cases + 1 waiting-nominee case.
 # 1772 = 1766 + 6, 2026-11-25. The same 5, and the floor walk that settles into standing (Travel 1, UMA build only).
 # 1773 = 1772 + the same staged show's fanfare case (EpisodePlayModeTests.CompetitionShow 1), 2026-11-26.
-Gamesim.PlayModeTests.UmaBuild 1773
+# 1774 = 1773 + the same cue-decoding and hover case (EpisodePlayModeTests.Audio 1), 2026-11-26.
+Gamesim.PlayModeTests.UmaBuild 1774
 # The UMA bodies: runs only where the GAMESIM_UMA define is set (the working tree and the D: copy).
 # 82 = the 89 run on 2026-10-15, less the 7 farewell probes moved to Gamesim.Uma.DiagnosticsPlayModeTests;
 # 85 = 82 + the 3 farewell readiness decision tests (UmaFarewellReadinessDecisionPlayModeTests, 2026-10-16);
@@ -1665,4 +1668,5 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # 23448 = 23438 + 10, 2026-11-25. The commitment story's new cases that run without Unity (its two save-file checks run in Unity only).
 # 23454 = 23448 + 6, 2026-11-26. The same 6 RoomToneBlendTests cases, which run without Unity.
 # 23455 = 23454 + 1, 2026-11-26. CommitSoundTests' final-eviction case, which runs without Unity (its table over the ceremony strip's kinds runs in Unity only).
-Gamesim.SimulationTests 23455
+# 23458 = 23455 + 3, 2026-11-26. The same 3 cases the EditMode floor counts (CueLoudnessTests 1, SoundPicturesTests 2), which run without Unity.
+Gamesim.SimulationTests 23458

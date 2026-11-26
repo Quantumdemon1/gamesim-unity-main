@@ -555,6 +555,8 @@
     <Compile Include="$(EditMode)LineBankLintTests.cs" />
     <Compile Include="$(EditMode)HouseTalkNotesTests.cs" />
     <Compile Include="$(EditMode)HouseTalkValidationTests.cs" />
+    <!-- Plan 32 S1: no two voters in one voice and manner give the same vote line in a week, nor a voter last week's. -->
+    <Compile Include="$(EditMode)HouseAnswersVarietyTests.cs" />
     <!-- Plan 32 S2a: overhearing in the rules - the Notice and the Listen, their records, S1's follow-up cases, and the lab arm (compiled out of Unity). -->
     <Compile Include="$(EditMode)OverhearTests.cs" />
     <Compile Include="$(EditMode)OverhearValidationTests.cs" />

@@ -14,11 +14,17 @@ namespace Gamesim.Simulation
     /// <para>The records are cooldown keys, free text the engine writes (never an effect), so nothing new is saved
     /// (plan 32 §L): <c>said:{week}:{voter}:{stance}:{manner}</c> until next week; <c>tell:{voter}:{manner}</c> for the
     /// season; <c>h2h:{week}:{kind}:{runnerUpId}</c> for three weeks.</para>
+    ///
+    /// <para>And the line an answer took (<see cref="HouseAnswers.VoteLineIndex"/>): <c>line:{week}:{voter}:{manner}:{index}</c>,
+    /// one a voter, until the week after next, so next week's answer can leave it out.</para>
     /// </summary>
     public sealed partial class EpisodeEngine
     {
         public const string SaidPrefix = "said:", TellPrefix = "tell:";
         public const int SaidWeeks = 1, TellWeeks = 100, HeadToHeadWeeks = 3;
+        /// <summary>The record of the line a vote answer took, kept through next week (<see cref="HouseAnswers.VoteLineIndex"/>).</summary>
+        public const string LinePrefix = "line:";
+        public const int LineWeeks = 2;
         /// <summary>The read's chance to doubt a claim this week: after a lie, after the truth (§G4).</summary>
         public const double ReadDoubtAfterLie = 0.6, ReadDoubtAfterTruth = 0.2;
 
@@ -72,8 +78,13 @@ namespace Gamesim.Simulation
                 SeasonLedger.Append(s.ledger, s.ledger.claims, new ClaimRow { week = s.week, voterId = target.id, targetId = stated, source = ClaimSource.Told });
             else AddStanding(s, target.id, s.playerId, ClaimSource.Deflected, 0);
             string manner = Manner.Choose(s, target, Candour.Vote, stance, truth.margin < VoteRead.LeaningMargin, false);
+            // The line: one no earlier answer in this voice and manner gave this week, nor this voter's last week, while the
+            // slot has one. On the record before the said: key, the voter's last one replaced, so every read quotes it.
+            int index = HouseAnswers.VoteLineIndex(s, s.week, target, manner);
+            s.story.cooldowns.RemoveAll(c => HouseAnswers.ParseLine(c?.key)?.voterId == target.id);
+            Cool(s, HouseAnswers.LineRecordKey(s.week, target.id, manner, index), s.week + LineWeeks);
             Cool(s, SaidPrefix + s.week + ":" + target.id + ":" + stance + ":" + manner, s.week + SaidWeeks);
-            string line = HouseAnswers.VoteAnswer(s, s.week, target, manner, stated);
+            string line = HouseAnswers.Fill(s, HouseAnswers.VoteLine(Voice.Of(target, false), manner, index), stated);
             Log(s, "vote-read", "You asked " + target.name + " where their head is at. \"" + line + "\"", s.playerId, target.id);
         }
 

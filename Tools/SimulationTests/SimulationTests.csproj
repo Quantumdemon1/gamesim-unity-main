@@ -739,6 +739,9 @@
     <!-- "Conversation lines: Move on" (UI plan D11): a spoken line moves on after its reading time, once; a press starts the next line's own clock. -->
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/ConversationLinePace.cs" />
     <Compile Include="$(EditMode)ConversationLinePaceTests.cs" />
+    <!-- The house screen's This Week card (menu review change 7): the events and the vibe in one card, inside the room the right column folds around. -->
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/ThisWeekShape.cs" />
+    <Compile Include="$(EditMode)ThisWeekShapeTests.cs" />
     <!-- Every sound has a picture, and the three volumes beside the master (A11). -->
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/SoundPictures.cs" />
     <Compile Include="$(EditMode)SoundPicturesTests.cs" />

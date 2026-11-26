@@ -583,7 +583,8 @@
 # 11355 = 11351 + 4, 2026-11-26. PhaseWordsTests (all also in the dotnet subset): the one phase-word table and the status line's news lines.
 # 11359 = 11355 + 4, 2026-11-26. ConversationLinePaceTests (all also in the dotnet subset): the clock of "Conversation lines: Move on" (UI plan D11).
 # 11360 = 11359 + 1, 2026-11-26. MenuSettingRowsTests (also in the dotnet subset): the Conversation lines row, its default and its key.
-Gamesim.EditModeTests 11360
+# 11363 = 11360 + 3, 2026-11-26. ThisWeekShapeTests (all also in the dotnet subset): the house screen's This Week card inside the room the right column folds around (menu review change 7).
+Gamesim.EditModeTests 11363
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and
@@ -910,7 +911,8 @@ Gamesim.EditModeTests 11360
 # 1721 = 1704 + 16 landscape phone cases + 1 waiting-nominee case.
 # 1726 = 1721 + 5, 2026-11-25. Codex's sound settings (Audio 2), caption timing (CaptionTime 1) and the goodbye on short arrivals (StagedExit 2).
 # 1728 = 1726 + 2, 2026-11-26. Conversation lines (UI plan D11): ConversationExchangeFlow 2, lines moving on by themselves and a press under Move on.
-Gamesim.PlayModeTests 1728
+# 1729 = 1728 + 1, 2026-11-26. The This Week card (menu review change 7): Chrome 1, the live feed and one card, the Nearby card in the vibe's place, clear of the open controls.
+Gamesim.PlayModeTests 1729
 # The UMA build of the same assembly, read by a plan built without -WithoutUma. 1281 = the 1241 above + the
 # 40 tests that compile only under GAMESIM_UMA, as run at r1 (2026-10-16): in EpisodePlayModeTests,
 # GroundedFarewell 11, Creator 9, HouseLife 8, Emotes 3, OpeningCaptures 2, and one each in CreatorEntry,
@@ -1161,7 +1163,8 @@ Gamesim.PlayModeTests 1728
 # 1766 = 1749 + 16 landscape phone cases + 1 waiting-nominee case.
 # 1772 = 1766 + 6, 2026-11-25. The same 5, and the floor walk that settles into standing (Travel 1, UMA build only).
 # 1774 = 1772 + 2, 2026-11-26. The same 2 ConversationExchangeFlow cases run with UMA enabled.
-Gamesim.PlayModeTests.UmaBuild 1774
+# 1775 = 1774 + 1, 2026-11-26. The same Chrome case for the This Week card run with UMA enabled.
+Gamesim.PlayModeTests.UmaBuild 1775
 # The UMA bodies: runs only where the GAMESIM_UMA define is set (the working tree and the D: copy).
 # 82 = the 89 run on 2026-10-15, less the 7 farewell probes moved to Gamesim.Uma.DiagnosticsPlayModeTests;
 # 85 = 82 + the 3 farewell readiness decision tests (UmaFarewellReadinessDecisionPlayModeTests, 2026-10-16);
@@ -1667,4 +1670,5 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # 23452 = 23448 + 4, 2026-11-26. The same 4 PhaseWordsTests cases the EditMode floor counts.
 # 23456 = 23452 + 4, 2026-11-26. The same 4 ConversationLinePaceTests cases the EditMode floor counts.
 # 23457 = 23456 + 1, 2026-11-26. The same MenuSettingRowsTests case the EditMode floor counts.
-Gamesim.SimulationTests 23457
+# 23460 = 23457 + 3, 2026-11-26. The same 3 ThisWeekShapeTests cases the EditMode floor counts.
+Gamesim.SimulationTests 23460

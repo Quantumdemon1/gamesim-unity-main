@@ -581,7 +581,7 @@
 # 11340 = 11339 + 1, 2026-11-23. One phone input-hint case checks the touch wording.
 # 11351 = 11340 + 11, 2026-11-25. Codex's commitment story (StoryMechanicsTests): new or existing agreement, pending offer, refusal, cooldown and older saves.
 # 11357 = 11351 + 6, 2026-11-26. The room beds' crossfade, the director's hold on a doorway and the beds' loudness (RoomToneBlendTests 6).
-# 11359 = 11357 + 2, 2026-11-26. The final eviction sounds like an eviction, and every ceremony a commit appends has a sound (CeremonyTruthTests 2).
+# 11359 = 11357 + 2, 2026-11-26. The final eviction sounds like an eviction, and every ceremony a commit appends has a sound (CommitSoundTests 2).
 Gamesim.EditModeTests 11359
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
@@ -1664,4 +1664,5 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # disjoint cases, so the floor is their sum (the trivia landing of 23 November 2026). Counted from the two sides.
 # 23448 = 23438 + 10, 2026-11-25. The commitment story's new cases that run without Unity (its two save-file checks run in Unity only).
 # 23454 = 23448 + 6, 2026-11-26. The same 6 RoomToneBlendTests cases, which run without Unity.
-Gamesim.SimulationTests 23454
+# 23455 = 23454 + 1, 2026-11-26. CommitSoundTests' final-eviction case, which runs without Unity (its table over the ceremony strip's kinds runs in Unity only).
+Gamesim.SimulationTests 23455

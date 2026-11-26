@@ -899,6 +899,25 @@ namespace Gamesim.Tests.EditMode
             Assert.That(CastAt(after, TargetArcId, StoryAnchors.EvictionNight), Is.Null, "The whole template now has its own rest period.");
         }
 
+        /// <summary>
+        /// The next-winner cast is story rules 12's: a season below 12 casts its first winner or nobody, as it did when it
+        /// started, so a season saved at 11 replays as it was recorded (RolesSeasonDigests' busy sixteen-seat seasons).
+        /// </summary>
+        [TestCase("star:")]
+        [TestCase("once:the-target-on-their-back:")]
+        public void BelowStoryRulesTwelveTheTargetStoryCastsOnlyTheFirstWinner(string prefix)
+        {
+            var s = TargetSeason(shipped: true);
+            s.story.rulesVersion = StoryRules.Roles;
+            var winners = RankTargetWinners(s);
+            Assert.That(winners.Length, Is.GreaterThanOrEqualTo(2));
+            Assert.That(CastAt(s, TargetArcId, StoryAnchors.EvictionNight)?.headliner, Is.EqualTo(winners[0].id));
+            s.story.cooldowns.Add(new StoryCooldownState { key = prefix + winners[0].id, untilWeek = s.week + 1 });
+            Assert.That(CastAt(s, TargetArcId, StoryAnchors.EvictionNight), Is.Null, "Rules 11 never casts the second winner.");
+            s.story.rulesVersion = StoryRules.Manners;
+            Assert.That(CastAt(s, TargetArcId, StoryAnchors.EvictionNight)?.headliner, Is.EqualTo(winners[1].id));
+        }
+
         [Test]
         public void RealPeopleNeverPlayRomanceOrConductParts()
         {

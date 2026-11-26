@@ -100,6 +100,21 @@ namespace Gamesim.Presentation
         public static float Season(float level, float target, float seconds) =>
             Step(level, target, target > level ? SeasonFadeIn : SeasonFadeOut, seconds);
 
+        /// <summary>
+        /// Seconds from silence to full for a competition's own loop, and from full to silence. It
+        /// comes up in a second, so it is there by the end of the count, while the season's bed falls
+        /// over its 1.5 s; it goes over 1.5 s as the card comes, while the bed rises over its 2 s.
+        /// </summary>
+        public const float CompetitionFadeIn = 1.0f;
+        public const float CompetitionFadeOut = 1.5f;
+
+        /// <summary>The competition loop's gain at full level, as a share of the master volume: the season bed's, which it takes over from.</summary>
+        public const float CompetitionPeak = 0.45f;
+
+        /// <summary>A competition loop's fade: 1 s up, 1.5 s down.</summary>
+        public static float Competition(float level, float target, float seconds) =>
+            Step(level, target, target > level ? CompetitionFadeIn : CompetitionFadeOut, seconds);
+
         /// <summary>Seconds a duck takes to fall from full to its level.</summary>
         public const float DuckIn = 0.3f;
 

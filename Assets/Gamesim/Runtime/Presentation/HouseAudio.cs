@@ -45,8 +45,12 @@ namespace Gamesim.Presentation
         /// <para>The reference's shape, from <c>GameSim-Game-Flow_v2.md</c>: a theme over the opening,
         /// then a season bed that plays until the game is over, and silence on the screens that are
         /// not the game — setup, the opening itself, and the final stats.</para>
+        ///
+        /// <para>One departure from it: <see cref="Competition"/>, a competition's own driving loop,
+        /// from the attempt opening or the show starting to the result card. The season's bed steps
+        /// aside for it and carries on from where it paused once the card comes.</para>
         /// </summary>
-        public enum Music { Silent, Theme, Season }
+        public enum Music { Silent, Theme, Season, Competition }
 
         // Two music voices, so the theme can be let go while the season's bed comes up: each has
         // its own source, and a level from 0 to 1 that moves toward its target at the reference
@@ -56,6 +60,13 @@ namespace Gamesim.Presentation
         private float themeLevel, themeTarget, seasonLevel, seasonTarget;
         private bool themeRunning;
         private SeasonVoice seasonVoice;
+
+        // A third, for a competition's loop: it starts from the top each time, and the season's bed
+        // pauses under it rather than stopping, so the bed carries on where it was after the card.
+        private AudioSource competitionSource;
+        private float competitionLevel, competitionTarget;
+        private bool competitionRunning;
+        private AudioClip competitionBed;
 
         /// <summary>
         /// The bed's source, in the three states it can be in. Its own bookkeeping rather than
@@ -116,6 +127,18 @@ namespace Gamesim.Presentation
 
         /// <summary>Whether the theme is sounding as the engine has it: its source's own isPlaying.</summary>
         public bool ThemePlaying => themeSource != null && themeSource.isPlaying;
+
+        /// <summary>How loud a competition's loop is now, 0 to 1 of its full level, as its fade has it.</summary>
+        public float CompetitionLevel => competitionLevel;
+
+        /// <summary>The competition voice's volume as it is being played: the fade's level at the loop's peak, under the preferences and the duck.</summary>
+        public float CompetitionVolume => competitionSource != null ? competitionSource.volume : 0f;
+
+        /// <summary>Whether a competition's loop is sounding as the engine has it: its source's own isPlaying.</summary>
+        public bool CompetitionPlaying => competitionSource != null && competitionSource.isPlaying;
+
+        /// <summary>Whether the competitions' loop is the project's recording (<c>Resources/Audio/Competition</c>) rather than the synthesized stand-in.</summary>
+        public bool HasRecordedCompetition { get; private set; }
 
         /// <summary>
         /// Whether the fades wait for <see cref="TickMusic"/> instead of following the real clock.
@@ -527,6 +550,7 @@ namespace Gamesim.Presentation
             if (!initialized) return;
             themeLevel = MusicFade.Theme(themeLevel, themeTarget, seconds);
             seasonLevel = MusicFade.Season(seasonLevel, seasonTarget, seconds);
+            competitionLevel = MusicFade.Competition(competitionLevel, competitionTarget, seconds);
             musicDuck.Tick(seconds);
             bedDuck.Tick(seconds);
             ReleaseSilentVoices();
@@ -549,15 +573,21 @@ namespace Gamesim.Presentation
         /// fade out had reached when it is called back mid-fade, and from the place it paused when it
         /// was put away, which it resumes rather than restarting.</para>
         ///
+        /// <para><b>A competition's loop</b> cuts whatever is left of the theme and rises from silence,
+        /// from the top, over 1 s, while the season's bed falls over its 1.5 s and pauses where it is.
+        /// Asked for again while it is still falling - the attempt opened again as its card went - it
+        /// turns round where it is. When the bed is asked for, the loop falls over 1.5 s and stops.</para>
+        ///
         /// <para><b>Silence</b> fades out whatever is sounding over 1.5 s.</para>
         /// </summary>
         private void EnterMusic()
         {
-            if (!initialized || !isActiveAndEnabled || themeSource == null || seasonSource == null) return;
+            if (!initialized || !isActiveAndEnabled || themeSource == null || seasonSource == null || competitionSource == null) return;
             switch (music)
             {
                 case Music.Theme:
                     CutSeason();
+                    CutCompetition();
                     themeSource.Stop();
                     themeSource.clip = themeBed;
                     themeLevel = 0f;
@@ -568,6 +598,8 @@ namespace Gamesim.Presentation
                     break;
                 case Music.Season:
                     CutTheme();
+                    // A competition's loop goes over its own fall while the bed comes back up.
+                    competitionTarget = 0f;
                     seasonTarget = 1f;
                     // Marked playing but not playing: a reset stopped the source under the
                     // bookkeeping. It is a stopped bed, and starts again as one, or asking for the
@@ -582,9 +614,27 @@ namespace Gamesim.Presentation
                     }
                     seasonVoice = SeasonVoice.Playing;
                     break;
+                case Music.Competition:
+                    CutTheme();
+                    // The bed falls and pauses where it is (ReleaseSilentVoices), to carry on from there after the card.
+                    seasonTarget = 0f;
+                    competitionTarget = 1f;
+                    // Marked running but not playing: a reset stopped it behind the bookkeeping.
+                    if (competitionRunning && !competitionSource.isPlaying) competitionRunning = false;
+                    if (!competitionRunning)
+                    {
+                        competitionSource.Stop();
+                        competitionSource.clip = competitionBed;
+                        competitionLevel = 0f;
+                        competitionSource.volume = 0f;
+                        competitionSource.Play();
+                        competitionRunning = true;
+                    }
+                    break;
                 default:
                     themeTarget = 0f;
                     seasonTarget = 0f;
+                    competitionTarget = 0f;
                     break;
             }
             // A voice asked for silence while already silent lets go now, not a frame later: the
@@ -597,6 +647,7 @@ namespace Gamesim.Presentation
         {
             if (themeRunning && themeTarget <= 0f && themeLevel <= 0f) CutTheme();
             if (seasonVoice == SeasonVoice.Playing && seasonTarget <= 0f && seasonLevel <= 0f) PutSeasonAway();
+            if (competitionRunning && competitionTarget <= 0f && competitionLevel <= 0f) CutCompetition();
         }
 
         /// <summary>
@@ -644,6 +695,8 @@ namespace Gamesim.Presentation
         {
             if (!initialized || !isActiveAndEnabled) return;
             if (themeRunning && themeSource != null) themeSource.Play();
+            // A competition's loop from the top too: the reset lost its place.
+            if (competitionRunning && competitionSource != null) competitionSource.Play();
             if (seasonSource != null)
             {
                 if (seasonVoice == SeasonVoice.Playing) seasonSource.Play();
@@ -681,6 +734,16 @@ namespace Gamesim.Presentation
             seasonSource.volume = 0f;
         }
 
+        /// <summary>A competition's loop off at once and rewound: the next competition starts it from the top.</summary>
+        private void CutCompetition()
+        {
+            competitionLevel = competitionTarget = 0f;
+            competitionRunning = false;
+            if (competitionSource == null) return;
+            competitionSource.Stop();
+            competitionSource.volume = 0f;
+        }
+
         /// <summary>
         /// Each voice's volume: its fade's level at its peak, under the preferences and the music's duck.
         ///
@@ -701,6 +764,11 @@ namespace Gamesim.Presentation
             {
                 seasonSource.mute = Muted;
                 seasonSource.volume = preferences * MusicFade.SeasonPeak * seasonLevel;
+            }
+            if (competitionSource != null)
+            {
+                competitionSource.mute = Muted;
+                competitionSource.volume = preferences * MusicFade.CompetitionPeak * competitionLevel;
             }
         }
 
@@ -773,6 +841,8 @@ namespace Gamesim.Presentation
             activityVoice.spatialBlend = 0f;
             activityVoice.priority = 170;
             activityVoice.volume = 0f;
+            // The competitions' music voice after it, last, for the same reason.
+            competitionSource = MusicVoice();
 
             // A supplied recording wins over the synthesised bed, and neither is required.
             var recordedTheme = Resources.Load<AudioClip>("Audio/Theme");
@@ -786,6 +856,11 @@ namespace Gamesim.Presentation
             // 16 s of theme, 45 s of bed - and stalled the very frame its fade began on.
             Preload(themeBed);
             Preload(seasonBed);
+            // The competitions' loop the same way: its first Play() is the frame an attempt opens.
+            var recordedCompetition = Resources.Load<AudioClip>("Audio/Competition");
+            competitionBed = recordedCompetition != null ? recordedCompetition : Own(BuildBed("Competition bed", CompetitionChords, 0.9375f));
+            HasRecordedCompetition = recordedCompetition != null;
+            Preload(competitionBed);
 
             ambience = Own(BuildAmbience());
             // The room beds decoded now too, for the same reason: their metas do not preload, and
@@ -928,6 +1003,15 @@ namespace Gamesim.Presentation
             new[] { 164.81f, 196.00f, 246.94f },   // Em
         };
 
+        /// <summary>The competitions' bed: E minor, quicker, and it turns on B to start again.</summary>
+        private static readonly float[][] CompetitionChords =
+        {
+            new[] { 164.81f, 196.00f, 246.94f },   // Em
+            new[] { 130.81f, 164.81f, 196.00f },   // C
+            new[] { 146.83f, 185.00f, 220.00f },   // D
+            new[] { 123.47f, 155.56f, 185.00f },   // B
+        };
+
         /// <summary>
         /// A looping chord bed, synthesised.
         ///
@@ -1068,6 +1152,8 @@ namespace Gamesim.Presentation
             // one with nothing left to fade it or stop it. The theme goes; the bed keeps its place -
             // when it has one - and OnEnable brings back whatever is asked for then.
             CutTheme();
+            // A competition's loop goes as the theme does: it starts from the top when it is asked for again.
+            CutCompetition();
             if (seasonVoice == SeasonVoice.Playing) PutSeasonAway();
             seasonLevel = seasonTarget = 0f;
             WriteMusicVolumes();
@@ -1079,6 +1165,7 @@ namespace Gamesim.Presentation
             if (cueSource != null) { cueSource.Stop(); Release(cueSource); }
             if (themeSource != null) { themeSource.Stop(); Release(themeSource); }
             if (seasonSource != null) { seasonSource.Stop(); Release(seasonSource); }
+            if (competitionSource != null) { competitionSource.Stop(); Release(competitionSource); }
             if (activityVoice != null) { activityVoice.Stop(); Release(activityVoice); }
             foreach (var clip in owned) if (clip != null) Release(clip);
             owned.Clear();

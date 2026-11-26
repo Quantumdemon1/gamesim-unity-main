@@ -224,5 +224,25 @@ namespace Gamesim.Tests.EditMode
             Assert.That(MusicFade.BedDuckFor(gameMenuOpen: true), Is.EqualTo(0.5f), "The rooms' beds to half under the menu,");
             Assert.That(MusicFade.BedDuckFor(gameMenuOpen: false), Is.EqualTo(1f), "and not otherwise.");
         }
+
+        /// <summary>
+        /// A competition's loop comes up in a second, so it is there by the end of the count, and goes
+        /// over 1.5 s as the card comes, at any frame rate; at full it is as loud as the season's bed it
+        /// takes over from, so the recording alone sets how much harder it drives (CueLoudnessTests).
+        /// </summary>
+        [Test]
+        public void TheCompetitionLoopRisesInASecondAndFallsInOneAndAHalf()
+        {
+            foreach (var frame in Frames)
+            {
+                Assert.That(Ramp(MusicFade.Competition, 0f, 1f, 1.0, frame), Is.EqualTo(1f), "Silence to full in 1 s, in steps of " + frame + " s.");
+                Assert.That(Ramp(MusicFade.Competition, 0f, 1f, 0.99, frame), Is.EqualTo(0.99f).Within(1e-3f),
+                    "and not before: a straight line, in steps of " + frame + " s.");
+                Assert.That(Ramp(MusicFade.Competition, 1f, 0f, 1.5, frame), Is.EqualTo(0f), "Full to silence in 1.5 s, in steps of " + frame + " s.");
+                Assert.That(Ramp(MusicFade.Competition, 1f, 0f, 1.49, frame), Is.GreaterThan(0f), "and not before, in steps of " + frame + " s.");
+            }
+            Assert.That(MusicFade.Competition(0.5f, 0f, 0.75f), Is.EqualTo(0f), "Half the way down is half the time.");
+            Assert.That(MusicFade.CompetitionPeak, Is.EqualTo(MusicFade.SeasonPeak), "At full, at the season bed's gain.");
+        }
     }
 }

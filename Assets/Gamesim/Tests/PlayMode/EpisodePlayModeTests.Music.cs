@@ -432,6 +432,80 @@ namespace Gamesim.Tests.PlayMode
         }
 
         /// <summary>
+        /// A competition plays its own loop: the briefing is still the season's bed, and the attempt
+        /// opening brings the loop up from silence over a second while the bed falls over its 1.5 s
+        /// and pauses where it is. Reduce sound halves the loop with the rest of the music. When the
+        /// attempt ends the bed carries on from where it paused, rising over its 2 s, while the loop
+        /// falls over 1.5 s and stops, to start from the top at the next competition. A practice,
+        /// so nothing is committed, and the music draws nothing from the season.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator Music_ACompetitionPlaysItsOwnLoopAndTheBedCarriesOnAfter()
+        {
+            var audio = SteppedAudio();
+            Assert.That(audio.HasRecordedCompetition, Is.True, "The project ships its competition loop.");
+            Assert.That(audio.CurrentMusic, Is.EqualTo(HouseAudio.Music.Season), "The house plays the season's bed.");
+            audio.TickMusic(MusicFade.SeasonFadeIn);
+            // A place to keep: the bed has to have played some of itself.
+            yield return SequenceWait(() => audio.SeasonSamples > 0, 3f);
+            Assert.That(audio.SeasonSamples, Is.GreaterThan(0), "The bed is playing.");
+
+            WarpPlayer(director.StationPosition);
+            Assert.That(director.TryOpenPhasePanel(), Is.True);
+            ButtonWithCaption("Begin the next competition").onClick.Invoke();
+            yield return null;
+            WarpPlayer(director.StationPosition);
+            Assert.That(director.TryOpenPhasePanel(), Is.True);
+            yield return null;
+            Assert.That(audio.CurrentMusic, Is.EqualTo(HouseAudio.Music.Season), "The briefing is the bed's: the competition has not begun.");
+            var before = director.Snapshot;
+
+            ButtonWithCaption("Practice this competition").onClick.Invoke();
+            yield return null;
+            Assert.That(director.IsChallengeActive, Is.True, "The attempt is open.");
+            Assert.That(audio.CurrentMusic, Is.EqualTo(HouseAudio.Music.Competition), "The attempt opening brings the competition's loop.");
+            Assert.That(audio.CompetitionPlaying, Is.True);
+            Assert.That(audio.CompetitionLevel, Is.EqualTo(0f), "It rises from silence");
+            Assert.That(audio.SeasonLevel, Is.EqualTo(1f), "with the bed still at full: a crossfade, not a cut.");
+            audio.TickMusic(MusicFade.CompetitionFadeIn);
+            Assert.That(audio.CompetitionLevel, Is.EqualTo(1f), "Full a second later,");
+            Assert.That(audio.SeasonLevel, Is.EqualTo(1f - MusicFade.CompetitionFadeIn / MusicFade.SeasonFadeOut).Within(1e-4f),
+                "with the bed a second into its 1.5 s fall.");
+            Assert.That(audio.CompetitionVolume, Is.EqualTo(audio.Volume * MusicFade.CompetitionPeak * audio.MusicDuckLevel).Within(1e-5f),
+                "At full, the loop plays at the bed's gain.");
+            audio.TickMusic(MusicFade.SeasonFadeOut);
+            Assert.That(audio.SeasonLevel, Is.EqualTo(0f));
+            Assert.That(audio.SeasonPaused, Is.True, "The bed pauses where it is under the competition.");
+            int paused = audio.SeasonSamples;
+            Assert.That(paused, Is.GreaterThan(0), "It paused part of the way in.");
+
+            float full = audio.CompetitionVolume;
+            Assert.That(full, Is.GreaterThan(0f));
+            audio.SetReducedAudio(true);
+            Assert.That(audio.CompetitionVolume, Is.EqualTo(full * 0.5f).Within(1e-5f), "Reduce sound halves the loop with the rest of the music.");
+            audio.SetReducedAudio(false);
+            Assert.That(audio.CompetitionVolume, Is.EqualTo(full).Within(1e-5f));
+
+            yield return PressKey(UnityEngine.InputSystem.Key.Escape);
+            yield return null;
+            Assert.That(director.IsChallengeActive, Is.False, "Escape ends the practice, back at the briefing.");
+            Assert.That(audio.CurrentMusic, Is.EqualTo(HouseAudio.Music.Season), "The attempt over, the bed is asked for again");
+            Assert.That(audio.SeasonPaused, Is.False);
+            Assert.That(audio.SeasonSamples, Is.GreaterThanOrEqualTo(paused), "and carries on from where it paused rather than the top,");
+            Assert.That(audio.SeasonLevel, Is.EqualTo(0f), "from silence,");
+            Assert.That(audio.CompetitionLevel, Is.EqualTo(1f), "under the loop, which is not cut.");
+            audio.TickMusic(MusicFade.CompetitionFadeOut);
+            Assert.That(audio.CompetitionLevel, Is.EqualTo(0f), "The loop is gone 1.5 s later");
+            Assert.That(audio.CompetitionPlaying, Is.False, "and stopped, so the next competition starts it from the top,");
+            Assert.That(audio.SeasonLevel, Is.EqualTo(MusicFade.CompetitionFadeOut / MusicFade.SeasonFadeIn).Within(1e-4f),
+                "while the bed rises over its 2 s");
+            audio.TickMusic(MusicFade.SeasonFadeIn);
+            Assert.That(audio.SeasonLevel, Is.EqualTo(1f), "back to full.");
+            Assert.That(director.Snapshot.revision, Is.EqualTo(before.revision), "A practice commits nothing,");
+            Assert.That(director.Snapshot.randomState, Is.EqualTo(before.randomState), "and the music draws nothing from the season.");
+        }
+
+        /// <summary>
         /// What a reset of the audio system does to the house's sound, without the reset: every source
         /// the audio owns stopped, behind its bookkeeping's back.
         /// </summary>

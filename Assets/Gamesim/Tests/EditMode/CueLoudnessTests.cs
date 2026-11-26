@@ -13,7 +13,7 @@ namespace Gamesim.Tests.EditMode
     /// tick over the ballot's - until each row of the sound table carried its place in the mix
     /// (<see cref="SoundPictures.Row.GainDb"/>). A cue's loudness here is its recording's loudest
     /// 400 milliseconds (the whole of a shorter one) plus its row's gain. Unity-free: it reads the
-    /// WAVs' bytes.
+    /// WAVs' bytes. The competitions' loop is measured here too, whole, against the season's bed.
     /// </summary>
     public sealed class CueLoudnessTests
     {
@@ -36,6 +36,29 @@ namespace Gamesim.Tests.EditMode
                 "The press, the two panels, the hover and the tour's step are all measured.");
         }
 
+        /// <summary>
+        /// A competition's loop takes over from the season's bed at the bed's own gain
+        /// (<see cref="MusicFade.CompetitionPeak"/>), so its recording is what sets how loud it is: about
+        /// as loud as the bed, measured whole, up to 3 dB over it for its drive and never more than a
+        /// decibel under it - a competition does not go quiet, and it does not shout over the game's cues.
+        /// </summary>
+        [Test]
+        public void TheCompetitionLoopPlaysAboutAsLoudAsTheSeasonsBed()
+        {
+            double bed = LoudestDecibels(Music("Season"), whole: true);
+            double competition = LoudestDecibels(Music("Competition"), whole: true);
+            Assert.That(competition - bed, Is.InRange(-1.0, 3.0),
+                "The competition loop plays at " + competition.ToString("0.00") + " dB against the season bed's " + bed.ToString("0.00") + ".");
+            Assert.That(MusicFade.CompetitionPeak, Is.EqualTo(MusicFade.SeasonPeak), "Both play at the same gain, so the recordings decide.");
+        }
+
+        private static string Music(string name)
+        {
+            string path = Path.Combine(GamesimRoot(), "Resources", "Audio", name + ".wav");
+            Assert.That(File.Exists(path), Is.True, name + " has its recording.");
+            return path;
+        }
+
         private static string Recording(string cue)
         {
             string path = Path.Combine(GamesimRoot(), "Resources", "Audio", "Cues", cue + ".wav");
@@ -46,9 +69,9 @@ namespace Gamesim.Tests.EditMode
         /// <summary>
         /// A 16-bit PCM WAV's loudest 400 milliseconds, in decibels of full scale: the mean square of
         /// every channel's samples over the window, slid a frame at a time; a recording shorter than
-        /// the window is measured whole.
+        /// the window is measured whole, and so is any recording when <paramref name="whole"/> is asked.
         /// </summary>
-        private static double LoudestDecibels(string path)
+        private static double LoudestDecibels(string path, bool whole = false)
         {
             byte[] bytes = File.ReadAllBytes(path);
             Assert.That(Encoding.ASCII.GetString(bytes, 0, 4), Is.EqualTo("RIFF"), path);
@@ -84,7 +107,7 @@ namespace Gamesim.Tests.EditMode
                         }
                         energy[frame] = sum / channels;
                     }
-                    int window = Math.Min(frames, (int)(0.4 * rate));
+                    int window = whole ? frames : Math.Min(frames, (int)(0.4 * rate));
                     double running = 0.0;
                     for (int frame = 0; frame < window; frame++) running += energy[frame];
                     double loudest = running;

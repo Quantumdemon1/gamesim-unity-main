@@ -44,7 +44,7 @@ namespace Gamesim.Episode
             // the press, not after the house has been put back behind black.
             bool show = opening != null && opening.IsPlaying && !opening.WasSkipped;
             audioBed.SetMusic(MusicFor(musicOn, setup, show, opening != null ? opening.CurrentBeat : null,
-                opening != null && opening.MusicHeld, opening != null && opening.MusicClosing));
+                opening != null && opening.MusicHeld, opening != null && opening.MusicClosing, CompetitionUnderWay));
             // The music steps back while the game menu card is open (the rooms' beds with it) and
             // under the big moments; the Settings frame is not the card, so its sliders are heard
             // at the level they set. A level only: the state asked for above is untouched.
@@ -86,6 +86,26 @@ namespace Gamesim.Episode
             if (!openingPlaying || beat != OpeningBeat.Intro) return HouseAudio.Music.Season;
             return themeHeld || themeClosing ? HouseAudio.Music.Silent : HouseAudio.Music.Theme;
         }
+
+        /// <summary>
+        /// The same rule with a competition in it: where the season's bed would play, a competition
+        /// under way plays its own loop instead (<see cref="CompetitionUnderWay"/>). Everything else
+        /// is as above: the switch and the setup screens are silence, and the intro has its theme.
+        /// A departure from the reference build, whose bed plays until the game is over.
+        /// </summary>
+        public static HouseAudio.Music MusicFor(bool musicOn, bool setupShowing, bool openingPlaying, string beat,
+            bool themeHeld, bool themeClosing, bool competition)
+        {
+            var music = MusicFor(musicOn, setupShowing, openingPlaying, beat, themeHeld, themeClosing);
+            return competition && music == HouseAudio.Music.Season ? HouseAudio.Music.Competition : music;
+        }
+
+        /// <summary>
+        /// Whether a competition is under way for the music: from the attempt opening - the walk to
+        /// the stations, the game and its finish, a practice too - or a staged show starting, to the
+        /// result card. Presentation only; it reads what is on screen and changes nothing.
+        /// </summary>
+        private bool CompetitionUnderWay => challengeActive || CompetitionShowHoldsTheCard;
 
         /// <summary>
         /// The tour is offered again only from the house's own Settings: from the front door or a

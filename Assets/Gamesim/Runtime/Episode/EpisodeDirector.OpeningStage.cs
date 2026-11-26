@@ -205,7 +205,7 @@ namespace Gamesim.Episode
             private float walkInHeadHeight;
             private Light walkInLight;
 
-            // Placed outlives a failed binding. Only a bound stage with a real player who
+            // A failed binding abandons the stage. Only a bound stage with a real player who
             // completed their personal reveal can claim that player for another walk.
             private bool HasWalkInLead => Active && begun && hasWalkInMark && director.projected != null
                 && director.player != null && director.player.isActiveAndEnabled && director.player.Agent != null
@@ -376,6 +376,21 @@ namespace Gamesim.Episode
                 if (restoreHome && Placed && !AllHome) RestoreHome();
                 else ReleaseEveryone();
                 StrikeSet();
+                ended = true;
+            }
+
+            /// <summary>
+            /// A house that never bound, let go for good under the title card: everybody back where
+            /// the season started them, the front door down, and the stage ended and no longer placed,
+            /// so it ticks nothing, walks nobody and claims no move of the player's, the director no
+            /// longer reports it staged, and the opening's own end finds nothing left to do.
+            /// </summary>
+            public void Abandon()
+            {
+                if (ended) return;
+                if (Placed) RestoreHome();
+                StrikeSet();
+                Placed = false;
                 ended = true;
             }
 

@@ -34,7 +34,7 @@ namespace Gamesim.Simulation
         {
             if (slot != null && voice != null && Bank.TryGetValue(slot, out var voices) && voices.TryGetValue(voice, out var lines))
                 return Array.AsReadOnly(lines);
-            return Array.Empty<string>();
+            return Array.AsReadOnly(Array.Empty<string>());
         }
 
         /// <summary>Every line the bank holds for one slot, in every voice.</summary>

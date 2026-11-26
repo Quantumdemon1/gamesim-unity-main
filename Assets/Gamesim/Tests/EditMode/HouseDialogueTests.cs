@@ -332,14 +332,14 @@ namespace Gamesim.Tests.EditMode
         [Test]
         public void TheVoicesBankHoldsThreeLinesASlotInEveryVoiceAndNoLineTwice()
         {
-            Assert.That(HouseDialogue.VoicedSlots, Has.Count.EqualTo(23));
+            Assert.That(HouseDialogue.VoicedSlots.Count, Is.EqualTo(23));
             var all = new List<string>();
             foreach (var slot in HouseDialogue.VoicedSlots)
             {
                 foreach (var voice in new[] { Voice.Blunt, Voice.Warm, Voice.Chatty, Voice.Guarded })
-                    Assert.That(HouseDialogue.VoicedLines(slot, voice), Has.Count.EqualTo(3), slot + ", " + voice);
+                    Assert.That(HouseDialogue.VoicedLines(slot, voice).Count, Is.EqualTo(3), slot + ", " + voice);
                 bool single = slot == "member-no" || slot == "cut-ties" || slot.StartsWith("window-", StringComparison.Ordinal);
-                Assert.That(HouseDialogue.VoicedLines(slot, Voice.Plain), Has.Count.EqualTo(single ? 2 : 0), slot + ", plain");
+                Assert.That(HouseDialogue.VoicedLines(slot, Voice.Plain).Count, Is.EqualTo(single ? 2 : 0), slot + ", plain");
                 if (slot.StartsWith("window-", StringComparison.Ordinal))
                     Assert.That(HouseDialogue.VoicedLines(slot).Where(line => line.Contains("ceremony") || line.Contains("after")), Is.Empty, slot);
                 all.AddRange(HouseDialogue.VoicedLines(slot));

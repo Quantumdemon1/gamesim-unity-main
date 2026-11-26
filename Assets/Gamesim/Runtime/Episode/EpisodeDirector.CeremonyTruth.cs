@@ -61,6 +61,10 @@ namespace Gamesim.Episode
             var kinds = new HashSet<string>(appendedKinds ?? Enumerable.Empty<string>(), StringComparer.Ordinal);
             if (kinds.Contains("winner")) return HouseAudio.Cue.Finale;
             if (kinds.Contains("eviction")) return HouseAudio.Cue.Eviction;
+            // The final Head of Household sending a finalist to the jury is the season's last
+            // eviction and sounds like one, ranked with the weekly eviction. Its own kind matched
+            // nothing here, and its card has no reveal to make a sound, so it clicked like a button.
+            if (kinds.Contains(CeremonySting.FinalEvictionKind)) return HouseAudio.Cue.Eviction;
             if (kinds.Contains("nomination")) return HouseAudio.Cue.Nomination;
             if (kinds.Contains("veto")) return HouseAudio.Cue.Veto;
             if (kinds.Contains("competition")) return HouseAudio.Cue.CompetitionWin;

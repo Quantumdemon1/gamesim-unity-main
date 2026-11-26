@@ -71,7 +71,7 @@ namespace Gamesim.Presentation
             new Row("Vote", SoundKind.Information, SoundChannel.Effects,
                 "A ballot is read: the board shows whose vote it is and the tally moves; at the finale, a juror's vote."),
             new Row("Eviction", SoundKind.Information, SoundChannel.Effects,
-                "The eviction card and the board's result name who leaves, and the status line says it."),
+                "The eviction card and the board's result name who leaves, and the status line says it; at the final eviction, the final two's card names who joins the jury."),
             new Row("Finale", SoundKind.Information, SoundChannel.Effects,
                 "The jury's last vote is read and the winner is named on the card."),
             new Row("PanelOpen", SoundKind.Interface, SoundChannel.Interface, "The panel arriving."),

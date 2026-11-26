@@ -35,6 +35,12 @@ namespace Gamesim.Simulation
     /// that houseguest's next listed ask in the same dialogue, "There's something else", through <see cref="NextFrom"/>:
     /// the same queue, the same order, any source.</para>
     ///
+    /// <para><b>The story's approaches (walk-ups name the houseguest).</b> An open Approach beat whose words have a houseguest come
+    /// to the player names that role (<see cref="BeatTemplate.speaker"/>); while the role's houseguest is in the house, the beat
+    /// is listed as a <see cref="Source.Story"/> row with them as the asker, in place of the Pull's card that names nobody. The
+    /// waiting list leaves story beats out, so these are read before its early return: a house with nothing else waiting
+    /// still lists one.</para>
+    ///
     /// <para><b>Its order is public.</b> The ids follow the order the asks were filed in, which is the
     /// warmest first (<see cref="NpcDeals.Propose"/>, <see cref="NpcDeals.AskForTheVeto"/>), and the deal
     /// table's order (<see cref="NpcDeals.Pending"/>) breaks its ties by id, so neither is used: what
@@ -48,10 +54,11 @@ namespace Gamesim.Simulation
     {
         /// <summary>
         /// Where an ask comes from: a weekly offer, a question about the veto, a reply card (a confrontation, gossip or a
-        /// plea), or a pitch to the player Head of Household. Values are appended, never reordered. Slice 5 adds the
-        /// story's approaches.
+        /// plea), a pitch to the player Head of Household, or a story beat a houseguest comes to the player with (slice 5's
+        /// first part: today's Approach beats that name a <see cref="BeatTemplate.speaker"/>). Values are appended, never
+        /// reordered.
         /// </summary>
-        public enum Source { Offer, VetoAsk, Card, Pitch }
+        public enum Source { Offer, VetoAsk, Card, Pitch, Story }
 
         /// <summary>One ask a houseguest can bring to the player: the record, who asks, their opening line and when it goes.</summary>
         public sealed class Ask
@@ -74,6 +81,9 @@ namespace Gamesim.Simulation
             private int readWeek;
             private EpisodePhase readPhase;
 
+            /// <summary>A story row's own check: the beat's event id and the houseguest it named as it was read.</summary>
+            private string storyEvent, storySpeaker;
+
             public Ask() { }
 
             internal Ask(NpcInvitation invitation) { this.invitation = invitation; }
@@ -84,14 +94,21 @@ namespace Gamesim.Simulation
                 readSession = s.sessionId; readPlayer = s.playerId; readWeek = s.week; readPhase = s.phase;
             }
 
+            internal Ask(EpisodeState s, HouseEventState beat, string speakerId)
+            {
+                storyEvent = beat.id; storySpeaker = speakerId;
+                readSession = s.sessionId; readPlayer = s.playerId; readWeek = s.week; readPhase = s.phase;
+            }
+
             /// <summary>
             /// Whether this ask still stands in <paramref name="s"/>: for an offer or a veto ask, the same session, week
             /// and phase, the player still in the game and the very offer still waiting with the same terms; for a card,
             /// the same session, player, week and phase, the player still in the game, the very card still waiting (same
             /// id, kind, sender, subject and week), still listed as waiting and still the one the player can answer; for a
             /// pitch, all of a card's and the pitch still one the player hears (<see cref="HoHPitches.ValidCard"/>), which a
-            /// feel-out leaves standing and an answer or the nominations end. A clock revision alone does not end it. False
-            /// for an ask this reader did not build.
+            /// feel-out leaves standing and an answer or the nominations end; for a story row, the same session, player, week
+            /// and phase, the very beat still open, and its speaker still the same houseguest who can come
+            /// (<see cref="StorySpeaker"/>). A clock revision alone does not end it. False for an ask this reader did not build.
             /// </summary>
             public bool IsCurrent(EpisodeState s)
             {
@@ -104,9 +121,19 @@ namespace Gamesim.Simulation
                         return CardIsCurrent(s);
                     case Source.Pitch:
                         return CardIsCurrent(s) && HoHPitches.ValidCard(s, s.replyCards.FirstOrDefault(row => row != null && row.id == card.id));
+                    case Source.Story:
+                        return StoryIsCurrent(s);
                     default:
                         return false;
                 }
+            }
+
+            private bool StoryIsCurrent(EpisodeState s)
+            {
+                if (storyEvent == null || s == null || s.sessionId != readSession || s.playerId != readPlayer
+                    || s.week != readWeek || s.phase != readPhase) return false;
+                var beat = s.houseEvents?.FirstOrDefault(e => e != null && e.id == storyEvent);
+                return beat != null && StorySpeaker(s, beat) == storySpeaker;
             }
 
             private bool CardIsCurrent(EpisodeState s)
@@ -149,6 +176,34 @@ namespace Gamesim.Simulation
         public const string LapseNominations = "It stands until you nominate.";
 
         /// <summary>
+        /// What a houseguest coming to the player with a story beat opens with, in plain words: one line for every beat,
+        /// because the beat's own words say the rest once the player hears them out.
+        /// </summary>
+        public const string StoryLine = "Got a minute? There's something I want to talk about.";
+
+        /// <summary>How long a story row stands, in words: until the anchor its beat closes at.</summary>
+        public static string StoryLapseLine(string closesAnchor) => "It stands until " + StoryText.ClosesAt(closesAnchor) + ".";
+
+        /// <summary>
+        /// The houseguest who walks up with this story beat now, or null when nobody does: an open story beat, Approach,
+        /// whose catalogue beat names a <see cref="BeatTemplate.speaker"/> its cast fills with somebody other than the player
+        /// who is still in the house - in a season playing the story, a phase a houseguest can bring the player something
+        /// in (<see cref="NpcInvitation.PhaseAllows"/>), the player still in the game. One pure test: the story rows, their
+        /// <see cref="Ask.IsCurrent"/>, and the director's Pull, which leaves such a beat to the walk-up while asks are on.
+        /// </summary>
+        public static string StorySpeaker(EpisodeState s, HouseEventState beat)
+        {
+            if (s == null || beat == null || beat.resolved || !beat.IsStory || beat.surface != StorySurfaces.Approach) return null;
+            if (!EpisodeEngine.StoryOn(s) || !NpcInvitation.PhaseAllows(s.phase)
+                || s.Find(s.playerId)?.status != ContestantStatus.Active) return null;
+            string role = StoryText.BeatOf(beat)?.speaker;
+            if (string.IsNullOrEmpty(role)) return null;
+            string id = beat.cast?.FirstOrDefault(part => part != null && part.role == role)?.contestantId;
+            if (string.IsNullOrEmpty(id) || id == s.playerId || s.Find(id)?.status != ContestantStatus.Active) return null;
+            return id;
+        }
+
+        /// <summary>
         /// Every ask the houseguests can bring to the player in <paramref name="s"/>, in public order. Empty for no
         /// state, a player out of the game, and from the final Head of Household on.
         /// </summary>
@@ -156,9 +211,11 @@ namespace Gamesim.Simulation
         {
             var asks = new List<Ask>();
             if (s == null) return asks.AsReadOnly();
-            var reading = WaitingOnYou.Read(s);
-            if (!reading.Any) return asks.AsReadOnly();
             var seen = new HashSet<string>(StringComparer.Ordinal);
+            // The waiting list leaves story beats out, so the story's approaches are read before its early return.
+            AddStory(s, asks, seen);
+            var reading = WaitingOnYou.Read(s);
+            if (!reading.Any) return InPublicOrder(s, asks).ToList().AsReadOnly();
             // A card needs no offer, so the cards come before the invitations are read: a house with no offer lists one.
             // So does a pitch.
             AddCards(s, reading, asks, seen);
@@ -239,6 +296,33 @@ namespace Gamesim.Simulation
                     lapses = item.lapses, lapsesOnAdvance = item.lapsesOnAdvance,
                     line = PitchLine,
                     lapseLine = PitchLapseLine(item.lapses),
+                    whisper = false,
+                });
+            }
+        }
+
+        /// <summary>
+        /// The story beats a houseguest comes to the player with: each open beat <see cref="StorySpeaker"/> names somebody
+        /// for, oldest first, with that houseguest as the asker. Its kind is the catalogue beat (the event's content id), which
+        /// no deal's urgency ranks; it goes on the next advance when the story's own lapse takes it then
+        /// (<see cref="EpisodeEngine.LapsingOnAdvance"/>); it says <see cref="StoryLine"/>, never whispered.
+        /// </summary>
+        private static void AddStory(EpisodeState s, List<Ask> asks, HashSet<string> seen)
+        {
+            List<HouseEventState> lapsing = null;
+            foreach (var beat in EpisodeEngine.OpenStoryBeats(s))
+            {
+                string speaker = StorySpeaker(s, beat);
+                if (speaker == null || string.IsNullOrEmpty(beat.id) || !seen.Add(beat.id)) continue;
+                if (lapsing == null) lapsing = EpisodeEngine.LapsingOnAdvance(s);
+                asks.Add(new Ask(s, beat, speaker)
+                {
+                    source = Source.Story,
+                    recordId = beat.id, askerId = speaker, type = beat.contentId, week = beat.week,
+                    // Nothing on the waiting list's own clock takes it: the beat's closing anchor does, said in the lapse line.
+                    lapses = WaitingOnYou.Lapse.Open, lapsesOnAdvance = lapsing.Any(e => e.id == beat.id),
+                    line = StoryLine,
+                    lapseLine = StoryLapseLine(beat.closesAnchor),
                     whisper = false,
                 });
             }

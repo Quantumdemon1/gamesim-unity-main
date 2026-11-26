@@ -90,7 +90,7 @@ namespace Gamesim.Simulation
         /// <summary>After a side was taken: the one you backed comes to find you (A2 B3).</summary>
         private static BeatTemplate ThanksBeat(string id, string role) => new BeatTemplate
         {
-            id = id, surface = StorySurfaces.Approach, venue = Yard,
+            id = id, surface = StorySurfaces.Approach, venue = Yard, speaker = role,
             title = "Thanks for Having My Back", summary = "The houseguest you backed in a fight comes to find you.",
             text = "{" + role + "} finds you in the backyard. \"You didn't have to do that the other day. I won't forget it.\"",
             lapse = "not-now",
@@ -781,7 +781,7 @@ namespace Gamesim.Simulation
             beats = ThreeActs(
                 new BeatTemplate
                 {
-                    id = "discovery", surface = StorySurfaces.Approach, venue = Storage, title = "Act I · Discovery",
+                    id = "discovery", surface = StorySurfaces.Approach, venue = Storage, title = "Act I · Discovery", speaker = "OFFERER",
                     summary = "A houseguest proposes a secret alliance, just the two of you.",
                     text = "{OFFERER} corners you in the storage room with a proposition. \"I know we haven't always seen eye to eye, but what if we worked together? Just us. Nobody else knows.\"",
                     lapse = "not-now",
@@ -930,7 +930,7 @@ namespace Gamesim.Simulation
             {
                 new BeatTemplate
                 {
-                    id = "sizing-up", surface = StorySurfaces.Approach, venue = HohRoom, closes = StoryAnchors.NomsSet,
+                    id = "sizing-up", surface = StorySurfaces.Approach, venue = HohRoom, closes = StoryAnchors.NomsSet, speaker = "HOH",
                     title = "The Agenda", summary = "The Head of Household calls you up and asks a lot of questions.",
                     text = "{HOH} calls you up to the HoH room and is very friendly about it, and asks a lot of questions: who you are close to, what you think of the week, what you would do in {HOH.their} shoes.",
                     lapse = "keep-light",
@@ -974,7 +974,7 @@ namespace Gamesim.Simulation
             {
                 new BeatTemplate
                 {
-                    id = "word-gets-back", surface = StorySurfaces.Approach, venue = Hallway,
+                    id = "word-gets-back", surface = StorySurfaces.Approach, venue = Hallway, speaker = "TELLER",
                     title = "Behind Your Back", summary = "A houseguest has been talking about you behind your back.",
                     text = "{TELLER} pulls you aside. \"I probably shouldn't tell you this, but {GOSSIP} has been talking about you. A lot.\"",
                     lapse = "let-slide",

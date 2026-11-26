@@ -472,29 +472,8 @@ namespace Gamesim.Episode
             return ObjectiveWords.For(state);
         }
 
-        /// <summary>A phase in the one or two words the week chip has room for.</summary>
-        public static string PhaseShort(EpisodePhase phase)
-        {
-            switch (phase)
-            {
-                case EpisodePhase.Social: return "Free time";
-                case EpisodePhase.HoH: return "HoH comp";
-                case EpisodePhase.Nomination: return "Nominations";
-                case EpisodePhase.VetoSelection: return "Veto draw";
-                case EpisodePhase.Veto: return "Veto comp";
-                case EpisodePhase.VetoMeeting: return "Veto meeting";
-                case EpisodePhase.Campaign: return "Campaign";
-                case EpisodePhase.Eviction: return "Eviction";
-                case EpisodePhase.FinalHoHPart1:
-                case EpisodePhase.FinalHoHPart2:
-                case EpisodePhase.FinalHoHPart3: return "Final HoH";
-                case EpisodePhase.FinalEviction: return "Final eviction";
-                case EpisodePhase.Jury:
-                case EpisodePhase.JuryQuestioning:
-                case EpisodePhase.FinalSpeeches: return "Jury";
-                default: return "Finale";
-            }
-        }
+        /// <summary>A phase in the one or two words the week chip has room for (the one table, PhaseWords).</summary>
+        public static string PhaseShort(EpisodePhase phase) => PhaseWords.Short(phase);
 
         /// <summary>
         /// The week and where in it the house is, where the mockups put the day and the clock. The

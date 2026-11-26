@@ -19,15 +19,18 @@ namespace Gamesim.Tests.EditMode
         [Test]
         public void PhaseLine_SaysEveryPhaseInWords()
         {
-            Assert.That(EpisodeDirector.PhaseLine(EpisodePhase.FinalHoHPart2, 4), Is.EqualTo("Week 4 · Final HoH, Part 2 of 3"));
-            Assert.That(EpisodeDirector.PhaseLine(EpisodePhase.FinalEviction, 4), Is.EqualTo("Week 4 · The final decision"));
+            Assert.That(EpisodeDirector.PhaseLine(EpisodePhase.FinalHoHPart2, 4), Is.EqualTo("Final HoH, Part 2 of 3: the two who lost Part 1 compete"));
+            Assert.That(EpisodeDirector.PhaseLine(EpisodePhase.FinalEviction, 4), Is.EqualTo("Final eviction: the HoH evicts one of the other two"));
             Assert.That(EpisodeDirector.PhaseLine(EpisodePhase.JuryQuestioning, 4), Is.EqualTo("Jury questioning"));
-            Assert.That(EpisodeDirector.PhaseLine(EpisodePhase.VetoMeeting, 2), Is.EqualTo("Week 2 · Veto meeting"),
-                "An ordinary week's phase is the week chip's word under its week.");
+            Assert.That(EpisodeDirector.PhaseLine(EpisodePhase.VetoMeeting, 2), Is.EqualTo("Veto meeting: the holder decides whether to use the veto"),
+                "An ordinary week's phase is the week chip's word and what it means; the chip carries the week (UI-UX plan D15).");
             foreach (EpisodePhase phase in System.Enum.GetValues(typeof(EpisodePhase)))
             {
                 string line = EpisodeDirector.PhaseLine(phase, 4);
                 Assert.That(line, Is.Not.Null.And.Not.Empty, phase + " has a line.");
+                Assert.That(line, Is.EqualTo(PhaseWords.News(phase)), phase + ": the status line's words are the one table's.");
+                Assert.That(line, Does.Not.Contain("Week"), phase + ": the week chip says the week, the status line does not repeat it.");
+                Assert.That(EpisodeHud.PhaseShort(phase), Is.EqualTo(PhaseWords.Short(phase)), phase + ": the chip's word is the one table's.");
                 // A name run together from two words or more is the enum's, never the house's.
                 if (phase != EpisodePhase.HoH && phase.ToString().Skip(1).Any(char.IsUpper))
                     Assert.That(line, Does.Not.Contain(phase.ToString()), phase + " is said in words.");
@@ -39,7 +42,8 @@ namespace Gamesim.Tests.EditMode
         {
             var state = ContentCatalog.Create(20260929u);
             var phase = new EpisodeEvent { week = 4, phase = EpisodePhase.FinalHoHPart2, kind = "phase", text = "Week 4 · FinalHoHPart2" };
-            Assert.That(EpisodeDirector.StatusLine(state, phase), Is.EqualTo("Week 4 · Final HoH, Part 2 of 3"));
+            Assert.That(EpisodeDirector.StatusLine(state, phase), Is.EqualTo("Final HoH, Part 2 of 3: the two who lost Part 1 compete"),
+                "A phase change reads as news, without the week the chip already shows.");
             Assert.That(phase.text, Is.EqualTo("Week 4 · FinalHoHPart2"), "The logged text is left as it was.");
             var veto = new EpisodeEvent { week = 4, phase = EpisodePhase.VetoMeeting, kind = "veto",
                 text = "Maya declines to use the veto. Nominations stand." };

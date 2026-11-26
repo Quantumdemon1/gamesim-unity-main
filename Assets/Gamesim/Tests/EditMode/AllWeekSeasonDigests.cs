@@ -233,6 +233,9 @@ namespace Gamesim.Tests.EditMode
         /// at. ApplyFresh writes the shipped levels, which free talk slice 3 moves to 3, where a season offers no Late Nights
         /// opening beat and reads the Friends named earlier. Held at competition rules 5, the ring tower's, by name as well: the
         /// rules these seasons played when they were last replayed; ApplyFresh writes rules 6 since the trivia's switch-on.
+        /// Held at story rules 11, the role moments, by name too (plan 32 A-ON's audit, HOLD): these seasons measure the
+        /// all-week rules, not the house talk, and were measured at 11; ApplyFresh writes 12 since A-ON, where the paid listen-in
+        /// the busy player buys is refused and a witness reads the house talk's conversations.
         /// </summary>
         internal static EpisodeState Held(int size, uint seed)
         {
@@ -240,6 +243,7 @@ namespace Gamesim.Tests.EditMode
             s.story.talkRules = TalkRules.Chemistry;
             s.story.mindRules = MindRules.Off;
             s.competitionRulesVersion = CompetitionRules.RingTower;
+            s.story.rulesVersion = StoryRules.Roles;
             return s;
         }
 

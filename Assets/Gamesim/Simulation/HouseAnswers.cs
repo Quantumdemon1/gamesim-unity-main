@@ -35,7 +35,7 @@ namespace Gamesim.Simulation
     /// (<see cref="Fill"/>): the first name, "you" for the player, capitalised where it opens the line.
     ///
     /// <para>S1 holds the vote bank (Stack A, 75 lines), the read's two lines and the notebook's words. A bank freezes with
-    /// its rules version: once <see cref="StoryRules.Current"/> reaches 12, a change to these lines needs a new level.</para>
+    /// its rules version: <see cref="StoryRules.Current"/> reached 12 at A-ON, so a change to these lines needs a new level.</para>
     ///
     /// <para>Which line of a slot a vote answer takes freezes with it (<see cref="VoteLineIndex"/>): no two voters in one
     /// voice and manner give the same line in a week, and nobody gives last week's line again in the same manner, while the

@@ -581,7 +581,8 @@
 # 11340 = 11339 + 1, 2026-11-23. One phone input-hint case checks the touch wording.
 # 11351 = 11340 + 11, 2026-11-25. Codex's commitment story (StoryMechanicsTests): new or existing agreement, pending offer, refusal, cooldown and older saves.
 # 11356 = 11351 + 5, 2026-11-26. A talk from the campaign board opens on what you came for: CampaignTalkTests 5 (all also in the dotnet subset).
-Gamesim.EditModeTests 11356
+# 11360 = 11356 + 4, 2026-11-26. A campaign conversation's "Next voter" way on: CampaignTalkTests 4 more (all also in the dotnet subset).
+Gamesim.EditModeTests 11360
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and
@@ -908,7 +909,8 @@ Gamesim.EditModeTests 11356
 # 1721 = 1704 + 16 landscape phone cases + 1 waiting-nominee case.
 # 1726 = 1721 + 5, 2026-11-25. Codex's sound settings (Audio 2), caption timing (CaptionTime 1) and the goodbye on short arrivals (StagedExit 2).
 # 1728 = 1726 + 2, 2026-11-26. A talk from the campaign board opens on the vote question or the plea (ConversationIntent 2).
-Gamesim.PlayModeTests 1728
+# 1729 = 1728 + 1, 2026-11-26. A campaign conversation's "Next voter" way on, built and pressed (CampaignNextVoter 1).
+Gamesim.PlayModeTests 1729
 # The UMA build of the same assembly, read by a plan built without -WithoutUma. 1281 = the 1241 above + the
 # 40 tests that compile only under GAMESIM_UMA, as run at r1 (2026-10-16): in EpisodePlayModeTests,
 # GroundedFarewell 11, Creator 9, HouseLife 8, Emotes 3, OpeningCaptures 2, and one each in CreatorEntry,
@@ -1159,7 +1161,8 @@ Gamesim.PlayModeTests 1728
 # 1766 = 1749 + 16 landscape phone cases + 1 waiting-nominee case.
 # 1772 = 1766 + 6, 2026-11-25. The same 5, and the floor walk that settles into standing (Travel 1, UMA build only).
 # 1774 = 1772 + 2, 2026-11-26. The same 2 ConversationIntent cases: a talk from the campaign board opens on the vote question or the plea.
-Gamesim.PlayModeTests.UmaBuild 1774
+# 1775 = 1774 + 1, 2026-11-26. The same CampaignNextVoter case: a campaign conversation's "Next voter" way on.
+Gamesim.PlayModeTests.UmaBuild 1775
 # The UMA bodies: runs only where the GAMESIM_UMA define is set (the working tree and the D: copy).
 # 82 = the 89 run on 2026-10-15, less the 7 farewell probes moved to Gamesim.Uma.DiagnosticsPlayModeTests;
 # 85 = 82 + the 3 farewell readiness decision tests (UmaFarewellReadinessDecisionPlayModeTests, 2026-10-16);
@@ -1663,4 +1666,5 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # disjoint cases, so the floor is their sum (the trivia landing of 23 November 2026). Counted from the two sides.
 # 23448 = 23438 + 10, 2026-11-25. The commitment story's new cases that run without Unity (its two save-file checks run in Unity only).
 # 23453 = 23448 + 5, 2026-11-26. The same 5 CampaignTalkTests cases the EditMode floor counts.
-Gamesim.SimulationTests 23453
+# 23457 = 23453 + 4, 2026-11-26. The same 4 CampaignTalkTests cases the EditMode floor counts ("Next voter").
+Gamesim.SimulationTests 23457

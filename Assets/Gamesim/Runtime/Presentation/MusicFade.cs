@@ -100,6 +100,92 @@ namespace Gamesim.Presentation
         public static float Season(float level, float target, float seconds) =>
             Step(level, target, target > level ? SeasonFadeIn : SeasonFadeOut, seconds);
 
+        /// <summary>Seconds a duck takes to fall from full to its level.</summary>
+        public const float DuckIn = 0.3f;
+
+        /// <summary>Seconds a duck takes to come back up from its level to full.</summary>
+        public const float DuckOut = 0.6f;
+
+        /// <summary>The music's level, as a share of where it was, while the game menu card is open: about a third.</summary>
+        public const float PausedMusicDuck = 0.35f;
+
+        /// <summary>The rooms' beds' level while the game menu card is open: half.</summary>
+        public const float PausedBedDuck = 0.5f;
+
+        /// <summary>
+        /// The music's level under one of the game's big moments: the diary room, a vote, key or jury
+        /// reveal, and a ceremony staged in the house. Half, so the moment's own cue stands clear of
+        /// the bed: at full, the vote's cue is only about 4 dB louder than the bed.
+        /// </summary>
+        public const float MomentMusicDuck = 0.5f;
+
+        /// <summary>
+        /// How far the music is ducked: to <see cref="PausedMusicDuck"/> with the game menu card open,
+        /// to <see cref="MomentMusicDuck"/> under a big moment, and not at all otherwise. The Settings
+        /// frame is not the card, so its sliders are heard at the level they set.
+        /// </summary>
+        public static float MusicDuckFor(bool gameMenuOpen, bool bigMoment) =>
+            gameMenuOpen ? PausedMusicDuck : bigMoment ? MomentMusicDuck : 1f;
+
+        /// <summary>How far the rooms' beds are ducked: to <see cref="PausedBedDuck"/> with the game menu card open, and not at all otherwise.</summary>
+        public static float BedDuckFor(bool gameMenuOpen) => gameMenuOpen ? PausedBedDuck : 1f;
+
+        /// <summary>
+        /// A duck's level moved toward <paramref name="target"/> for <paramref name="seconds"/>, in a
+        /// straight line: a fall from full to <paramref name="deepest"/> takes <see cref="DuckIn"/>, and
+        /// the way back from it to full takes <see cref="DuckOut"/>, so a duck turned round halfway
+        /// takes half the time. <paramref name="deepest"/> is the level of the duck being entered or
+        /// left (see <see cref="MusicDuck"/>). Time that did not pass moves nothing.
+        /// </summary>
+        public static float Duck(float level, float target, float deepest, float seconds)
+        {
+            level = float.IsNaN(level) ? 1f : Clamp01(level);
+            target = float.IsNaN(target) ? 1f : Clamp01(target);
+            if (float.IsNaN(seconds) || seconds <= 0f) return level;
+            float floor = float.IsNaN(deepest) ? target : Clamp01(deepest);
+            floor = Math.Min(floor, Math.Min(level, target));
+            float span = 1f - floor;
+            if (span <= 0f || level == target) return target;
+            return Step(level, target, (target < level ? DuckIn : DuckOut) / span, seconds);
+        }
+
         private static float Clamp01(float value) => value < 0f ? 0f : value > 1f ? 1f : value;
+    }
+
+    /// <summary>
+    /// One duck: a share of a voice's level, 1 when nothing holds it down, eased toward what the
+    /// game asks for by <see cref="MusicFade.Duck"/>. The house keeps one for its music and one for
+    /// the rooms' beds; the cues have none and are never ducked.
+    ///
+    /// <para>It remembers how deep it is going, or has rested, so a fall and a return each move at
+    /// one rate for that duck: from a third back to full in 0.6 s, and from half back to full in
+    /// 0.6 s too. Asking for the level it is already heading to changes nothing, so the director
+    /// asks every frame.</para>
+    /// </summary>
+    public sealed class MusicDuck
+    {
+        private float deepest = 1f;
+
+        /// <summary>Where the duck is now: 1 is not ducked.</summary>
+        public float Level { get; private set; } = 1f;
+
+        /// <summary>Where the duck is heading.</summary>
+        public float Target { get; private set; } = 1f;
+
+        /// <summary>Asks the duck to head for <paramref name="target"/>, 0 to 1 (not a number is 1).</summary>
+        public void Ask(float target)
+        {
+            target = float.IsNaN(target) ? 1f : target < 0f ? 0f : target > 1f ? 1f : target;
+            Target = target;
+            if (target < deepest) deepest = target;
+        }
+
+        /// <summary>Moves the duck on by <paramref name="seconds"/>.</summary>
+        public void Tick(float seconds)
+        {
+            Level = MusicFade.Duck(Level, Target, deepest, seconds);
+            // Arrived, it rests here, and the way back is measured from here.
+            if (Level == Target) deepest = Target;
+        }
     }
 }

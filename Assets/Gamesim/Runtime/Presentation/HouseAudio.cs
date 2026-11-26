@@ -78,6 +78,30 @@ namespace Gamesim.Presentation
         /// <summary>How loud the season's bed is now, 0 to 1 of its full level, as its fade has it.</summary>
         public float SeasonLevel => seasonLevel;
 
+        // The ducks (MusicDuck): the music and the rooms' beds held down while the game menu card is
+        // open, and the music under the big moments. A share beside each voice's own fade, on the
+        // music's clock; the cues have none.
+        private readonly MusicDuck musicDuck = new MusicDuck();
+        private readonly MusicDuck bedDuck = new MusicDuck();
+
+        /// <summary>The music's duck now: the share of its level both music voices play at, 1 when nothing holds it down.</summary>
+        public float MusicDuckLevel => musicDuck.Level;
+
+        /// <summary>The rooms' beds' duck now, 1 when nothing holds them down.</summary>
+        public float BedDuckLevel => bedDuck.Level;
+
+        /// <summary>
+        /// The levels the music and the rooms' beds should be ducked to, each 0 to 1 (1 is not
+        /// ducked): the director asks every frame, from what is on screen. Each duck eases there on
+        /// the music's clock (<see cref="MusicFade.Duck"/>), so asking again changes nothing, and the
+        /// music's state (<see cref="SetMusic"/>) is not touched.
+        /// </summary>
+        public void SetDuck(float music, float beds)
+        {
+            musicDuck.Ask(music);
+            bedDuck.Ask(beds);
+        }
+
         /// <summary>Whether the season's bed is paused where it was, to carry on from there when it comes back.</summary>
         public bool SeasonPaused => seasonVoice == SeasonVoice.Paused;
 
@@ -276,14 +300,14 @@ namespace Gamesim.Presentation
             WriteBedVolumes();
         }
 
-        /// <summary>Each bed voice's volume: its fade's level at its bed's peak, a share of the effects volume.</summary>
+        /// <summary>Each bed voice's volume: its fade's level at its bed's peak, a share of the effects volume, under the beds' duck.</summary>
         private void WriteBedVolumes()
         {
             for (int i = 0; i < bedVoices.Length; i++)
             {
                 var source = bedVoices[i];
                 if (source == null) continue;
-                source.volume = volume * effectsShare * RoomToneBlend.PeakOf(beds.KeyOf(i)) * beds.LevelOf(i);
+                source.volume = volume * effectsShare * RoomToneBlend.PeakOf(beds.KeyOf(i)) * beds.LevelOf(i) * bedDuck.Level;
             }
         }
 
@@ -394,15 +418,19 @@ namespace Gamesim.Presentation
         /// ends (useIntroAudio.ts), and the season's bed pauses where it is, to carry on from there
         /// when it comes back (useBackgroundMusic.ts). Called once a frame, through
         /// <see cref="TickMusicFrame"/>, on unscaled time; or by a test under
-        /// <see cref="ManualMusicClock"/>, with exactly the time it says and no clamp.
+        /// <see cref="ManualMusicClock"/>, with exactly the time it says and no clamp. The ducks
+        /// (<see cref="SetDuck"/>) move on the same clock.
         /// </summary>
         public void TickMusic(float seconds)
         {
             if (!initialized) return;
             themeLevel = MusicFade.Theme(themeLevel, themeTarget, seconds);
             seasonLevel = MusicFade.Season(seasonLevel, seasonTarget, seconds);
+            musicDuck.Tick(seconds);
+            bedDuck.Tick(seconds);
             ReleaseSilentVoices();
             WriteMusicVolumes();
+            WriteBedVolumes();
         }
 
         /// <summary>
@@ -550,7 +578,7 @@ namespace Gamesim.Presentation
         }
 
         /// <summary>
-        /// Each voice's volume: its fade's level at its peak, under the preferences.
+        /// Each voice's volume: its fade's level at its peak, under the preferences and the music's duck.
         ///
         /// <para>Written every frame and on every change of preference, so the master volume and
         /// reduced audio reach a fade in progress at once - the reference build reads its master
@@ -559,7 +587,7 @@ namespace Gamesim.Presentation
         /// </summary>
         private void WriteMusicVolumes()
         {
-            float preferences = volume * (ReducedAudio ? 0.5f : 1f) * musicShare;
+            float preferences = volume * (ReducedAudio ? 0.5f : 1f) * musicShare * musicDuck.Level;
             if (themeSource != null)
             {
                 themeSource.mute = Muted;

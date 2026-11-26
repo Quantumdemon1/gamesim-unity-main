@@ -45,7 +45,20 @@ namespace Gamesim.Episode
             bool show = opening != null && opening.IsPlaying && !opening.WasSkipped;
             audioBed.SetMusic(MusicFor(musicOn, setup, show, opening != null ? opening.CurrentBeat : null,
                 opening != null && opening.MusicHeld, opening != null && opening.MusicClosing));
+            // The music steps back while the game menu card is open (the rooms' beds with it) and
+            // under the big moments; the Settings frame is not the card, so its sliders are heard
+            // at the level they set. A level only: the state asked for above is untouched.
+            bool menuCard = IsGameMenuOpen;
+            audioBed.SetDuck(MusicFade.MusicDuckFor(menuCard, IsMusicDuckMoment), MusicFade.BedDuckFor(menuCard));
         }
+
+        /// <summary>
+        /// Whether one of the moments the music steps back for is on: the diary room, a vote, key or
+        /// jury reveal running, or a ceremony staged in the house.
+        /// </summary>
+        private bool IsMusicDuckMoment =>
+            IsDiaryOpen || IsCeremonyStaged || JuryRevealPlaying
+            || (voteReveal != null && voteReveal.IsPlaying) || (keyCeremony != null && keyCeremony.IsPlaying);
 
         /// <summary>
         /// The music rule as a question: silence with the music off or on a setup screen, the theme

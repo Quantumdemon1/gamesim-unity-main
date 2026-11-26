@@ -383,6 +383,55 @@ namespace Gamesim.Tests.PlayMode
         }
 
         /// <summary>
+        /// The game menu card steps the music back to about a third, and the rooms' beds to half,
+        /// over 0.3 s; the Settings frame it opens does not, so its sliders are heard at the level
+        /// they set; and Resume brings both back over 0.6 s. The duck is a level beside the bed's own
+        /// fade: the bed plays on, lower, and the music asked for never changes.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator Music_TheGameMenuLowersTheMusicAndItsSettingsDoNot()
+        {
+            var audio = SteppedAudio();
+            Assert.That(audio.CurrentMusic, Is.EqualTo(HouseAudio.Music.Season), "The house plays the season's bed.");
+            audio.TickMusic(MusicFade.SeasonFadeIn);
+            float full = audio.Volume * MusicFade.SeasonPeak;
+            Assert.That(audio.SeasonVolume, Is.EqualTo(full).Within(1e-5f), "Nothing holds the bed down in the house.");
+
+            director.OpenSettings();
+            yield return null;
+            Assert.That(director.IsGameMenuOpen, Is.True, "The house's door opens the game menu card.");
+            Assert.That(audio.MusicDuckLevel, Is.EqualTo(1f), "The music steps back on its clock, not at once:");
+            audio.TickMusic(MusicFade.DuckIn / 2f);
+            Assert.That(audio.MusicDuckLevel, Is.EqualTo(1f - (1f - MusicFade.PausedMusicDuck) / 2f).Within(1e-4f), "halfway down after 0.15 s,");
+            audio.TickMusic(MusicFade.DuckIn / 2f);
+            Assert.That(audio.SeasonVolume, Is.EqualTo(full * MusicFade.PausedMusicDuck).Within(1e-5f), "about a third 0.3 s after the card opened,");
+            Assert.That(audio.BedDuckLevel, Is.EqualTo(MusicFade.PausedBedDuck), "and the rooms' beds at half.");
+            Assert.That(audio.SeasonLevel, Is.EqualTo(1f), "The bed's own fade has not moved: it plays on, lower.");
+
+            director.ShowSettingsSection(Gamesim.Presentation.SettingsSection.Sound);
+            yield return null;
+            Assert.That(director.AreSettingsSectionsOpen, Is.True, "The card's Settings opens the frame, on Sound here,");
+            audio.TickMusic(MusicFade.DuckOut);
+            Assert.That(audio.SeasonVolume, Is.EqualTo(full).Within(1e-5f), "where nothing is held down, so the sliders are judged at the true level,");
+            Assert.That(audio.BedDuckLevel, Is.EqualTo(1f), "the rooms' beds included.");
+
+            director.BackToGameMenu();
+            yield return null;
+            audio.TickMusic(MusicFade.DuckIn);
+            Assert.That(audio.SeasonVolume, Is.EqualTo(full * MusicFade.PausedMusicDuck).Within(1e-5f), "Back on the card, the music steps back again.");
+
+            director.ClosePanels();
+            yield return null;
+            Assert.That(director.IsGameMenuOpen, Is.False, "Resume closes the card");
+            audio.TickMusic(MusicFade.DuckOut / 2f);
+            Assert.That(audio.MusicDuckLevel, Is.GreaterThan(MusicFade.PausedMusicDuck).And.LessThan(1f), "and the music comes back up over 0.6 s,");
+            audio.TickMusic(MusicFade.DuckOut / 2f);
+            Assert.That(audio.SeasonVolume, Is.EqualTo(full).Within(1e-5f), "to where it was,");
+            Assert.That(audio.BedDuckLevel, Is.EqualTo(1f), "with the rooms' beds.");
+            Assert.That(audio.CurrentMusic, Is.EqualTo(HouseAudio.Music.Season), "The music asked for never changed.");
+        }
+
+        /// <summary>
         /// What a reset of the audio system does to the house's sound, without the reset: every source
         /// the audio owns stopped, behind its bookkeeping's back.
         /// </summary>

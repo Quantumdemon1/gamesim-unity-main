@@ -661,7 +661,37 @@ namespace Gamesim.Episode
                 Distance = 4.2f, Pitch = 18f, Yaw = 12f, FieldOfView = 38f, Rooms = CompetitionRooms,
             });
             competitionEntranceFramed = true;
+            competitionEntranceFramedAt = Time.unscaledTime;
             if (competitionShow == null) competitionFramed = true;
+        }
+
+        /// <summary>
+        /// The longest the entrance close-up holds, in seconds of the real clock, before the yard wide
+        /// takes it over with whoever is still walking in. The close-up comes first, so every arrival
+        /// starts out of its frame; held until the last houseguest stood on their mark, it kept the
+        /// game's "taking their places" over a station-sized view for as long as the assembly's 30 s.
+        /// </summary>
+        public const float EntranceHoldSeconds = 4f;
+
+        /// <summary>Whether the entrance close-up is up and has held its time; a paused assembly's time does not count.</summary>
+        private bool CompetitionEntranceHeld
+            => competitionEntranceFramed && Time.unscaledTime - competitionEntranceFramedAt >= EntranceHoldSeconds;
+
+        /// <summary>Whether the player let their own game's assembly view go (Skip assembly view): its screen is up and past it.</summary>
+        private bool CompetitionAssemblySkipped
+            => challengeRun != null && competitionScreen != null && competitionScreen.IsShowing && !competitionScreen.IsAssembling;
+
+        /// <summary>
+        /// The entrance close-up gives way to the yard wide: a show's own wide, or an own game's (the ring
+        /// tower's for the tower). The arrivals were placed under the close-up, so the wide shows them
+        /// walking in, not appearing. A shot the viewer's input let go is not taken back.
+        /// </summary>
+        private void WidenCompetitionEntrance()
+        {
+            competitionEntranceFramed = false;
+            if (cameraRig == null || !cameraRig.HasShot) return;
+            if (competitionShow != null) FrameCompetitionShow();
+            else FrameCompetition();
         }
 
         private void FrameCompetition()

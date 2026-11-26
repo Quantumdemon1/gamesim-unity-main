@@ -46,6 +46,7 @@ namespace Gamesim.Episode
         private bool competitionArenaStaging;
         private bool competitionEffortFramed;
         private bool competitionEntranceFramed;
+        private float competitionEntranceFramedAt;
         private bool competitionArenaWasReady;
         // The house approaches the deck from -Z. Matching rows face +Z, with the
         // instrument ahead and the native approach behind its actor. Path corner
@@ -821,11 +822,10 @@ namespace Gamesim.Episode
             if(player==null){CompetitionArenaRefused("The player's body is gone.");return;}
             bool ready = CompetitionArenaReady;
             competitionArenaWasReady |= ready;
-            if (!show && competitionEntranceFramed && ready)
-            {
-                competitionEntranceFramed = false;
-                if (cameraRig != null && cameraRig.HasShot) FrameCompetition();
-            }
+            // The entrance close-up gives way to the yard wide on whichever comes first: the arena is
+            // ready, the player skips the assembly view, or the close-up has held EntranceHoldSeconds.
+            if (!show && competitionEntranceFramed && (ready || CompetitionAssemblySkipped || CompetitionEntranceHeld))
+                WidenCompetitionEntrance();
             bool paused=CompetitionArenaPaused;
             player.PauseActivityMove(competitionPlayerOwner,paused);
             bool castStaged=npcMeetings!=null && npcMeetings.HasCompetitionStage;
@@ -837,7 +837,7 @@ namespace Gamesim.Episode
             }
             if(castStaged)npcMeetings.SetCompetitionStagePaused(paused);
             SyncCompetitionInstruments();
-            if(paused){competitionAssemblyDeadline+=Time.unscaledDeltaTime;return;}
+            if(paused){competitionAssemblyDeadline+=Time.unscaledDeltaTime;competitionEntranceFramedAt+=Time.unscaledDeltaTime;return;}
             if(playerReleased)TickCompetitionShowPlayerReleased();
             else if(playerStationed)
                 player.GetComponent<CharacterPresentation>()?.SetFacing(player.ActivityHasArrived(competitionPlayerOwner)?competitionPlayerStation.Facing:float.NaN);

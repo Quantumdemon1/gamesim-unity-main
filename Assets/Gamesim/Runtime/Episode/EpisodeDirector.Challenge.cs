@@ -707,6 +707,63 @@ namespace Gamesim.Episode
             competitionFramed = true;
         }
 
+        /// <summary>The soft light on the player at their competition station, by its name.</summary>
+        public const string CompetitionStationFillName = "Competition station fill";
+        /// <summary>The station fill's strength: a fill, about the ceremony's reaction fill, never a second key.</summary>
+        public const float CompetitionStationFillIntensity = 1.5f;
+        /// <summary>How far the station fill reaches, in metres: past the player, not across the yard (never more than 4).</summary>
+        public const float CompetitionStationFillRange = 3.5f;
+        /// <summary>The height over the station the fill aims at: the face, with the hands an apparatus raises just below it.</summary>
+        public const float CompetitionStationFillAim = 1.55f;
+        private Light competitionStationFill;
+
+        /// <summary>Whether the station fill is lit, for a test.</summary>
+        public bool CompetitionStationFillShowing => competitionStationFill != null && competitionStationFill.enabled;
+
+        /// <summary>The station fill itself while it is lit, for a test; null otherwise.</summary>
+        public Light CompetitionStationFill => CompetitionStationFillShowing ? competitionStationFill : null;
+
+        /// <summary>
+        /// The player lit at their station while the competition's own shot holds the camera. The yard has
+        /// no house lamp, so the lit frames and gates read much brighter than the face and raised hands in
+        /// front of them. A soft, unshadowed, neutral spot from the camera's side onto the station at head
+        /// height, as the ceremony's reaction fill lights a seated face. The arena's every frame: it follows
+        /// the camera from the close-up to the wide (the ring tower's included) and to an endurance shot, and
+        /// goes as soon as the shot is not the competition's - reduced motion takes none, the viewer's input
+        /// lets one go - or the arena ends. It reads the station and the camera, never the season.
+        /// </summary>
+        private void SyncCompetitionStationFill()
+        {
+            if (!IsFramingCompetition || competitionPlayerStation == null) { RemoveCompetitionStationFill(); return; }
+            if (competitionStationFill == null)
+            {
+                var lamp = new GameObject(CompetitionStationFillName);
+                lamp.transform.SetParent(transform, false);
+                competitionStationFill = lamp.AddComponent<Light>();
+                competitionStationFill.type = LightType.Spot;
+                competitionStationFill.shadows = LightShadows.None;
+                competitionStationFill.color = Color.white;
+                competitionStationFill.intensity = CompetitionStationFillIntensity;
+                competitionStationFill.range = CompetitionStationFillRange;
+                competitionStationFill.innerSpotAngle = 40f;
+                competitionStationFill.spotAngle = 70f;
+            }
+            // From the camera's side as it stands now: 1.8 m toward it, a little to its left and above the face.
+            var aim = competitionPlayerStationPosition + Vector3.up * CompetitionStationFillAim;
+            var offset = Quaternion.Euler(0f, cameraRig.transform.eulerAngles.y, 0f) * new Vector3(-.4f, .35f, -1.8f);
+            competitionStationFill.transform.SetPositionAndRotation(aim + offset, Quaternion.LookRotation(-offset));
+            competitionStationFill.enabled = true;
+        }
+
+        /// <summary>The station fill off and gone: the arena's end, a cancel or a commit, or a shot that is not the competition's.</summary>
+        private void RemoveCompetitionStationFill()
+        {
+            if (competitionStationFill == null) return;
+            competitionStationFill.enabled = false;
+            Destroy(competitionStationFill.gameObject);
+            competitionStationFill = null;
+        }
+
         private void ChallengePanel()
         {
             // While a game is being played its screen is the decision: the panel and the column

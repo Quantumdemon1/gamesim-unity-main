@@ -826,6 +826,8 @@ namespace Gamesim.Episode
             // ready, the player skips the assembly view, or the close-up has held EntranceHoldSeconds.
             if (!show && competitionEntranceFramed && (ready || CompetitionAssemblySkipped || CompetitionEntranceHeld))
                 WidenCompetitionEntrance();
+            // The player lit at their station while the competition's own shot holds the camera.
+            SyncCompetitionStationFill();
             bool paused=CompetitionArenaPaused;
             player.PauseActivityMove(competitionPlayerOwner,paused);
             bool castStaged=npcMeetings!=null && npcMeetings.HasCompetitionStage;
@@ -963,6 +965,8 @@ namespace Gamesim.Episode
                 // The yard as it was, whatever ended the arena - a throw in the teardown above included;
                 // and a show running on it is over.
                 competitionArenaStaging=false;
+                // The station fill goes with the arena, whatever ended it.
+                RemoveCompetitionStationFill();
                 if(competitionYard.State==CompetitionYardDressing.YardState.Competition)competitionYard.Restore();
                 EndCompetitionShowState();
             }

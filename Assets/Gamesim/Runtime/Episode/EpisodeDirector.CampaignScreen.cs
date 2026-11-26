@@ -132,6 +132,43 @@ namespace Gamesim.Episode
         }
 
         /// <summary>
+        /// The houseguests the player has had a conversation with in this week's campaign, and the
+        /// season and week they were counted in. View state: never saved, nothing in the season reads
+        /// it, and a new week's campaign starts it empty.
+        /// </summary>
+        private readonly HashSet<string> campaignTalkedTo = new HashSet<string>();
+        private string campaignTalkedSession;
+        private int campaignTalkedWeek = -1;
+
+        /// <summary>
+        /// A campaign conversation's way on (UI-UX plan D11): "Next voter: Dana", pinned under the
+        /// page's choices, for the next voter on the board the player has not talked to this
+        /// campaign (<see cref="CampaignTalk.NextVoter"/>). Pressed, it does what that voter's "Talk
+        /// to" on the board does (<see cref="TalkFromCampaignBoard"/>): this conversation closes and
+        /// the walk over begins, knowing what the player comes for. The board itself stays at the
+        /// station. Counts this conversation as talked first, and draws only with <paramref name="draw"/>:
+        /// the topics' wheel holds its six topics alone, and a level open inside a page (a verb's
+        /// people, a plea's approaches) is answered or gone back from first. Nothing outside the
+        /// campaign or once nobody is left, and nothing is committed.
+        /// </summary>
+        private void NextVoterWayOn(EpisodeState state, ContestantState npc, bool draw)
+        {
+            if (state == null || npc == null || state.phase != EpisodePhase.Campaign) return;
+            if (campaignTalkedWeek != state.week || campaignTalkedSession != state.sessionId)
+            {
+                campaignTalkedTo.Clear();
+                campaignTalkedWeek = state.week;
+                campaignTalkedSession = state.sessionId;
+            }
+            campaignTalkedTo.Add(npc.id);
+            if (!draw || hud == null) return;
+            var next = CampaignTalk.NextVoter(state, npc.id, campaignTalkedTo);
+            if (next == null) return;
+            string id = next.id;
+            hud.ConversationWayOn(CampaignTalk.NextVoterCaption(next.name), () => TalkFromCampaignBoard(id));
+        }
+
+        /// <summary>
         /// What this week's rules let the player do in a conversation on the campaign, in plain words
         /// with where each stands: the question and the look, both free and once a week each; a vote
         /// promise; from the block, a plea to each voter; and a call in each of the player's pacts

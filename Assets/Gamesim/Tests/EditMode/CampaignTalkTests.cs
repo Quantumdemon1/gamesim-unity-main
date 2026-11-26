@@ -13,6 +13,10 @@ namespace Gamesim.Tests.EditMode
     /// else's talk to a voter, and the topics for everybody else. A read only: the season is as it
     /// was. Runs without Unity; the built conversation is checked in PlayMode
     /// (EpisodePlayModeTests.ConversationIntent.cs).
+    ///
+    /// <para>And the conversation's way on, "Next voter" (UI-UX plan D11): the next voter on the
+    /// board not yet talked to, by first name, never outside the campaign. Built and pressed in
+    /// PlayMode (EpisodePlayModeTests.CampaignNextVoter.cs).</para>
     /// </summary>
     public sealed class CampaignTalkTests
     {
@@ -120,6 +124,96 @@ namespace Gamesim.Tests.EditMode
                 uint random = s.randomState;
                 foreach (var person in s.contestants) CampaignTalk.For(s, person.id);
                 Assert.That(JsonConvert.SerializeObject(s), Is.EqualTo(before), "Where a talk opens is a read: the state is as it was,");
+                Assert.That(s.randomState, Is.EqualTo(random), "and nothing is drawn from the season's stream.");
+            }
+        }
+
+        // ------------------------------------------------------------ the way on: "Next voter" (UI-UX plan D11)
+
+        /// <summary>
+        /// A plain campaign: the player and seven others, hg-1 at the head of the house, hg-2 and hg-3
+        /// on the block, so hg-4 to hg-7 vote with the player, in that order on the board.
+        /// </summary>
+        private static EpisodeState PlainCampaign()
+        {
+            var s = new EpisodeState { sessionId = "plain", playerId = "player", phase = EpisodePhase.Campaign, week = 2 };
+            s.contestants.Add(new ContestantState { id = "player", name = "You", isPlayer = true, status = ContestantStatus.Active });
+            for (int i = 1; i <= 7; i++)
+                s.contestants.Add(new ContestantState { id = "hg-" + i, name = "Name" + i + " Surname", status = ContestantStatus.Active });
+            s.hohId = "hg-1";
+            s.nominees = new List<string> { "hg-2", "hg-3" };
+            return s;
+        }
+
+        private static string Next(EpisodeState s, string talkingTo, params string[] talked) =>
+            CampaignTalk.NextVoter(s, talkingTo, new HashSet<string>(talked))?.id;
+
+        [Test]
+        public void TheNextVoterIsTheNextOnTheBoardNotYetTalkedTo()
+        {
+            var s = PlainCampaign();
+            Assert.That(EpisodeEngine.Voters(s).Select(v => v.id), Is.EqualTo(new[] { "player", "hg-4", "hg-5", "hg-6", "hg-7" }), "The board's voters, in order.");
+            Assert.That(Next(s, null), Is.EqualTo("hg-4"), "Nobody talked to yet: the head of the board.");
+            Assert.That(Next(s, "hg-4", "hg-4"), Is.EqualTo("hg-5"), "From a voter, the one after them.");
+            Assert.That(Next(s, "hg-5", "hg-4", "hg-5"), Is.EqualTo("hg-6"));
+            Assert.That(Next(s, "hg-4", "hg-4", "hg-5"), Is.EqualTo("hg-6"), "A voter already talked to is passed over.");
+            Assert.That(Next(s, "hg-7", "hg-5", "hg-6", "hg-7"), Is.EqualTo("hg-4"), "Past the end of the board, round to its head.");
+            Assert.That(Next(s, "hg-6", "hg-6"), Is.EqualTo("hg-7"), "The one being talked to counts as talked to.");
+            Assert.That(Next(s, "hg-6"), Is.EqualTo("hg-7"), "Even when the set does not hold them yet.");
+            Assert.That(Next(s, "hg-1", "hg-1"), Is.EqualTo("hg-4"), "From the Head of Household, the first voter not talked to.");
+            Assert.That(Next(s, "hg-2", "hg-2", "hg-4"), Is.EqualTo("hg-5"), "From a nominee too.");
+            Assert.That(CampaignTalk.NextVoter(s, "hg-4", null)?.id, Is.EqualTo("hg-5"), "No set: only the one being talked to is passed over.");
+        }
+
+        [Test]
+        public void NoVoterIsNamedOnceAllAreTalkedToOutsideTheCampaignOrForAPlayerOutOfTheGame()
+        {
+            var s = PlainCampaign();
+            Assert.That(Next(s, "hg-7", "hg-4", "hg-5", "hg-6", "hg-7"), Is.Null, "Every voter talked to: nobody, and never the player, who votes too.");
+            Assert.That(Next(s, "hg-1", "hg-4", "hg-5", "hg-6", "hg-7"), Is.Null, "Nor from the Head of Household.");
+            Assert.That(CampaignTalk.NextVoter(null, "hg-4", null), Is.Null, "No season.");
+
+            s.Find("hg-5").status = ContestantStatus.Evicted;
+            Assert.That(Next(s, "hg-4", "hg-4"), Is.EqualTo("hg-6"), "A houseguest out of the game is no voter.");
+            s.Find("hg-5").status = ContestantStatus.Active;
+
+            foreach (var phase in new[] { EpisodePhase.Social, EpisodePhase.VetoMeeting, EpisodePhase.Eviction })
+            {
+                s.phase = phase;
+                Assert.That(Next(s, "hg-4", "hg-4"), Is.Null, phase + " is not the campaign.");
+            }
+            s.phase = EpisodePhase.Campaign;
+            s.Find("player").status = ContestantStatus.Evicted;
+            Assert.That(Next(s, "hg-4", "hg-4"), Is.Null, "A player out of the game has nobody to campaign to.");
+        }
+
+        [Test]
+        public void TheWayOnNamesTheVoterByTheirFirstName()
+        {
+            Assert.That(CampaignTalk.NextVoterPrefix, Is.EqualTo("Next voter: "));
+            Assert.That(CampaignTalk.NextVoterCaption("Robin Vale"), Is.EqualTo("Next voter: Robin"));
+            Assert.That(CampaignTalk.NextVoterCaption("Dr. Robin Vale"), Is.EqualTo("Next voter: Robin"), "A title is passed over, as the board's Talk to passes it.");
+            Assert.That(CampaignTalk.NextVoterCaption("Robin"), Is.EqualTo("Next voter: Robin"));
+            Assert.That(CampaignTalk.NextVoterCaption(null), Is.EqualTo("Next voter: "), "No name, no crash.");
+        }
+
+        [Test]
+        public void NamingTheNextVoterChangesNothingInTheSeason()
+        {
+            foreach (bool onTheBlock in new[] { false, true })
+            {
+                var s = Campaign(31, onTheBlock);
+                var talked = new HashSet<string>();
+                string before = JsonConvert.SerializeObject(s);
+                uint random = s.randomState;
+                foreach (var person in s.contestants)
+                {
+                    var next = CampaignTalk.NextVoter(s, person.id, talked);
+                    Assert.That(next == null || EpisodeEngine.Voters(s).Any(v => v.id == next.id && !v.isPlayer), Is.True, "Only ever a voter, never the player.");
+                    Assert.That(next?.id, Is.Not.EqualTo(person.id), "Never the one being talked to.");
+                }
+                Assert.That(talked, Is.Empty, "The talked-to set is the caller's: naming the next voter adds nobody to it,");
+                Assert.That(JsonConvert.SerializeObject(s), Is.EqualTo(before), "the state is as it was,");
                 Assert.That(s.randomState, Is.EqualTo(random), "and nothing is drawn from the season's stream.");
             }
         }

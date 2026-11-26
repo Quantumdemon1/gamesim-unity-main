@@ -447,6 +447,9 @@
     <!-- Explicit, and compiled out of Unity: the final Head of Household's choice over sampled seasons (C9), run on demand. -->
     <Compile Include="$(EditMode)FinalChoiceSeasonHarness.cs" />
     <Compile Include="$(EditMode)CampaignBriefTests.cs" />
+    <!-- What a talk from the campaign board opens on: the plea, the vote question or the topics (UI-UX plan D9); pure, so it runs here too. -->
+    <Compile Include="$(EditMode)CampaignTalkTests.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/CampaignTalk.cs" />
     <Compile Include="$(EditMode)WaitingOnYouTests.cs" />
     <Compile Include="$(EditMode)FinalistReadTests.cs" />
     <Compile Include="$(EditMode)KnownOddsTests.cs" />

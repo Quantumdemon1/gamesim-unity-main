@@ -53,6 +53,7 @@ namespace Gamesim.Episode
                 conversationMenuSession = state.sessionId;
                 conversationCategory = conversationIntent == IntentAsk ? LearnCategoryCaption
                     : conversationIntent == IntentDeal ? DealsCategoryCaption
+                    : conversationIntent == IntentPlea ? GameCategoryCaption
                     : conversationIntent == IntentJustTalk && TalkScreenLines.Shown(state, npc.id) ? ConnectCategoryCaption : null;
                 // A free talk's tile opens the conversation on the talk's panel (EpisodeDirector.JustTalk.cs).
                 PrepareJustTalk(state, npc);

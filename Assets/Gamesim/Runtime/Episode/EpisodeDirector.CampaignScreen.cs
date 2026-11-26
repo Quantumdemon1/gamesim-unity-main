@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Gamesim.Presentation;
 using Gamesim.Simulation;
 
 namespace Gamesim.Episode
@@ -70,7 +71,7 @@ namespace Gamesim.Episode
                 Stories = CampaignStoryRows(state),
                 Goals = CampaignBrief.Goals(state),
                 Intel = CampaignBrief.RecentIntel(state),
-                Talk = TalkFromCampaign,
+                Talk = TalkFromCampaignBoard,
                 ChooseTab = tab => { campaignTab = tab; campaignPage = 0; Render(); },
                 ChoosePage = page => { campaignPage = page; Render(); },
                 ToggleMore = () => { campaignMore = !campaignMore; Render(); },
@@ -110,6 +111,24 @@ namespace Gamesim.Episode
         {
             ClosePanels();
             TalkFromCastMenu(id);
+        }
+
+        /// <summary>What a talk from the campaign board sent the player into the conversation for, beside <see cref="IntentAsk"/> and <see cref="IntentDeal"/>: the plea, on This week's game.</summary>
+        public const string IntentPlea = "plea";
+
+        /// <summary>
+        /// Walk over and talk, from a card on the campaign board (UI-UX plan D9): the conversation
+        /// opens on what the player came for (<see cref="CampaignTalk.For"/>) - a nominee's plea on
+        /// This week's game, the vote question on Learn and share - and on the topics for anybody
+        /// else. Free time's cards keep <see cref="TalkFromCampaign"/>, which opens on the topics.
+        /// </summary>
+        private void TalkFromCampaignBoard(string id)
+        {
+            var opens = CampaignTalk.For(projected, id);
+            if (opens == CampaignTalk.Opens.Topics) { TalkFromCampaign(id); return; }
+            TalkWithIntent(id, opens == CampaignTalk.Opens.Plea ? IntentPlea : IntentAsk);
+            // A walk that never began carries no intent into whichever conversation opens next.
+            if (WalkingToId != id && TalkingToId != id) conversationIntent = null;
         }
 
         /// <summary>

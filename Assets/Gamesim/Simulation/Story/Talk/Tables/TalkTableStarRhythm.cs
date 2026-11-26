@@ -1032,7 +1032,7 @@ namespace Gamesim.Simulation
             {
                 Id = "star.r.grudge", Pool = TalkPools.Star, Kind = TalkKind.Rhythm, Layer = 0,
                 When = new TalkGate { Layer = 1, Week = 4, Window = TalkWindows.AfterEviction },
-                Open = "(looking at the front door after it shuts) \"The jury's got a new member. Grudge count goes up by one.\"",
+                Open = "(looking at the front door after it shuts) \"Everyone who walks out that door remembers who sent them. Grudge count goes up by one.\"",
                 Replies = new[]
                 {
                     new TalkReply

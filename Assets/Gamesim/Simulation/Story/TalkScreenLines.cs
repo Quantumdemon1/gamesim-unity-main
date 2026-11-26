@@ -110,10 +110,20 @@ namespace Gamesim.Simulation
         /// What changed, in one line: a stage reached first (talk rules 2: the engine's event line, "You and Dana are friendly
         /// now."), then the fact learned, then the standing note, else nothing new.
         /// </summary>
-        public static string ChangeLine(TalkResult result)
+        public static string ChangeLine(TalkResult result) => ChangeLine(result, null);
+
+        /// <summary>
+        /// What changed, for a housemate by first name: a stage reached is said with <paramref name="firstName"/> ("You and Dana are
+        /// friendly now."), whatever name the season's event row holds; with no first name, exactly <see cref="ChangeLine(TalkResult)"/>.
+        /// </summary>
+        public static string ChangeLine(TalkResult result, string firstName)
         {
             if (result == null) return NothingNew;
-            if (!string.IsNullOrEmpty(result.StageEvent)) return result.StageEvent;
+            if (!string.IsNullOrEmpty(result.StageEvent))
+            {
+                string said = string.IsNullOrEmpty(firstName) ? "" : TalkFriendship.EventLine(result.StageReached, firstName);
+                return string.IsNullOrEmpty(said) ? result.StageEvent : said;
+            }
             if (!string.IsNullOrEmpty(result.Fact)) return LearnedPrefix + result.Fact;
             if (!string.IsNullOrEmpty(result.StandingLine)) return StandingNote;
             return NothingNew;
@@ -131,13 +141,15 @@ namespace Gamesim.Simulation
         {
             var lines = new List<string>();
             if (result == null) return lines;
-            if (!string.IsNullOrEmpty(result.StandingLine)) lines.Add(result.StandingLine);
+            // Their words in first names (the said form); the saved line when a result carries no said form.
+            string standing = string.IsNullOrEmpty(result.StandingSaid) ? result.StandingLine : result.StandingSaid;
+            if (!string.IsNullOrEmpty(standing)) lines.Add(standing);
             if (!string.IsNullOrEmpty(result.Outcome)) lines.Add(result.Outcome);
             string favour = FavourLine(result.Favour, firstName);
             if (favour != null) lines.Add(favour);
             string chemistry = ChemistryFirstLine(result.ChemistryShown);
             if (chemistry != null) lines.Add(chemistry);
-            lines.Add(ChangeLine(result));
+            lines.Add(ChangeLine(result, firstName));
             return lines;
         }
 

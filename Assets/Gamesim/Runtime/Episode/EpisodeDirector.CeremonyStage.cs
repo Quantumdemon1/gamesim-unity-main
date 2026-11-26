@@ -148,6 +148,8 @@ namespace Gamesim.Episode
         /// <summary>Each frame: the stage kept moving, and forgotten once it has let the house go.</summary>
         private void TickCeremonyStage()
         {
+            // First, with or without a stage: the table's fill eases back after the stage has gone.
+            TickTableFill();
             if (ceremonyStage == null) return;
             ceremonyStage.Tick();
             if (!ceremonyStage.Active) ceremonyStage = null;
@@ -191,6 +193,9 @@ namespace Gamesim.Episode
         /// </summary>
         private void EndCeremonyStage()
         {
+            // At once, before anything can return early: a season replaced, a director disabled, a
+            // new commit or the arena put the table's fill back to the room's own colour now.
+            RestoreTableFill();
             if (ceremonyStage == null) return;
             // The exit it was keeping its seats for goes with it, at once - no hold on the door and
             // no dip: whatever ended the stage has the frame now. Not from a director being
@@ -204,6 +209,67 @@ namespace Gamesim.Episode
 
         /// <summary>Skips the summons: the card plays now, whoever is still walking sits down as they arrive. Public for tests.</summary>
         public void SkipCeremonySummons() => ceremonyStage?.SkipSummons();
+
+        // ------------------------------------------------------------ the table's own light
+
+        /// <summary>The scene's light a staged nomination turns: the nomination room's fill, by the name the house's lighting pass gives it.</summary>
+        public const string NominationFillName = "Nomination fill";
+
+        /// <summary>
+        /// The nomination room's fill while a nomination is staged (LIGHTING_AUDIT P1). The room's own
+        /// cold red lights every face at the table, so for the ceremony it turns to a warm, less
+        /// saturated colour that keeps skin reading as skin in every shot. Only the colour moves:
+        /// the intensity stays the room's own, and the table's materials are untouched.
+        /// </summary>
+        public static readonly Color NominationFillDuringCeremony = new Color(1f, 0.78f, 0.70f);
+
+        /// <summary>How long the fill takes to turn, either way: about the camera's own 1.2 s release, so the room changes with the move.</summary>
+        public const float NominationFillSeconds = 1f;
+
+        private Light tableFill;
+        private Color tableFillAuthored;
+        private float tableFillWarmth;
+
+        /// <summary>
+        /// Each frame: from the nomination's summons until the house is let go the table's fill eases
+        /// toward <see cref="NominationFillDuringCeremony"/>, and then back, ending on the colour the
+        /// scene gave it, exactly. The colour is read once, when the fill is taken, and every
+        /// return writes that value back, so a turn that was cut short never becomes the next
+        /// ceremony's starting point. Reduced motion switches it, though no stage plays then.
+        /// </summary>
+        private void TickTableFill()
+        {
+            bool wanted = ceremonyStage != null && ceremonyStage.Active && ceremonyStage.Kind == CeremonySting.NominationKind;
+            if (wanted && tableFill == null)
+            {
+                tableFill = FindTableFill();
+                if (tableFill == null) return;
+                tableFillAuthored = tableFill.color;
+                tableFillWarmth = 0f;
+            }
+            // Explicit: a fill destroyed with its scene compares equal to null.
+            if (tableFill == null) return;
+            tableFillWarmth = reducedMotion ? (wanted ? 1f : 0f)
+                : Mathf.MoveTowards(tableFillWarmth, wanted ? 1f : 0f, Time.unscaledDeltaTime / NominationFillSeconds);
+            if (!wanted && tableFillWarmth <= 0f) { RestoreTableFill(); return; }
+            tableFill.color = Color.Lerp(tableFillAuthored, NominationFillDuringCeremony, Mathf.SmoothStep(0f, 1f, tableFillWarmth));
+        }
+
+        /// <summary>The table's fill back to the scene's own colour now, and let go. Safe with nothing turned.</summary>
+        private void RestoreTableFill()
+        {
+            if (tableFill != null) tableFill.color = tableFillAuthored;
+            tableFill = null;
+            tableFillWarmth = 0f;
+        }
+
+        private Light FindTableFill()
+        {
+            foreach (var root in gameObject.scene.GetRootGameObjects())
+                foreach (var light in root.GetComponentsInChildren<Light>())
+                    if (light.name == NominationFillName) return light;
+            return null;
+        }
 
         /// <summary>Where a staged ceremony is.</summary>
         public enum CeremonyStageStep

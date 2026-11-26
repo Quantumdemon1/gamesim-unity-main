@@ -581,7 +581,8 @@
 # 11340 = 11339 + 1, 2026-11-23. One phone input-hint case checks the touch wording.
 # 11351 = 11340 + 11, 2026-11-25. Codex's commitment story (StoryMechanicsTests): new or existing agreement, pending offer, refusal, cooldown and older saves.
 # 11361 = 11351 + 10, 2026-11-26. SB1's lamp shadow tiers: LampShadowTierTests 9 (also in the dotnet subset) and HouseRoomScopeTests 1.
-Gamesim.EditModeTests 11361
+# 11365 = 11361 + 4, 2026-11-26. LT6's conversation key light: ConversationKeyLightTests 4 (also in the dotnet subset).
+Gamesim.EditModeTests 11365
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and
@@ -1661,4 +1662,5 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # disjoint cases, so the floor is their sum (the trivia landing of 23 November 2026). Counted from the two sides.
 # 23448 = 23438 + 10, 2026-11-25. The commitment story's new cases that run without Unity (its two save-file checks run in Unity only).
 # 23457 = 23448 + 9, 2026-11-26. SB1's lamp shadow tiers: the same 9 LampShadowTierTests cases the EditMode floor counts.
-Gamesim.SimulationTests 23457
+# 23461 = 23457 + 4, 2026-11-26. LT6's conversation key light: the same 4 ConversationKeyLightTests cases the EditMode floor counts.
+Gamesim.SimulationTests 23461

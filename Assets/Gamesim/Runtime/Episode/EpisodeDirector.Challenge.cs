@@ -745,8 +745,9 @@ namespace Gamesim.Episode
                 competitionStationFill.color = Color.white;
                 competitionStationFill.intensity = CompetitionStationFillIntensity;
                 competitionStationFill.range = CompetitionStationFillRange;
-                competitionStationFill.innerSpotAngle = 40f;
+                // The outer angle first: the inner never stands wider than it.
                 competitionStationFill.spotAngle = 70f;
+                competitionStationFill.innerSpotAngle = 40f;
             }
             // From the camera's side as it stands now: 1.8 m toward it, a little to its left and above the face.
             var aim = competitionPlayerStationPosition + Vector3.up * CompetitionStationFillAim;

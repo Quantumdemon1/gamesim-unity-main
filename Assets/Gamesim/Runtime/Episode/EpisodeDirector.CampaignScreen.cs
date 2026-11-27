@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Gamesim.Presentation;
 using Gamesim.Simulation;
 
 namespace Gamesim.Episode
@@ -70,7 +71,7 @@ namespace Gamesim.Episode
                 Stories = CampaignStoryRows(state),
                 Goals = CampaignBrief.Goals(state),
                 Intel = CampaignBrief.RecentIntel(state),
-                Talk = TalkFromCampaign,
+                Talk = TalkFromCampaignBoard,
                 ChooseTab = tab => { campaignTab = tab; campaignPage = 0; Render(); },
                 ChoosePage = page => { campaignPage = page; Render(); },
                 ToggleMore = () => { campaignMore = !campaignMore; Render(); },
@@ -110,6 +111,61 @@ namespace Gamesim.Episode
         {
             ClosePanels();
             TalkFromCastMenu(id);
+        }
+
+        /// <summary>What a talk from the campaign board sent the player into the conversation for, beside <see cref="IntentAsk"/> and <see cref="IntentDeal"/>: the plea, on This week's game.</summary>
+        public const string IntentPlea = "plea";
+
+        /// <summary>
+        /// Walk over and talk, from a card on the campaign board (UI-UX plan D9): the conversation
+        /// opens on what the player came for (<see cref="CampaignTalk.For"/>) - a nominee's plea on
+        /// This week's game, the vote question on Learn and share - and on the topics for anybody
+        /// else. Free time's cards keep <see cref="TalkFromCampaign"/>, which opens on the topics.
+        /// </summary>
+        private void TalkFromCampaignBoard(string id)
+        {
+            var opens = CampaignTalk.For(projected, id);
+            if (opens == CampaignTalk.Opens.Topics) { TalkFromCampaign(id); return; }
+            TalkWithIntent(id, opens == CampaignTalk.Opens.Plea ? IntentPlea : IntentAsk);
+            // A walk that never began carries no intent into whichever conversation opens next.
+            if (WalkingToId != id && TalkingToId != id) conversationIntent = null;
+        }
+
+        /// <summary>
+        /// The houseguests the player has had a conversation with in this week's campaign, and the
+        /// season and week they were counted in. View state: never saved, nothing in the season reads
+        /// it, and a new week's campaign starts it empty.
+        /// </summary>
+        private readonly HashSet<string> campaignTalkedTo = new HashSet<string>();
+        private string campaignTalkedSession;
+        private int campaignTalkedWeek = -1;
+
+        /// <summary>
+        /// A campaign conversation's way on (UI-UX plan D11): "Next voter: Dana", pinned under the
+        /// page's choices, for the next voter on the board the player has not talked to this
+        /// campaign (<see cref="CampaignTalk.NextVoter"/>). Pressed, it does what that voter's "Talk
+        /// to" on the board does (<see cref="TalkFromCampaignBoard"/>): this conversation closes and
+        /// the walk over begins, knowing what the player comes for. The board itself stays at the
+        /// station. Counts this conversation as talked first, and draws only with <paramref name="draw"/>:
+        /// the topics' wheel holds its six topics alone, and a level open inside a page (a verb's
+        /// people, a plea's approaches) is answered or gone back from first. Nothing outside the
+        /// campaign or once nobody is left, and nothing is committed.
+        /// </summary>
+        private void NextVoterWayOn(EpisodeState state, ContestantState npc, bool draw)
+        {
+            if (state == null || npc == null || state.phase != EpisodePhase.Campaign) return;
+            if (campaignTalkedWeek != state.week || campaignTalkedSession != state.sessionId)
+            {
+                campaignTalkedTo.Clear();
+                campaignTalkedWeek = state.week;
+                campaignTalkedSession = state.sessionId;
+            }
+            campaignTalkedTo.Add(npc.id);
+            if (!draw || hud == null) return;
+            var next = CampaignTalk.NextVoter(state, npc.id, campaignTalkedTo);
+            if (next == null) return;
+            string id = next.id;
+            hud.ConversationWayOn(CampaignTalk.NextVoterCaption(next.name), () => TalkFromCampaignBoard(id));
         }
 
         /// <summary>

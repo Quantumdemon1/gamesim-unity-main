@@ -39,6 +39,10 @@ Where it stands (lane W2-saves, 2026-10-15; review fixes 2026-10-16):
     the recorder's talker walk), the shipped Regular season at talk rules 3 and competition rules 6, saved at week 4's Head
     of Household with a free talk's standing line and friendship stages in it, and 26 free talks after the load. It is the
     first schema-31 reference, checkpointed at 31, the state whole.
+  - **And story rules 12** (2026-11-26, 2.16): one save written and recorded by b854a773 (plan 32 A-ON, the switch with
+    its holds and recordings), the shipped Regular season every new season starts as since the house talk's enrolment,
+    walked by the plain walker and saved at the player's week-2 nomination with the house talk's head-to-head record in
+    it. Resealed at 11 or 10 it is refused, so it pins 12.
   - A cell counts only a fixture saved in a week, before the finale, whose recorded script plays the season on from
     there. The eight real saves made at the final speeches or after the finale are read, never counted as their
     cell's replay (1.3).
@@ -228,6 +232,9 @@ cell keeps its name; main after it (c1a7f40e) wrote that cell (2.14). A season s
 so the cells at 4 (2.8 to 2.13) stay the replay of the seasons saved before it. From schema 31 a cell also names its
 talk rules (free talk's level, 3 for every fresh season since level 3's enrolment); the first schema-31 cell (2.15) is
 the shipped season at competition rules 6 and talk rules 3, walked by the recorder's talker so that free talk is had.
+From the house talk's enrolment (plan 32 A-ON, 2026-11-26) every fresh season starts on story rules 12, Manners, and that
+build wrote the rules-12 cell (2.16); a season saved at 11 keeps its 11, so 2.13 to 2.15 stay the replay of the seasons
+saved before it.
 
 | Cell (alumni rules 0, the Regular roster, tuning rules 1) | How B9's builds, the chip stack's head and the story enrolments' heads write it | Replayed by |
 | --- | --- | --- |
@@ -239,8 +246,9 @@ the shipped season at competition rules 6 and talk rules 3, walked by the record
 | the same, **story rules 11** | a fresh director season, `ShippedRules.ApplyFresh`, which enrols it on Roles (eb918637) | s30-mode2-allweek-story11-tuning1-w3-veto-meeting, saved at the veto meeting with the Head of Household's keep-the-block ask to the player pending |
 | the same, story rules 11, **competition rules 5** | a fresh director season, `ShippedRules.ApplyFresh`, which starts it at competition rules 5 (c1a7f40e) | s30-mode2-allweek-story11-competition5-tuning1-w1-veto-meeting, saved at the veto meeting right after the season's first Ring Tower |
 | **schema 31**, the same, story rules 11, competition rules 6, **talk rules 3**, walked by the recorder's talker | a fresh director season, `ShippedRules.ApplyFresh` (3ed2ef99) | s31-mode2-allweek-story11-talk3-competition6-tuning1-w4-hoh, saved at week 4's Head of Household with a free talk's standing line and friendship stages in it |
+| schema 31, the same, **story rules 12**, competition rules 6, talk rules 3 | a fresh director season, `ShippedRules.ApplyFresh`, which enrols it on Manners (b854a773) | s31-mode2-allweek-story12-talk3-competition6-tuning1-w2-nomination, saved at the player's week-2 nomination with the house talk's head-to-head record |
 
-**The cells** are checked by `TheManifestListsEveryFixtureAndEveryFileIsTheSourceByteForByte`: 65 cells of schema,
+**The cells** are checked by `TheManifestListsEveryFixtureAndEveryFileIsTheSourceByteForByte`: 66 cells of schema,
 profile, commitment mode, all-week rules, Wave D's leaks and war rooms, from schema 29 the dialogue rules, and from
 schema 30 the alumni rules and the cast, the tuning rules where they are on, the story rules from Blame on and the
 competition rules from the Ring Tower on, and from schema 31 the talk rules, with the schema-22 director cell in each of
@@ -372,7 +380,9 @@ save, a 24,408-byte script and checkpoint list, two 158-byte metas and its row: 
 folder 9,502,074 bytes. The competition-rules-5 cell (2.14, 2026-11-17) adds a 52,668-byte save, a 31,362-byte script
 and checkpoint list, two 158-byte metas and its row: the manifest is 136,303 bytes, and the folder 9,589,619 bytes. The
 first schema-31 cell (2.15, 2026-11-26) adds a 230,555-byte save, a 31,286-byte script and checkpoint list, two 158-byte
-metas and its row: the manifest is 139,810 bytes, and the folder 9,855,159 bytes.
+metas and its row: the manifest is 139,810 bytes, and the folder 9,855,159 bytes. The story-rules-12 cell (2.16,
+2026-11-26) adds a 104,688-byte save, a 29,853-byte script and checkpoint list, two 158-byte metas and its row: the
+manifest is 142,887 bytes, and the folder's 302 files 9,993,217 bytes.
 
 | Part | Size |
 | --- | --- |
@@ -1494,7 +1504,56 @@ cell names its talk rules, and the manifest case reads them back from the save. 
 - It does not cover romance (a Flirt, a couple, their endings): the talker never flirts, so what level 3 adds over 2
   (romance, Late Nights' opening beat, the Friends named before a nomination) does not come up, and the file resealed at 2
   plays the same season. Nor the All-Stars' star pool, nor a mind rules level (0, as every season starts), nor a season
-  of twelve. Nor story rules 12: that is A-ON's cell, at 31 beside this one.
+  of twelve. Nor story rules 12: that is A-ON's cell, at 31 beside this one (2.16).
+
+### 2.16 Schema 31 at story rules 12: written by the house talk's enrolled head (2026-11-26)
+
+**Why this one.** Plan 32's A-ON moves `StoryRules.Current` to 12 (Manners), so every new season starts on the house
+talk's rules, and each enrolment adds a cell at its level (plan 32 section Q1; PLAN-R7-HTB section 3, item 6). The cells
+at 10 and 11 (2.12, 2.13) and the schema-31 cell at 11 (2.15) stay green beside it: they are the proof that a season saved
+at an older level keeps it.
+
+**The writer is b854a773**, the switch's head with its holds, recordings and record, and it is the reference. The commits
+that add the cell change only the fixtures, the tests, the floors and documents: nothing in `Simulation`,
+`Runtime/Persistence`, `Tools/OldSaves` or `OldSaveTrace.cs` differs from the writer.
+
+**How it was made** (2026-11-26, scratch outside the repository, on the owner's PC).
+
+- The recorder was built by `Tools/OldSaves/build.sh` from the worktree at b854a773, clean (`OLDSAVE_SOURCE_TREE=1`), with
+  `Rules.Shipped.cs`, and run by the editor's Mono; a scratch probe compiled with it walked each seed's season to its end.
+- **The seed is 3204.** With the plain walker, which never asks about a vote, overhears or free-talks, the house talk's
+  own record in a saved season is the head-to-head row (`h2h:{week}:{hoh|veto}:{runner-up}`, plan 32 section F), written
+  at 12 only when the player wins a Head of Household or a veto. From 3201 at 8 the first seed whose player is Head of
+  Household from week 2 with that record in the state at the nomination's first state is 3204 (3212 and 3219 too).
+- `generate 3204 8 director 2 Nomination` wrote s31-mode2-allweek-story12-talk3-competition6-tuning1-w2-nomination (104,688
+  bytes): the first state of week 2's nomination, revision 21, the player Head of Household with nobody named.
+- **The saved season** is at schema 31 on story rules 12 from week 1 (the role moments on), talk rules 3, mind rules 0,
+  competition rules 6, tuning rules 1, dialogue rules 0 and alumni rules 0 with no edition, mode 2, the Regular cast and
+  the player "You"; seven in the house and quinn-martinez on the jury. Its house talk records: `h2h:1:veto:quinn-martinez`
+  until week 4 and `h2h:2:hoh:jordan-taylor` until week 5.
+- **The record**: `record` on the same build: 74 commands; season digest 1dcf9917fdaf634b, state a19d596ffbfe46ef, text
+  75c9f89e8c151e9d; won by casey-wilson in week 6. The script's fifth command (week 2's veto, won by the player) writes
+  `h2h:2:veto:alex-chen`. The same build's `replay`: 74 of 74, all three digests a match; its `recover`: the same
+  checkpoint with no primary and with a torn one. Generated twice (only `savedAt` differs) and recorded twice (byte for
+  byte).
+- **The control: the same file resealed** at story rules 11 or 10 is refused, "A season below the house talk's manners
+  has none of its records.", and left as it was; at 12 it loads. In memory, at 11 with the head-to-head records taken
+  out, the season validates: the records are what is 12's own in the file.
+- The manifest row was appended after the schema-31 talk cell's; nothing above it changed. It has that row's keys but
+  `walker` (a plain walk's row names none, as 2.13's does), with `story` `rulesVersion` 12, `generated`
+  "3204 8 director 2 Nomination", and writer and reference both b854a773. Its `holdsDigest` is `HoldAnswers` under the
+  editor's Mono, built against this tree's offline compile without UMA: c7cada7764d21765.
+
+**The tests.**
+- The four cases every fixture has, and in `OldSaveAcceptanceTests`
+  `TheStoryRulesTwelveCellIsSavedAtThePlayersNominationWithTheHeadToHeadRecord` (the stop point, the rules, the two records,
+  the third written by the script) and `TheStoryRulesTwelveCellResealedAtElevenOrTenIsRefusedAndLeftAsItWas` (the control).
+
+**What it covers, and what it does not.** It covers the save, load, replay, readers, holds and recovery of a season at
+story rules 12 with the house talk's head-to-head record, written and read at 31. It does not cover a vote answer's
+records (`said:`, `line:`, `tell:`), a Notice or a Listen (the `Seen` rows, hunch lines, `heard:` keys) or free talk:
+the plain walker asks no vote question and overhears nothing. Those are the house talk's own fixtures' (VoteAnswerTests,
+OverhearTests, HouseAnswersVarietyTests) in the dotnet subset.
 
 ## 3. Findings
 
@@ -1794,6 +1853,8 @@ All tests run in EditMode. None are in the dotnet subset, which excludes the sav
 | `TheCompetitionRulesFiveCellResealedAtCompetitionRulesFourLoadsAndPlaysTheSameSeasonAfterTheLoad` | 1 | The same file resealed at competition rules 4 loads, is left as it was and plays every command; parted at the load as it is, it is the recorded season, state and text with the rules put back to 5, the same games dealt after the load (2.14). |
 | `TheFreeTalkCellIsSavedAtWeekFoursHeadOfHouseholdWithAStandingLineAndAFriendStageLogged` | 1 | The first schema-31 cell holds its stop point and rules (2.15): loaded at 31 as it is, talk rules 3, competition rules 6, week 4's Head of Household; alex-chen's standing line of week 3, his Friend stage among ten stage rows, the lean; checkpointed at 31 whole and refused at 30; the script's 26 free talks. |
 | `TheFreeTalkCellResealedAtTalkRulesZeroIsRefusedAndAtOnePartsAtTheFirstFreeTalkAfterTheLoad` | 1 | The same file resealed at talk rules 0 is refused and left as it was; at talk rules 1 it loads and plays every command, and with the level put back parts at the first free talk after the load (2.15). |
+| `TheStoryRulesTwelveCellIsSavedAtThePlayersNominationWithTheHeadToHeadRecord` | 1 | The story-rules-12 cell holds its stop point and rules (2.16): loaded at 31 as it is, story rules 12 with the role moments on, talk rules 3, competition rules 6; week 2's nomination with the player Head of Household; the two head-to-head records; the script's fifth command writes the third. |
+| `TheStoryRulesTwelveCellResealedAtElevenOrTenIsRefusedAndLeftAsItWas` | 1 | The same file resealed at story rules 11 or 10 is refused for the house talk's records and left as it was; in memory, at 11 without the records, it validates (2.16). |
 | `AnOldCareerFileLoadsAndAddsUp` | 2 | Read, not set aside. The summary lines. A finished old season recorded once. |
 | `PersistenceV23MigrationTests.ASchema22SaveFromTheVersionsFirstBuildsGainsTheTwoLaterFieldsAsLiterals` | 1 | F1, the first shape. |
 | `PersistenceV23MigrationTests.ASchema22SaveFromTheVersionsMiddleBuildsGainsOnlyTheJoinedLiteral` | 1 | F1, the middle shape (review m1). |
@@ -1854,8 +1915,9 @@ cases each (284), the same thirteen, and the story-rules-11 cell's three. With t
 2026-11-17) it is 303: the 72 fixtures' four cases each (288), the manifest case, the two refused cases, the two
 careers, the eight own cases of the alumni-5, dialogue and story cells (2.7, 2.10 to 2.13), and the competition-rules-5
 cell's two. With the first schema-31 cell (2.15, 2026-11-26) it is 309: the 73 fixtures' four cases each (292), the same
-fifteen, and the schema-31 cell's two. A schema-31 fixture is recovered as it is, token for token, as a save at the live
-schema is.
+fifteen, and the schema-31 cell's two. With the story-rules-12 cell (2.16, 2026-11-26) it is 315: the 74 fixtures' four
+cases each (296), the same fifteen, the schema-31 cell's two and the story-rules-12 cell's two. A schema-31 fixture is
+recovered as it is, token for token, as a save at the live schema is.
 
 `EveryReaderRendersAnOldSaveWithoutAHiddenBallotOrOdds` reads every phase and stage the season passes through, and its
 end, through every simulation and presentation reader the screens print through. It does not run the screens' own

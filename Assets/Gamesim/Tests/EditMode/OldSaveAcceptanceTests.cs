@@ -59,7 +59,9 @@ namespace Gamesim.Tests.EditMode
     /// rules 5, saved at the veto meeting right after the season's first Ring Tower. The first schema-31 cell is the shipped
     /// season every new season is since the trivia and free talk's level 3, at competition rules 6 and talk rules 3, walked by
     /// the recorder's talker (every free talk on offer taken) and saved with a free talk's standing line and a friendship
-    /// stage in it; it loads as it is, with no migration, and is checkpointed at 31 whole (CurrentOldSaveTrace).</para>
+    /// stage in it; it loads as it is, with no migration, and is checkpointed at 31 whole (CurrentOldSaveTrace). Story rules
+    /// 12's enrolled head (plan 32 A-ON) wrote the story-rules-12 cell: the same shipped season on Manners, walked by the plain
+    /// walker and saved at the player's nomination with the house talk's head-to-head record in it.</para>
     ///
     /// <para>Three digests (<see cref="OldSaveTrace"/>): the season's - the cross-build gate - must be the reference
     /// build's; the whole state's, blind to prose, and the verbatim text are this build's, pinned when the fixture was
@@ -150,6 +152,9 @@ namespace Gamesim.Tests.EditMode
             // cell: a fresh shipped Regular season at talk rules 3 and competition rules 6, saved with a free talk's standing
             // line and a friendship stage logged, so free talk replays after the load.
             FreeTalkCell,
+            // Written by story rules 12's enrolled head (plan 32 A-ON; OLD-SAVE-ACCEPTANCE 2.16), schema 31 at story rules 12:
+            // a fresh shipped Regular season, saved at the player's nomination with the house talk's head-to-head record.
+            MannersCell,
         };
 
         /// <summary>
@@ -234,7 +239,8 @@ namespace Gamesim.Tests.EditMode
             // name), and from the role moments' enrolment the same season at story rules 11, and from the Ring Tower the same
             // season at competition rules 5 (a cell names its competition rules only from the Ring Tower on), and from schema 31
             // the same season at competition rules 6 and talk rules 3 walked by the talker (a cell names its talk rules from schema
-            // 31 on, where they are defined). A cell counts only a fixture saved in a week, before the
+            // 31 on, where they are defined), and from the house talk's enrolment (plan 32 A-ON) the same season at story rules 12
+            // walked by the plain walker. A cell counts only a fixture saved in a week, before the
             // finale, with a script to play: one saved at the finale or after it is read, never a cell's replay.
             var replayed = Manifest["episodes"].Where(e => (int)e["commands"] > 0 && !FinalePhases.Contains((string)e["phase"])).ToList();
             Assert.That(Manifest["episodes"].Except(replayed).Select(e => (string)e["id"]), Is.EquivalentTo(ReadOnly),
@@ -271,6 +277,7 @@ namespace Gamesim.Tests.EditMode
                 "30/director/uc2/allweek1/leaks1/plans1/dialogue0/alumni0/regular/tuning1/story11",
                 "30/director/uc2/allweek1/leaks1/plans1/dialogue0/alumni0/regular/tuning1/story11/competition5",
                 "31/director/uc2/allweek1/leaks1/plans1/dialogue0/alumni0/regular/tuning1/story11/competition6/talk3/talker",
+                "31/director/uc2/allweek1/leaks1/plans1/dialogue0/alumni0/regular/tuning1/story12/competition6/talk3",
             }));
         }
 
@@ -1485,6 +1492,105 @@ namespace Gamesim.Tests.EditMode
                 Assert.That(i, Is.EqualTo(checkpoints.Count - 1), "Every command of the script is played at talk rules 1 too.");
                 Assert.That(partsPutBack, Is.EqualTo(3), "With the level put back, the season is the recorded one up to the first free talk after the load, and parts there.");
             }
+        }
+
+        // ------------------------------------------------------------------ the story-rules-12 cell: the house talks back
+
+        private const string MannersCell = "s31-mode2-allweek-story12-talk3-competition6-tuning1-w2-nomination";
+
+        /// <summary>
+        /// The cell at story rules 12 (plan 32 A-ON; OLD-SAVE-ACCEPTANCE 2.16): the shipped Regular season of 8 as every new
+        /// season starts since the house talk's enrolment, on Manners, talk rules 3, competition rules 6 and tuning rules 1,
+        /// walked by the recorder's plain walker and saved by its writer's store at the first state of week 2's nomination, with
+        /// the player Head of Household. The four cases every fixture has load and replay it (at 31, with no migration), read it
+        /// with every reader, pin its seventeen holds and recover it from the backup; this one holds the file to the point it
+        /// was saved at and to what it was chosen for: the house talk's head-to-head record, written at 12 only, of the player's
+        /// week-1 veto win and week-2 Head of Household win, and the script's next one, the week-2 veto. Seed 3204, the first
+        /// from 3201 at 8 whose walk crowns the player Head of Household from week 2 with that record in the state.
+        /// </summary>
+        [Test]
+        public void TheStoryRulesTwelveCellIsSavedAtThePlayersNominationWithTheHeadToHeadRecord()
+        {
+            var entry = Entry(MannersCell);
+            using var slot = new Slot((string)entry["save"]);
+            Assert.That(slot.Store.TryLoad(out var s, out string message), Is.True, message);
+            Assert.That(message, Does.Not.Contain("migrated"), "Saved at the live 31, it loads as it is.");
+            Assert.That(s.schemaVersion, Is.EqualTo(31));
+            Assert.That(s.story.rulesVersion, Is.EqualTo(StoryRules.Manners), "Saved at story rules 12, every new season's since A-ON.");
+            Assert.That((int)entry["story"]["rulesVersion"], Is.EqualTo(StoryRules.Manners));
+            Assert.That(s.story.rulesStartWeek, Is.EqualTo(1));
+            Assert.That(EpisodeEngine.StoryAt(s, StoryRules.Manners) && EpisodeEngine.RolesOn(s), Is.True, "The house talk is on, the role moments with it.");
+            Assert.That(s.story.talkRules, Is.EqualTo(TalkRules.Romance));
+            Assert.That(s.story.mindRules, Is.EqualTo(MindRules.Off));
+            Assert.That(s.competitionRulesVersion, Is.EqualTo(CompetitionRules.Trivia));
+            Assert.That(s.tuningRulesVersion, Is.EqualTo(TuningRules.Bands));
+            Assert.That(s.dialogueRulesVersion, Is.EqualTo(0));
+            Assert.That(s.alumniRulesVersion, Is.EqualTo(0), "The Regular cast: no alumnus, alumni rules 0.");
+            Assert.That(s.unifiedCommitmentRulesVersion, Is.EqualTo(2), "The shipped mode 2.");
+            Assert.That(s.contestants.Count, Is.EqualTo(8));
+            Assert.That(s.Find(s.playerId).name, Is.EqualTo("You"));
+
+            // The stop point: the first state of week 2's nomination, the player Head of Household, nobody named yet.
+            Assert.That(s.week, Is.EqualTo(2));
+            Assert.That(s.phase, Is.EqualTo(EpisodePhase.Nomination));
+            Assert.That(s.revision, Is.EqualTo(21));
+            Assert.That(s.hohId, Is.EqualTo(s.playerId));
+            Assert.That(s.nominees, Is.Empty);
+            var replay = JObject.Parse(File.ReadAllText(Path.Combine(Root, (string)entry["replay"])));
+            Assert.That((int)replay["checkpoints"][0]["revision"], Is.EqualTo(s.revision), "The script starts where the file stops.");
+
+            // The house talk's record: the player won week 1's veto over quinn-martinez and week 2's Head of Household over
+            // jordan-taylor, each kept for three weeks (EpisodeEngine.HeadToHeadWeeks).
+            var records = s.story.cooldowns.Where(c => c.key.StartsWith(Regard.HeadToHeadPrefix, StringComparison.Ordinal))
+                .Select(c => c.key + "@" + c.untilWeek).ToList();
+            Assert.That(records, Is.EquivalentTo(new[] { "h2h:1:veto:quinn-martinez@4", "h2h:2:hoh:jordan-taylor@5" }));
+            Assert.That(EpisodeValidation.TryValidate(s, out string error), Is.True, error);
+
+            // The script plays on at 12 and writes the next record: the week-2 veto, won by the player over alex-chen.
+            var commands = (JArray)replay["commands"];
+            Assert.That((string)commands[0]["kindName"], Is.EqualTo(nameof(EpisodeCommandKind.Nominate)));
+            var engine = new EpisodeEngine(s.Clone());
+            foreach (JObject row in commands.Take(5))
+                Assert.That(engine.Apply(row.ToObject<EpisodeCommand>()).accepted, Is.True);
+            Assert.That(engine.Snapshot.story.rulesVersion, Is.EqualTo(StoryRules.Manners), "A season keeps the story rules it was saved at.");
+            Assert.That(engine.Snapshot.story.cooldowns.Any(c => c.key == "h2h:2:veto:alex-chen" && c.untilWeek == 5), Is.True);
+        }
+
+        /// <summary>
+        /// The control: the same file with its story rules resealed at 11 or 10 (the save's rulesVersion rewritten and its
+        /// checksum computed again, as the store computes it) is refused by the store - "A season below the house talk's
+        /// manners has none of its records." - and left exactly as it was; at 12 it loads. What makes it refuse is the
+        /// head-to-head record: below Manners no season holds one (EpisodeValidation.HouseTalk). So the cell pins story rules
+        /// 12, and a season saved at 11 is never read as 12's: load keeps the rules a save was written at.
+        /// </summary>
+        [Test]
+        public void TheStoryRulesTwelveCellResealedAtElevenOrTenIsRefusedAndLeftAsItWas()
+        {
+            var entry = Entry(MannersCell);
+            foreach (int level in new[] { StoryRules.Roles, StoryRules.Blame })
+            {
+                using var slot = new Slot((string)entry["save"]);
+                var resealed = Reseal(slot, payload =>
+                {
+                    Assert.That((int)payload["story"]["rulesVersion"], Is.EqualTo(StoryRules.Manners));
+                    payload["story"]["rulesVersion"] = level;
+                });
+                Assert.That(new EpisodeSaveStore(slot.Store.SavePath).TryLoad(out var refused, out string message), Is.False,
+                    "A season at story rules " + level + " holding the house talk's records is refused.");
+                Assert.That(refused, Is.Null);
+                Assert.That(message, Does.Contain("A season below the house talk's manners has none of its records."));
+                Assert.That(message, Does.Not.Contain("checksum"), "Refused for what it holds, not for a damaged file.");
+                Assert.That(File.ReadAllBytes(slot.Store.SavePath), Is.EqualTo(resealed), "The refused file is left as it was.");
+            }
+
+            // In memory: the head-to-head record alone makes it refuse at 11; without it the same season at 11 validates.
+            using var original = new Slot((string)entry["save"]);
+            Assert.That(original.Store.TryLoad(out var s, out string loaded), Is.True, loaded);
+            s.story.rulesVersion = StoryRules.Roles;
+            Assert.That(EpisodeValidation.TryValidate(s, out string error), Is.False);
+            Assert.That(error, Is.EqualTo("A season below the house talk's manners has none of its records."));
+            s.story.cooldowns.RemoveAll(c => c.key.StartsWith(Regard.HeadToHeadPrefix, StringComparison.Ordinal));
+            Assert.That(EpisodeValidation.TryValidate(s, out error), Is.True, "Without the record, nothing else in the file is 12's own: " + error);
         }
 
         /// <summary>The slot's save with its state changed by <paramref name="change"/> and its checksum computed again, as the store computes it; returns the bytes written.</summary>

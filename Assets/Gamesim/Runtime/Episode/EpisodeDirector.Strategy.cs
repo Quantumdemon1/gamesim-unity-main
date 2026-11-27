@@ -323,6 +323,13 @@ namespace Gamesim.Episode
                     Caption = EpisodeHud.FeelOutPitchCaption, Key = HoHPitches.FeelOutKey, Locked = assessed,
                     Choose = assessed ? null : ReplyChoice(state, id, HoHPitches.FeelOutKey, view),
                 });
+                // Dialogue rules 5 (D5b-1): the HoH consultation with the pitcher, under a caption of its own (EpisodeDirector.Grants.cs).
+                if (DialogueRules.CanCallIn(state, pitch.fromId))
+                    answers.Add(new EpisodeHud.OfferBoardAnswer
+                    {
+                        Caption = HoHConsultPitchCaption, Key = HoHConsultPitchKey, Locked = false,
+                        Choose = CallInFromTheBoard(state, id, pitch.fromId, view),
+                    });
                 cards.Add(new EpisodeHud.OfferBoardCard
                 {
                     Card = words, LockReason = promiseLocked ? HoHPitches.PromiseRecordFull : null, Answers = answers,

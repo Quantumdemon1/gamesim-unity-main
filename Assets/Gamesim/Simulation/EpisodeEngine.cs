@@ -374,6 +374,7 @@ namespace Gamesim.Simulation
                         NpcDeals.AskToKeepTheBlock(s);
                         NpcDeals.OfferTheVeto(s);
                     }
+                    if (next == EpisodePhase.Nomination) GrantTheHoH(s); // Dialogue rules 5 (D5b-1): a player Head of Household's consultation on the house; no draw.
                     // Under agency, whoever has no claim on the new Head of Household courts them
                     // before the nominations (NPC-AGENCY-PLAN.md §4).
                     if (next == EpisodePhase.Nomination) CourtTheHoH(s);

@@ -45,6 +45,7 @@ namespace Gamesim.Simulation
             if (id == DialogueCampaignTrees.TemplateId) return DialogueCampaignTrees.CreateTemplate();
             if (id == DialogueHolderAppeal.TemplateId) return DialogueHolderAppeal.CreateTemplate();
             if (id == DialogueVetoQuestion.TemplateId) return DialogueVetoQuestion.CreateTemplate();
+            if (id == DialogueHoHConsult.TemplateId) return DialogueHoHConsult.CreateTemplate();
             var list = All;
             for (int i = 0; i < list.Count; i++)
                 if (list[i].id == id) return list[i];

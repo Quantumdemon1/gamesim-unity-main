@@ -21,7 +21,11 @@ namespace Gamesim.Presentation
             DoorOpen, DoorShut,
             // The chime that calls the house to a staged ceremony (AU-07), with the summons line on
             // the strip. Appended.
-            Summons
+            Summons,
+            // A competition's count (AU-08): each step of the 3-2-1 before GO and each of the attempt's
+            // last five seconds, and an early press on the reaction board. The game's news on the
+            // effects' volume, where the pointer's tick used to stand in for them. Appended.
+            CountTick, FalseStart
         }
 
         /// <summary>The last cue asked for, muted or not - what a test listens to.</summary>
@@ -1016,6 +1020,9 @@ namespace Gamesim.Presentation
             new Composition(Cue.DoorShut, "Door shuts", 0.55f, new Tone(120, 0.4f, 0, 0.16f, 45), new Tone(1800, 0.05f, 0.03f, 0.04f)),
             new Composition(Cue.Summons, "Summons", 1.2f,
                 new Tone(392f, 0.6f, 0, 0.12f), new Tone(659.25f, 0.6f, 0.24f, 0.12f), new Tone(523.25f, 0.7f, 0.48f, 0.12f)),
+            // The reference build's compProgress: a 1000 Hz sine for 50 ms (useGameSFX.ts).
+            new Composition(Cue.CountTick, "Count tick", 0.1f, new Tone(1000, 0.05f, 0, 0.15f)),
+            new Composition(Cue.FalseStart, "False start", 0.24f, new Tone(196, 0.1f, 0, 0.13f), new Tone(196, 0.12f, 0.12f, 0.13f, 175)),
         };
 
         /// <summary>How many of the cues' clips are loaded, or loading, rather than waiting for their first sounding: every cue once the house has started.</summary>

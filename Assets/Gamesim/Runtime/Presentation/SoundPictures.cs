@@ -103,6 +103,12 @@ namespace Gamesim.Presentation
             // The house called to a staged ceremony (AU-07).
             new Row("Summons", SoundKind.Information, SoundChannel.Effects,
                 "The strip comes up with the ceremony's headline and the summons line: the house gathers at the table, or takes its seats."),
+            // A competition's count and an early press (AU-08): the game's news, so a player who turns
+            // the interface down still hears every beat of a competition.
+            new Row("CountTick", SoundKind.Information, SoundChannel.Effects,
+                "Before GO, the count's big digit steps down and the clock's line counts with it (STARTS IN, or MEMORIZE while the cards are shown); in the last five seconds, the clock's digits reach the next whole second."),
+            new Row("FalseStart", SoundKind.Information, SoundChannel.Effects,
+                "A press before the target is up: the reaction board's line counts one more early and says to wait for a target."),
         };
 
         /// <summary>

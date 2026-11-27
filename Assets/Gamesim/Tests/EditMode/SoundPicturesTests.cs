@@ -80,6 +80,27 @@ namespace Gamesim.Tests.EditMode
             Assert.That(SoundPictures.DoorGainDb, Is.InRange(-8f, -2f), "Under the news, and over the interface's quietest answers.");
         }
 
+        /// <summary>
+        /// A competition's count - the 3-2-1 before GO and its last five seconds - and an early press
+        /// on the reaction board (AU-08) are the game's news, played as effects: they borrowed the
+        /// pointer's tick, whose row is the interface's, so turning the interface down silenced a
+        /// competition's count. Every beat of a competition the screen sounds now plays as effects.
+        /// </summary>
+        [Test]
+        public void ACompetitionsCountAndAnEarlyPressAreNews_SoEveryBeatOfACompetitionPlaysAsEffects()
+        {
+            foreach (var cue in new[] { "CountTick", "FalseStart" })
+            {
+                var row = SoundPictures.Find(cue);
+                Assert.That(row, Is.Not.Null, cue + " has its row.");
+                Assert.That(row.Kind, Is.EqualTo(SoundKind.Information), cue + " carries news, so its picture is owed.");
+                Assert.That(row.Channel, Is.EqualTo(SoundChannel.Effects), cue + " follows the Effects volume.");
+                Assert.That(row.GainDb, Is.EqualTo(0f), cue + " is news and plays as recorded.");
+            }
+            foreach (var cue in new[] { "CompetitionStart", "CountTick", "FalseStart", "SocialUp", "SocialDown", "CompetitionWin" })
+                Assert.That(SoundPictures.Find(cue).Channel, Is.Not.EqualTo(SoundChannel.Interface), cue + " is still heard with the interface at nothing.");
+        }
+
         [Test]
         public void ASweepDownAListTicksOnceIn60Milliseconds_AndEveryOtherCueEveryTime()
         {

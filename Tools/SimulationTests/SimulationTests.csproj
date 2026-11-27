@@ -778,6 +778,9 @@
     <!-- The front door heard (AU-06): its clunk as the leaves leave the frame, its thud as they land in it. -->
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/DoorLeafSounds.cs" />
     <Compile Include="$(EditMode)DoorLeafSoundsTests.cs" />
+    <!-- A competition's last seconds tick as the clock's digits come to each whole second (AU-08). -->
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/CountTicks.cs" />
+    <Compile Include="$(EditMode)CountTicksTests.cs" />
     <!-- The prepared block speech a pad gives without typing (A6): every approach's line is a valid speech carrying it. -->
     <Compile Include="$(EditMode)PreparedSpeechTests.cs" />
     <!-- The standalone profile's performance verdict and arithmetic, and the verification-only stress house. -->

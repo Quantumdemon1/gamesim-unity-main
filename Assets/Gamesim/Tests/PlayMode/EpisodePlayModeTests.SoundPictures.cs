@@ -343,7 +343,27 @@ namespace Gamesim.Tests.PlayMode
                 return new SoundPictureWatch.Expected("explicit timing-bar diagnostic panel, not a naturally dealt competition")
                     .At(director, null, InputGlossary.ChallengeLine(false)).At(director, null, "STOP marker  [Space]");
             }
-            if ((cue == HouseAudio.Cue.SocialUp || cue == HouseAudio.Cue.SocialDown) && run != null)
+            // A competition's count (AU-08): before GO the big digit steps down (the clock's line, while
+            // a memory board shows its cards); in the last five seconds the clock's digits come to a
+            // whole second, read from the run as the clock draws them.
+            if (cue == HouseAudio.Cue.CountTick && screen != null && run != null)
+            {
+                if (!SoundSourceField<bool>(screen, "playing"))
+                {
+                    int count = Mathf.Max(1, Mathf.CeilToInt(SoundSourceField<float>(screen, "countdownLeft")));
+                    var ready = new SoundPictureWatch.Expected("actual " + run.Kind + " ready count " + count);
+                    if (SoundSourceField<bool>(screen, "previewStarted")) return ready.At(screen, "Clock state", "MEMORIZE · " + count);
+                    return ready.At(screen, "Countdown", count.ToString());
+                }
+                string digits = run.Remaining.ToString("0.0");
+                int point = digits.IndexOf('.');
+                string drawn = point < 0 ? "<mspace=0.6em>" + digits + "</mspace>"
+                    : "<mspace=0.6em>" + digits.Substring(0, point) + "</mspace>.<mspace=0.6em>" + digits.Substring(point + 1) + "</mspace>";
+                return new SoundPictureWatch.Expected("actual " + run.Kind + " clock at " + digits + " s left")
+                    .At(screen, "Competition clock", drawn);
+            }
+            // An early press (AU-08) is told on the reaction board's lines as its hits and misses are.
+            if ((cue == HouseAudio.Cue.SocialUp || cue == HouseAudio.Cue.SocialDown || cue == HouseAudio.Cue.FalseStart) && run != null)
             {
                 var picture = new SoundPictureWatch.Expected("actual " + run.Kind + " outcome; hits=" + run.Hits
                     + ", wrong=" + run.WrongDirections + ", expired=" + run.ExpiredTargets + ", pairs=" + run.MatchedPairs
@@ -469,7 +489,8 @@ namespace Gamesim.Tests.PlayMode
         /// The competition's own news has pictures too (A11): each kind of board practised from the
         /// briefing of a season's first Head of Household - GO is its start, a hit, a pair, a kept roll
         /// or a solved word rises, a wrong way, a let-go target, a wrong pair, a pressure wave or a
-        /// wrong word falls - and each of those sounds in a frame whose words changed with it. The
+        /// wrong word falls, the count before GO ticks and an early press buzzes (AU-08) - and each of
+        /// those sounds in a frame whose words changed with it. The
         /// timing bar, which no category deals any more, is started through its seam: its start is the
         /// panel coming up.
         /// </summary>
@@ -488,6 +509,10 @@ namespace Gamesim.Tests.PlayMode
             bool falls = kind != CompetitionMiniGames.Kind.Precision && kind != CompetitionMiniGames.Kind.Dice;
             if (rises) expected.Add(HouseAudio.Cue.SocialUp);
             if (falls) expected.Add(HouseAudio.Cue.SocialDown);
+            // The count before GO ticks on every board the screen plays, and an early press buzzes on the
+            // reaction board's (AU-08): both news now, so both are held to their pictures.
+            if (kind != CompetitionMiniGames.Kind.Precision) expected.Add(HouseAudio.Cue.CountTick);
+            if (kind == CompetitionMiniGames.Kind.Reaction) expected.Add(HouseAudio.Cue.FalseStart);
 
             MiniGameRun run = null;
             using (var watch = new SoundPictureWatch(audio, () => kind + (run != null ? " at " + run.Elapsed.ToString("0.00") + " s" : " at the briefing"), InformationPictureFor))
@@ -534,9 +559,15 @@ namespace Gamesim.Tests.PlayMode
             }
         }
 
-        /// <summary>A hit on the target's own way, a wrong way on the next, and one let go.</summary>
+        /// <summary>A press before any target is up, a hit on the target's own way, a wrong way on the next, and one let go.</summary>
         private IEnumerator PlayReactionForCues(MiniGameRun run)
         {
+            yield return WaitFor(() => !run.TargetLive, 5f, "No target is up yet.");
+            int early = run.FalseStarts;
+            director.TapTarget();
+            yield return null;
+            Assert.That(run.FalseStarts, Is.EqualTo(early + 1), "A press with no target up is an early press.");
+
             yield return WaitFor(() => run.TargetLive, 10f, "A target comes up.");
             int hits = run.Hits;
             director.TapTarget();

@@ -55,6 +55,24 @@ namespace Gamesim.Tests.EditMode
         }
 
         /// <summary>
+        /// A competition's count (AU-08) ticks every second, so it plays at least 3 dB under a ballot's
+        /// tick, and over the interface's loudest answer, as news does; an early press is a small
+        /// thing, at least 2 dB under a miss.
+        /// </summary>
+        [Test]
+        public void TheCountTicksUnderTheBallot_AndAnEarlyPressBuzzesUnderAMiss()
+        {
+            var loudness = SoundPictures.Rows.ToDictionary(row => row.Cue, row => LoudestDecibels(Recording(row.Cue)) + row.GainDb);
+            double loudestAnswer = SoundPictures.Rows.Where(row => row.Kind == SoundKind.Interface).Max(row => loudness[row.Cue]);
+            Assert.That(loudness["CountTick"], Is.LessThanOrEqualTo(loudness["Vote"] - 3.0),
+                "The count's tick plays at " + loudness["CountTick"].ToString("0.00") + " dB against the ballot's " + loudness["Vote"].ToString("0.00") + ".");
+            Assert.That(loudness["CountTick"], Is.GreaterThan(loudestAnswer),
+                "The count's tick is news, over the interface's loudest answer at " + loudestAnswer.ToString("0.00") + " dB.");
+            Assert.That(loudness["FalseStart"], Is.LessThanOrEqualTo(loudness["SocialDown"] - 2.0),
+                "An early press plays at " + loudness["FalseStart"].ToString("0.00") + " dB against a miss's " + loudness["SocialDown"].ToString("0.00") + ".");
+        }
+
+        /// <summary>
         /// A competition's loop takes over from the season's bed at the bed's own gain
         /// (<see cref="MusicFade.CompetitionPeak"/>), so its recording is what sets how loud it is: about
         /// as loud as the bed, measured whole, up to 3 dB over it for its drive and never more than a

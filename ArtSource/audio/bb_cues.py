@@ -121,6 +121,41 @@ def cues():
     for index, name in enumerate(["G4", "E5", "C5"]):
         summons.add(bell(s.hz(name), 0.85 if index == 2 else 0.7, gain=0.42), index * 0.24, pan=-0.15 + 0.15 * index)
     yield "Summons", stereo(summons, rev=0.3, size=0.8)
+    # A competition's count and an early press (AU-08), appended: news, so they play as recorded, and
+    # each is recorded under the ballot's tick - a count comes every second and must not shout.
+    yield "CountTick", level(stereo(count_tick(), rev=0.06, size=0.3), COUNT_TICK_DB)
+    yield "FalseStart", level(stereo(false_start(), rev=0.08, size=0.3), FALSE_START_DB)
+
+
+# The recorded level of the count's tick and the early press, in decibels under the -1.5 dB peak every
+# cue is normalized to: they are news and play as recorded, so their place in the mix is set here.
+COUNT_TICK_DB = -2.0
+FALSE_START_DB = -7.5
+
+
+def level(stereo_data, db):
+    """A normalized recording set down by <db> decibels."""
+    return stereo_data * (10.0 ** (db / 20.0))
+
+
+def count_tick():
+    """The count's tick: the reference build's compProgress (a 1000 Hz sine for 50 ms), with a small
+    wooden knock under its front so it reads as a clock's tick, not the pointer's."""
+    track = s.Track(0.14)
+    track.add(s.note("sine", 1000.0, 0.09, env=(0.001, 0.03, 0.0, 0.05), gain=0.5), 0.0)
+    track.add(s.note("sine", 2000.0, 0.05, env=(0.0005, 0.015, 0.0, 0.03), gain=0.1), 0.0)
+    n = s.seconds(0.03)
+    knock = s.lowpass(s.osc("noise", 13.0, n), 3000.0) * s.adsr(n, 0.0005, 0.01, 0.0, 0.015) * 0.25
+    track.add(knock, 0.0)
+    return track
+
+
+def false_start():
+    """An early press: a dull double buzz, low and short - the game's 'not yet', not a wrong answer."""
+    track = s.Track(0.3)
+    for index in range(2):
+        track.add(s.note("square", 150.0, 0.09, env=(0.003, 0.03, 0.6, 0.03), cutoff=1100.0, gain=0.35), index * 0.12)
+    return track
 
 
 def latch(gain=0.3):

@@ -458,6 +458,9 @@ namespace Gamesim.Episode
             foreach (var item in EpisodeEngine.OpenStoryBeats(state))
             {
                 if (declinedPulls.Contains(item.id)) continue;
+                // Walk-ups name the houseguest: while asks are on, a beat whose houseguest comes to the player walks up with
+                // it (EpisodeDirector.ComesToYou.cs) instead of this card, which names nobody.
+                if (AsksOn && ComesToYou.StorySpeaker(state, item) != null) continue;
                 var pull = PullFor(state, item);
                 if (pull != null) return pull;
             }
@@ -559,9 +562,12 @@ namespace Gamesim.Episode
             bool free = IsReady && !IsPanelOpen && !challengeActive && !CeremonyOverlays.OnScreen && playerIsActive
                 && !NpcInvitationIsVisible;
             string walkIn = walkInFirst == null ? null : WalkInKey(walkInWeek, walkInRoom, walkInFirst, walkInSecond);
-            if (!ReferenceEquals(pullFor, projected) || pullFree != free || pullWalkIn != walkIn || pullDeclined != declinedPulls.Count)
+            // The asks' switch decides whether a beat with a houseguest to bring it is a Pull (CurrentPull), so it joins the key.
+            bool asks = AsksOn;
+            if (!ReferenceEquals(pullFor, projected) || pullFree != free || pullWalkIn != walkIn || pullDeclined != declinedPulls.Count
+                || pullAsks != asks)
             {
-                pullFor = projected; pullFree = free; pullWalkIn = walkIn; pullDeclined = declinedPulls.Count;
+                pullFor = projected; pullFree = free; pullWalkIn = walkIn; pullDeclined = declinedPulls.Count; pullAsks = asks;
                 pullNow = free ? CurrentPull(projected) : null;
             }
             PullOffered = pullNow?.Primary;
@@ -572,6 +578,7 @@ namespace Gamesim.Episode
         private bool pullFree;
         private string pullWalkIn;
         private int pullDeclined;
+        private bool pullAsks;
         private EpisodeHud.StoryPull? pullNow;
 
         /// <summary>

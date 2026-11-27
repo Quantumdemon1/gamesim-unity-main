@@ -32,6 +32,10 @@ namespace Gamesim.Episode
         // "Hear them out"; none of the offer's or a card's.
         public const string PitchHearCaption = "Hear their pitch";
         public const string PitchNotNowCaption = "Let it wait";
+        // A story beat's pair (walk-ups name the houseguest): somebody has come to say something. Not the Pull's "Hear them
+        // out" and "Not now", which its card still wears, nor any other source's.
+        public const string StoryHearCaption = "What's on your mind?";
+        public const string StoryNotNowCaption = "Maybe later";
         // A caption's box sits this far inside its button, above and below.
         private const float CaptionInset = 4f;
         private GameObject root;

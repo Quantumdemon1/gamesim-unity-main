@@ -78,7 +78,7 @@ namespace Gamesim.Simulation
 
         /// <summary>
         /// Switches the story system on for a season: from <paramref name="fromWeek"/>, under every
-        /// enrolled milestone (<see cref="StoryRules.Current"/>, the role moments' Roles since R7; a later one
+        /// enrolled milestone (<see cref="StoryRules.Current"/>, the house talk's Manners since A-ON; a later one
         /// waits for its enrolment), with each houseguest's lore snapshotted. The director calls this
         /// for every season it starts; the save migration does the same from the week after a save's.
         /// </summary>

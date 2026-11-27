@@ -210,6 +210,9 @@ namespace Gamesim.Tests.PlayMode
             state.boughtActionPoints = bought;
             EpisodeEngine.EnableWeek(state, state.week);
             EpisodeEngine.EnableStory(state, state.week);
+            // Held at story rules 11, Roles, by name (plan 32 A-ON): the board's tests are about its layout and its costs, and
+            // EnableStory now gives 12, where listening in is a free tile that walks you over (Overhear_ covers it).
+            state.story.rulesVersion = StoryRules.Roles;
             state.houseEvents.RemoveAll(item => !item.resolved);
             state.replyCards.Clear();
             var npcs = state.Active.Where(actor => !actor.isPlayer).Select(actor => actor.id).ToList();

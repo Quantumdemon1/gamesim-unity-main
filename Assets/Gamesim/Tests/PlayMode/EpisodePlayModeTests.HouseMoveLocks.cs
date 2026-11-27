@@ -30,6 +30,9 @@ namespace Gamesim.Tests.PlayMode
             state.haveNotRulesStartWeek = 1;
             EpisodeEngine.EnableWeek(state, state.week);
             EpisodeEngine.EnableStory(state, state.week);
+            // Held at story rules 11, Roles, by name (plan 32 A-ON): the locks are about the costed moves, and EnableStory now
+            // gives 12, where listening in is free and walks you over, so it never locks for want of an action.
+            state.story.rulesVersion = StoryRules.Roles;
             state.economyRulesVersion = 1;
             state.houseEvents.RemoveAll(item => !item.resolved);
             state.replyCards.Clear();

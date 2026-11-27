@@ -613,13 +613,20 @@
 # disjoint cases, so the floor is their sum (the presentation wave of 26 November 2026). Counted from the two sides.
 # 11442 = 11360 (the walk-ups stack's head 13868864) + the earlier stacks' 82 (11433 - 11351 on this branch): disjoint
 # cases, so the floor is their sum (the presentation wave of 26 November 2026). Counted from the two sides.
+# 11358 = 11351 + 7, 2026-11-26. The first schema-31 old-save cell (OLD-SAVE-ACCEPTANCE 2.15): OldSaveAcceptanceTests 6 (EditMode only) and LegacyDigestSchema31ObserverTests 1 (also in the dotnet subset).
+# 11365 = 11358 + 7, 2026-11-26. The vote answer's line at story rules 12: HouseAnswersVarietyTests 2 and HouseTalkValidationTests' line: rows 5 (all also in the dotnet subset).
+# 11377 = 11365 + 12, 2026-11-26. Story rules 12 enrolled (plan 32 A-ON): HouseTalkRulesTests 4 and StoryMechanicsTests 2 (also in the dotnet subset), and the story-rules-12 old-save cell's OldSaveAcceptanceTests 6 (EditMode only).
+# 11468 = 11442 (main's) + the house-talks-back stack's 26 (11377 - 11351 on this branch): disjoint cases, so the
+# floor is their sum (main's presentation wave). Counted from the two sides.
 # 11448 = 11442 + 6, 2026-11-27. Dialogue rules 5's HoH consultation, built switched off (DialogueRules5HoHTests 6, all also in the dotnet subset).
 # 11461 = 11442 + 19, 2026-11-27. Free talk's event talks, built switched off at talk rules 5 (FreeTalkEventTests 19, also in the dotnet subset).
 # 11465 = 11461 + 4, 2026-11-27. The regulars' own talks, built switched off at talk rules 5 (TalkPersonTablesTests 4, also in the dotnet subset).
 # 11467 = 11465 + 2, 2026-11-27. The free-talk review's fixes: a talk id the commitment scan reads as code, and Flirt on an event talk (TalkTablesTests 1, FreeTalkEventTests 1, also in the dotnet subset).
 # 11473 = 11448 (the consultation's) + the free-talk groundwork's 25 (11467 - 11442 on this branch): disjoint cases,
 # so the floor is their sum (the consultation). Counted from the two sides.
-Gamesim.EditModeTests 11473
+# 11499 = 11468 (the house-talks-back stack's) + the groundwork's 31 (11473 - 11442 on this branch): disjoint cases,
+# so the floor is their sum (the house-talks-back stack). Counted from the two sides.
+Gamesim.EditModeTests 11499
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and
@@ -1782,10 +1789,17 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # disjoint cases, so the floor is their sum (the presentation wave of 26 November 2026). Counted from the two sides.
 # 23528 = 23457 (the walk-ups stack's head 13868864) + the earlier stacks' 71 (23519 - 23448 on this branch): disjoint
 # cases, so the floor is their sum (the presentation wave of 26 November 2026). Counted from the two sides.
+# 23449 = 23448 + 1, 2026-11-26. The first schema-31 old-save cell's checkpoint at 31: the same LegacyDigestSchema31ObserverTests case the EditMode floor counts.
+# 23456 = 23449 + 7, 2026-11-26. The vote answer's line at story rules 12: the same 7 cases the EditMode floor counts.
+# 23469 = 23456 + 13, 2026-11-26. Story rules 12 enrolled (plan 32 A-ON): the same 6 HouseTalkRulesTests and StoryMechanicsTests cases the EditMode floor counts, and 7 compiled out of Unity (HeldReplayTalkLevelTests 6, HeldReplayShapeTests 1: the held replays' levels and shape, MannersSeasonDigests among them).
+# 23549 = 23528 (main's) + the house-talks-back stack's 21 (23469 - 23448 on this branch): disjoint cases, so the
+# floor is their sum (main's presentation wave). Counted from the two sides.
 # 23534 = 23528 + 6, 2026-11-27. The same 6 DialogueRules5HoHTests cases the EditMode floor counts.
 # 23547 = 23528 + 19, 2026-11-27. The same 19 FreeTalkEventTests cases the EditMode floor counts.
 # 23551 = 23547 + 4, 2026-11-27. The same 4 TalkPersonTablesTests cases the EditMode floor counts.
 # 23553 = 23551 + 2, 2026-11-27. The same 2 review-fix cases the EditMode floor counts (TalkTablesTests 1, FreeTalkEventTests 1).
 # 23559 = 23534 (the consultation's) + the free-talk groundwork's 25 (23553 - 23528 on this branch): disjoint cases,
 # so the floor is their sum (the consultation). Counted from the two sides.
-Gamesim.SimulationTests 23559
+# 23580 = 23549 (the house-talks-back stack's) + the groundwork's 31 (23559 - 23528 on this branch): disjoint cases,
+# so the floor is their sum (the house-talks-back stack). Counted from the two sides.
+Gamesim.SimulationTests 23580

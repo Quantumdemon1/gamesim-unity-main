@@ -37,6 +37,14 @@ namespace Gamesim.Tests.EditMode
     /// keeps every one: its rules read their own level (12, 13 or 14), never these seasons'. A change to the role moments
     /// themselves (a balance cut) moves them and is re-recorded with its reason; nothing else may move one.</para>
     ///
+    /// <para><b>Re-recorded 2026-11-26 (plan 32 A-ON): busy n16 s1, s4 and s5.</b> Pull request 127 changed The Target on
+    /// Their Back (an All-Stars arc, cast in these stress houses) at every story level in two ways. Its cast of the next past
+    /// winner when the first is resting moved busy n16 s6 too; A-ON keys that to story rules 12, so s6 plays as recorded
+    /// again. Its honest words for the "protect" and "numbers" answers (the commitment-write receipt: a cycle variable, the
+    /// card's outcome and the player's memory say whether a promise or deal was really made) change only words and that
+    /// variable, never who is cast or what is committed, and stay at every level as a fix; they moved s1, s4 and s5, whose
+    /// digests are the ones below. The other 45 seasons printed their digests byte for byte.</para>
+    ///
     /// <para>Explicit: run with <c>dotnet test Tools/SimulationTests --filter "FullyQualifiedName~RolesSeasonDigests"</c>.
     /// With the environment variable <c>GAMESIM_ROLES_DIGESTS_OUT</c> set to a file path, the run also writes its lines
     /// there, one a season, for the re-record.</para>
@@ -88,11 +96,11 @@ namespace Gamesim.Tests.EditMode
             "walker n16 s4 4ee7678ddffdf242",
             "walker n16 s5 b8e2555769bb79ba",
             "walker n16 s6 ca3c85bb19094ed5",
-            "busy n16 s1 dc8956f9f5d9c353",
+            "busy n16 s1 922120b6dded736e",
             "busy n16 s2 076c3ccbc1461a01",
             "busy n16 s3 7a109acbd9400fac",
-            "busy n16 s4 fda49dcec47d8ed0",
-            "busy n16 s5 e10e125d6a482f6d",
+            "busy n16 s4 cacc0b4d6826a4ba",
+            "busy n16 s5 369bcfb4b4a5dab1",
             "busy n16 s6 4343a4b3a9c76d4f",
         };
 

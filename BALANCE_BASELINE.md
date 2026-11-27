@@ -159,6 +159,28 @@ VERDICT: PASS R0: criteria 1-7 pass on the held-out seeds on snapshot b25d799d3b
   head 2892a4e8 at `BALANCE_BOARDS=1`, 480 of 480 seasons equal to the lab's R0 rows. Its own build writes the old-save
   cell at story rules 11 (OLD-SAVE-ACCEPTANCE 2.13).
 
+**Story rules 12's enrolment (2026-11-26, plan 32 A-ON).** Every new season starts on story rules 12 (Manners): the house
+talks back - vote answers in a voice and a manner with tells, free Notice and Listen with hunches on the web, and the
+paid listen-in refused. The headline's unnamed cells follow `Current`, so from here they play Manners. What holds, by
+name, and how:
+- The rules-9, rules-10 and rules-11 pins are held by name: each names its story rules, never `Current`, so the rules-11
+  twins (`2a39d289ab2e77ec`, `393c1559fd68ed67`) now name 11 (`/story11`) and play the seasons they recorded, as the
+  rules-10 twins did at R7 (`Fresh` writes the cell's story rules after `ApplyFresh`, whose only story write is that
+  number). They were not run again at the switch.
+- New Explicit rules-12 twins pin the same seasons at story rules 12: `c8b38878e1575af5` at tuning 0 and
+  `0bac9fc23466b20c` at tuning 1, the shipped seasons.
+- `BalanceLabGoldens` is re-recorded: its `Rules` tuple ends `story.rulesVersion=12`; 29 of its 48 cells moved (the players
+  who ask about votes and read them) and are re-recorded at the switch, with the reason in the file; the other 19 printed
+  their digests byte for byte.
+- The measurement it enrolls on: Stack A's paired report (`HouseTalkLab.StackAReport`, 50 seeds a cell, 2,400 seasons,
+  11 against 12 with no walker, a casual one and an attentive one), read by house size, pooled over the cells (the
+  lead's ruling: a 50-seed cell cannot resolve a 3-point gate). Every gate of plan 32 section M is inside: errors 0; at 8
+  seats the read ballots +6.0 / +6.8 / +4.9 points, the win rate 0.0 / +2.3 / +3.0, the skill gap 14 to 15, decisions
+  a season +0.36 / +0.26 / +2.51; at 12 seats the win rate -1.0 / -3.0 / -3.3; hunches true 62.2% (casual) and 58.4%
+  (attentive). Watch items for S9: the 8-seat attentive win sits exactly at its limit; the 8-seat NPC-world cells alone
+  read +3.3 / +4.7 on 150 seasons (not significant, McNemar p about 0.34); one hunch cell read 53.2%.
+- The switch's own build writes the old-save cell at story rules 12 (OLD-SAVE-ACCEPTANCE 2.16).
+
 **The lab's new reads.** A cell field `tuningHeld` (named `/tuning0`, seeded as its shipped cell) and the tier-wide
 `BALANCE_TUNING=0`; the view's `PreparationCap`, which the studier and the beast study up to; the war-room tier prints the
 counter tally table (`BalanceLabDiagnostics.CounterTallies`: as played, and replayed under today's rule, K1, K5 and

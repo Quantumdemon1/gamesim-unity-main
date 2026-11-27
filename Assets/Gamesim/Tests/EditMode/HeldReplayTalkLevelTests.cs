@@ -26,12 +26,30 @@ namespace Gamesim.Tests.EditMode
         [TestCase("the all-week rules", TalkRules.Chemistry)]
         [TestCase("the commitment rules", TalkRules.Off)]
         [TestCase("mode one", TalkRules.Off)]
+        [TestCase("the house talk's manners", TalkRules.Romance)]
         public void AHeldReplayPlaysTheTalkAndMindLevelsItWasRecordedAt(string replay, int talkRules)
         {
             var season = Season(replay);
             Assert.That(season.story, Is.Not.Null, replay + " plays the story.");
             Assert.That(season.story.talkRules, Is.EqualTo(talkRules), replay + " holds the free talk level its digests were recorded at.");
             Assert.That(season.story.mindRules, Is.EqualTo(MindRules.Off), replay + " holds the minds' level its digests were recorded at.");
+            Assert.That(EpisodeValidation.TryValidate(season, out string invalid), Is.True, invalid);
+        }
+
+        /// <summary>
+        /// A-ON (story rules 12 enrolled): a held replay plays the story rules it was recorded or measured at, written by name,
+        /// so each enrolment leaves it where it was. The role moments' seasons and the all-week rules' fresh seasons hold 11;
+        /// the house talk's manners hold 12 for Stack B; the commitment rules' and mode 1's hold threads (9).
+        /// </summary>
+        [TestCase("the role moments", StoryRules.Roles)]
+        [TestCase("the all-week rules", StoryRules.Roles)]
+        [TestCase("the commitment rules", StoryRules.Threads)]
+        [TestCase("mode one", StoryRules.Threads)]
+        [TestCase("the house talk's manners", StoryRules.Manners)]
+        public void AHeldReplayPlaysTheStoryRulesItWasRecordedAt(string replay, int storyRules)
+        {
+            var season = Season(replay);
+            Assert.That(season.story.rulesVersion, Is.EqualTo(storyRules), replay + " holds the story rules its digests were recorded at.");
             Assert.That(EpisodeValidation.TryValidate(season, out string invalid), Is.True, invalid);
         }
 
@@ -44,6 +62,7 @@ namespace Gamesim.Tests.EditMode
                 case "the all-week rules": return Invoke(typeof(AllWeekSeasonDigests), "Held", 6, 1u);
                 case "the commitment rules": return Invoke(typeof(CommitmentRulesSeasonDigests), "Season", "director", 6, 1u, true);
                 case "mode one": return Invoke(typeof(ModeOneSeasonDigests), "Season", "director", 6, 1u);
+                case "the house talk's manners": return Invoke(typeof(MannersSeasonDigests), "Season", 6, 1u);
             }
             throw new ArgumentException("No held replay " + replay + ".");
         }

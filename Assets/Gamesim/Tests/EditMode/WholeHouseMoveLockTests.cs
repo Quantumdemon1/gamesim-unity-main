@@ -29,6 +29,10 @@ namespace Gamesim.Tests.EditMode
         {
             var s = SeasonBuilder.Create(new SeasonBuilder.Choice { HouseSize = 8 }, 4127u);
             ShippedRules.ApplyFresh(s);
+            // Held at story rules 11, Roles, by name (plan 32 A-ON): the lock is the paid moves' (a meeting and the paid
+            // listen-in), and ApplyFresh now gives 12, where the paid listen-in is refused outright ("Walk over and listen in.")
+            // and listening in is the free Listen, which no tile locks for want of an action.
+            s.story.rulesVersion = StoryRules.Roles;
             Walk(s, "a new season");
         }
 

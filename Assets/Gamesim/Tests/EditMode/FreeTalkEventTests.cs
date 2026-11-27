@@ -232,6 +232,33 @@ namespace Gamesim.Tests.EditMode
             Assert.That(next.Talk.Id, Is.Not.EqualTo(talkId), "An event talk is said once.");
         }
 
+        /// <summary>
+        /// Spec 3.2: once flirting is open, a talk carries the Flirt answer as its fourth reply, and an event talk is otherwise an
+        /// ordinary talk, so it carries it as a layer, rhythm, standing or stage talk does: the button is drawn and the engine
+        /// takes it (the review of slice 5's groundwork).
+        /// </summary>
+        [Test]
+        public void AtTalkLevelFiveAnEventTalkCarriesTheFlirtAnswerWhileFlirtingIsOpen()
+        {
+            var s = FreeTalkS3Fixture.WithInterested(TalkPools.Spark, TalkPools.Spark, out string npc);
+            s.story.talkRules = TalkRules.ComesToTalk;
+            s.week = 3;
+            FreeTalkS3Fixture.Flirting(s, npc, spark: 5, rapport: 30);
+            FreeTalkFixture.ContactOf(s, npc).talks = 1;
+            Happen(s, TalkEvents.PlayerHoH, npc, new List<string>());
+            OpenWindow(s, TalkWindows.AfterHoH);
+            Assert.That(TalkRomance.FlirtOpen(s, npc), Is.True, "The control: flirting is open with them.");
+            var offer = FreeTalk.Offer(s, npc);
+            Assert.That(offer.Available, Is.True, offer.Reason);
+            Assert.That(offer.Talk.Kind, Is.EqualTo(TalkKind.Event), "The control: the player's win is the talk on offer.");
+            Assert.That(TalkRomance.FlirtOffered(s, npc, offer.Talk), Is.True, "An event talk carries the Flirt answer.");
+            Assert.That(TalkScreenLines.FlirtShown(s, npc, offer.Talk, TalkScreenLines.Replies(s, npc, offer.Talk)), Is.True,
+                "The Flirt button is drawn on it.");
+            var flirted = TalkRomance.Result(s, npc, TalkRomance.CommandText(offer.Talk.Id, TalkRules.Flirt));
+            Assert.That(flirted, Is.Not.Null, "The engine takes a Flirt on the event talk.");
+            Assert.That(flirted.TalkId, Is.EqualTo(offer.Talk.Id));
+        }
+
         /// <summary>Answers the talk on offer with a housemate in its first tone; the talk's id and the tone, or nulls.</summary>
         static CommandResult Answer(EpisodeEngine engine, string npcId, out string talkId, out string tone)
         {

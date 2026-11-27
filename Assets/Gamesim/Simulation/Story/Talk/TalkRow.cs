@@ -16,7 +16,8 @@ namespace Gamesim.Simulation
         /// <summary>
         /// A week-event talk (slice S5, talk rules 5): what just happened in the house this week, said while its
         /// <see cref="TalkGate.Event"/> holds (<see cref="TalkEvents"/>), at priority 100 (<see cref="FreeTalk.EventPriority"/>), and
-        /// spent once. Otherwise an ordinary talk: tones, layer 0, nothing revealed. Never offered below talk rules 5
+        /// spent once. Otherwise an ordinary talk: tones (and the Flirt answer while flirting is open, <see cref="TalkRomance.FlirtOffered"/>),
+        /// layer 0, nothing revealed. Never offered below talk rules 5
         /// (<see cref="TalkRow.FromRules"/>). Placed before <see cref="Stage"/> so every check that reads "<c>Kind &lt;= Stage</c>"
         /// as "not a romance kind" reads it so; no kind's number is saved anywhere.
         /// </summary>

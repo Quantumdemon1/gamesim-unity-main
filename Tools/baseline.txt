@@ -615,7 +615,8 @@
 # cases, so the floor is their sum (the presentation wave of 26 November 2026). Counted from the two sides.
 # 11461 = 11442 + 19, 2026-11-27. Free talk's event talks, built switched off at talk rules 5 (FreeTalkEventTests 19, also in the dotnet subset).
 # 11465 = 11461 + 4, 2026-11-27. The regulars' own talks, built switched off at talk rules 5 (TalkPersonTablesTests 4, also in the dotnet subset).
-Gamesim.EditModeTests 11465
+# 11467 = 11465 + 2, 2026-11-27. The free-talk review's fixes: a talk id the commitment scan reads as code, and Flirt on an event talk (TalkTablesTests 1, FreeTalkEventTests 1, also in the dotnet subset).
+Gamesim.EditModeTests 11467
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and
@@ -1780,4 +1781,5 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # cases, so the floor is their sum (the presentation wave of 26 November 2026). Counted from the two sides.
 # 23547 = 23528 + 19, 2026-11-27. The same 19 FreeTalkEventTests cases the EditMode floor counts.
 # 23551 = 23547 + 4, 2026-11-27. The same 4 TalkPersonTablesTests cases the EditMode floor counts.
-Gamesim.SimulationTests 23551
+# 23553 = 23551 + 2, 2026-11-27. The same 2 review-fix cases the EditMode floor counts (TalkTablesTests 1, FreeTalkEventTests 1).
+Gamesim.SimulationTests 23553

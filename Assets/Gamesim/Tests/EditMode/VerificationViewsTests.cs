@@ -516,15 +516,18 @@ namespace Gamesim.Tests.EditMode
                         && light.shadows != LightShadows.None && light.shadowStrength > 0f)
                     .Select(light => PortVerification.ShadowLightOf(light)).ToList();
                 Assert.That(lights.Count, Is.EqualTo(14), "The saved house's shadowed lights are its fourteen lamps.");
+                Assert.That(lights.Select(light => light.Resolution), Is.All.EqualTo(512), "SB1: every lamp asks for the Medium tier's 512 px.");
+                // SB1 halves every lamp's request, so URP's scale halves and each map keeps its size.
                 var v1 = Work(VerificationViews.Find("V1"), Wide, lights);
                 Assert.That(v1.lights, Is.EqualTo(14), "Today's default touches every lamp's reach.");
                 Assert.That(v1.slicesKept, Is.EqualTo(84), "Six faces a lamp.");
-                Assert.That(v1.scale, Is.EqualTo(8), "URP's 'reduced by 8' in the editor logs.");
-                Assert.That(v1.largestSlice, Is.EqualTo(128));
+                Assert.That(v1.scale, Is.EqualTo(4), "URP's 'reduced by 4' (by 8 at the High tier).");
+                Assert.That(new[] { v1.largestSlice, v1.smallestSlice }, Is.EqualTo(new[] { 128, 128 }), "Every lamp at 128 px, as at the High tier.");
                 var v9 = Work(VerificationViews.Find("V9"), 1600.0 / 900.0, lights);
                 Assert.That(v9.lights, Is.EqualTo(7), "The W3 full-field capture's eye: the 42-map line in the editor logs.");
                 Assert.That(v9.slicesKept, Is.EqualTo(42));
-                Assert.That(v9.largestSlice, Is.EqualTo(256));
+                Assert.That(v9.scale, Is.EqualTo(2), "By 2 (by 4 at the High tier).");
+                Assert.That(new[] { v9.largestSlice, v9.smallestSlice }, Is.EqualTo(new[] { 256, 256 }), "Every lamp at 256 px, as at the High tier.");
             }
             finally { EditorSceneManager.ClosePreviewScene(scene); }
         }

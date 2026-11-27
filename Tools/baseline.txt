@@ -621,7 +621,8 @@
 # 11466 = 11461 + 5, 2026-11-27. The houseguests' murmurs and the Voice volume (AU-16): a voice from the id and pronouns, a syllable a word up to 1.2 s, in silence at both ends (MurmurTests 3), the fourth volume at 70% under its own key (SoundPicturesTests 1) and the murmur's level (CueLoudnessTests 1).
 # 11443 = 11442 + 1, 2026-11-27. The keyboard's control and the pointer's are two looks, and the focus ring reads on the glass (UiThemeContrastTests 1).
 # 11467 = 11466 (AU-16) + the focus ring stack's 1 (11443 - 11442): disjoint cases, so the floor is their sum, 2026-11-27.
-Gamesim.EditModeTests 11467
+# 11472 = 11467 + 5, 2026-11-27. Every press answers (AU-10): a press that asked no sound of its own clicks once, one that did is left to it (PressAnswerTests 3), the HUD's presses answered and its greyed controls silent, and the front door's screens and the report ticking and answering with the house's sounds (MenuWayOutFoleyScanTests 2).
+Gamesim.EditModeTests 11472
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and
@@ -981,7 +982,8 @@ Gamesim.EditModeTests 11467
 # 1746 = 1745 + the control Enter presses wears the accent edge and a ring, a hovered one does not (EpisodePlayModeTests.UiFocus 1), 2026-11-27.
 # 1747 = 1746 + the tour's phase step gives up a decision that leaves its card no side, for the objective (EpisodePlayModeTests.ConversationExchangeHud 1), 2026-11-27.
 # 1751 = 1749 (AU-16) + the focus ring stack's 2 (1747 - 1745): disjoint cases, so the floor is their sum, 2026-11-27.
-Gamesim.PlayModeTests 1751
+# 1752 = 1751 + every press answers once on the front door and in the HUD, and a greyed control is silent (EpisodePlayModeTests.Audio 1), 2026-11-27.
+Gamesim.PlayModeTests 1752
 # The UMA build of the same assembly, read by a plan built without -WithoutUma. 1281 = the 1241 above + the
 # 40 tests that compile only under GAMESIM_UMA, as run at r1 (2026-10-16): in EpisodePlayModeTests,
 # GroundedFarewell 11, Creator 9, HouseLife 8, Emotes 3, OpeningCaptures 2, and one each in CreatorEntry,
@@ -1265,7 +1267,8 @@ Gamesim.PlayModeTests 1751
 # 1793 = 1792 + the same focus ring case (EpisodePlayModeTests.UiFocus 1), 2026-11-27.
 # 1794 = 1793 + the same tour refusal case (EpisodePlayModeTests.ConversationExchangeHud 1), 2026-11-27.
 # 1798 = 1796 (AU-16) + the focus ring stack's 2 (1794 - 1792): disjoint cases, so the floor is their sum, 2026-11-27.
-Gamesim.PlayModeTests.UmaBuild 1798
+# 1799 = 1798 + the same press sounds case (EpisodePlayModeTests.Audio 1), 2026-11-27.
+Gamesim.PlayModeTests.UmaBuild 1799
 # The UMA bodies: runs only where the GAMESIM_UMA define is set (the working tree and the D: copy).
 # 82 = the 89 run on 2026-10-15, less the 7 farewell probes moved to Gamesim.Uma.DiagnosticsPlayModeTests;
 # 85 = 82 + the 3 farewell readiness decision tests (UmaFarewellReadinessDecisionPlayModeTests, 2026-10-16);
@@ -1804,4 +1807,5 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # 23544 = 23539 + 5, 2026-11-27. The same 5 staged competition sound cases the EditMode floor counts (CompetitionShowSoundsTests 4, CueLoudnessTests 1), which run without Unity.
 # 23547 = 23544 + 3, 2026-11-27. The same 3 trust sound cases the EditMode floor counts (CommitSoundTests 1, SoundPicturesTests 1, CueLoudnessTests 1), which run without Unity.
 # 23552 = 23547 + 5, 2026-11-27. The same 5 murmur and Voice volume cases the EditMode floor counts (MurmurTests 3, SoundPicturesTests 1, CueLoudnessTests 1), which run without Unity.
-Gamesim.SimulationTests 23552
+# 23557 = 23552 + 5, 2026-11-27. The same 5 press sound cases the EditMode floor counts (PressAnswerTests 3, MenuWayOutFoleyScanTests 2), which run without Unity.
+Gamesim.SimulationTests 23557

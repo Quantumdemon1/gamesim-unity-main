@@ -787,6 +787,9 @@
     <!-- The houseguests' murmurs (AU-16): a voice from the id and pronouns, a syllable a word up to 1.2 s; its level in CueLoudnessTests. -->
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/Murmur.cs" />
     <Compile Include="$(EditMode)MurmurTests.cs" />
+    <!-- Every press answers (AU-10): a press that asked for no sound of its own clicks once; one that did is left to it. -->
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/PressAnswer.cs" />
+    <Compile Include="$(EditMode)PressAnswerTests.cs" />
     <!-- The prepared block speech a pad gives without typing (A6): every approach's line is a valid speech carrying it. -->
     <Compile Include="$(EditMode)PreparedSpeechTests.cs" />
     <!-- The standalone profile's performance verdict and arithmetic, and the verification-only stress house. -->

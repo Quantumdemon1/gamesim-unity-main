@@ -52,6 +52,36 @@ namespace Gamesim.Tests.EditMode
         }
 
         /// <summary>
+        /// The control Enter or A presses and the one under the pointer are two looks (HP9). The
+        /// pointer lifts an interactive edge a level - as far as interactive stands over resting - and
+        /// the accent edge the keyboard's control wears stays the 3:1 it keeps over interactive clear
+        /// of it, so a hovered row never reads as the keyboard's. The ring round the keyboard's control
+        /// reads against the glass as a mark that is not text must (WCAG 1.4.11, 3:1). Before, the
+        /// pointer lifted an interactive edge to the accent itself: 1:1 against focus.
+        /// </summary>
+        [Test]
+        public void FocusAndHover_AreTwoLooks_AndTheFocusRingReadsOnTheGlass()
+        {
+            var ground = Over(UiTheme.GlassFill, 0.94f, UiTheme.Background);
+            var interactive = Over(UiTheme.Edge(UiTheme.Emphasis.Interactive), ground);
+            var hover = Over(HudEmphasis.Hover(UiTheme.Emphasis.Interactive), ground);
+            var active = Over(UiTheme.Edge(UiTheme.Emphasis.Active), ground);
+
+            Assert.That(Contrast(hover, interactive), Is.GreaterThan(1.25),
+                "The pointer's edge has to be a visible step up from interactive, or the pointer has no hover: the HUD's tint shows nothing on its dark glass.");
+            Assert.That(Contrast(active, hover), Is.GreaterThanOrEqualTo(LargeMinimum),
+                "The keyboard's accent edge has to stand clear of the pointer's, or a pad player sees two lit controls.");
+            Assert.That(Luminance(interactive), Is.LessThan(Luminance(hover)));
+            Assert.That(Luminance(hover), Is.LessThan(Luminance(active)));
+            Assert.That(HudEmphasis.Hover(UiTheme.Emphasis.Resting), Is.EqualTo(UiTheme.Edge(UiTheme.Emphasis.Interactive)),
+                "A resting edge steps up to interactive under the pointer, as it always did.");
+            Assert.That(HudEmphasis.Hover(UiTheme.Emphasis.Active), Is.EqualTo(UiTheme.Edge(UiTheme.Emphasis.Active)),
+                "A lit edge (a picked card) stays lit under the pointer.");
+            AssertContrast(Over(UiTheme.FocusRing, ground), ground, LargeMinimum, "the focus ring on the glass");
+            AssertContrast(Over(UiTheme.FocusRing, ground), interactive, LargeMinimum, "the focus ring beside an interactive edge");
+        }
+
+        /// <summary>
         /// Gold is power: the crown, the win, the thing that was fought for. It reads as power only
         /// while nothing else wears it, and the mood palette once sat 22 parts in 255 away from it.
         /// </summary>

@@ -242,6 +242,77 @@ namespace Gamesim.Tests.PlayMode
             }
         }
 
+        /// <summary>
+        /// The phase step gives an open decision up for the current objective when the decision
+        /// leaves its card no side to dock on, and the card docks beside the objective instead.
+        ///
+        /// <para>The stand-in is sized by the docking rule itself (TourDock.Place, HouseTutorial.Place),
+        /// not by a guessed number. A side's room is measured from the lit hole, which is the panel
+        /// plus the tour's padding, to the frame's margin less that side's gap. A panel stretched over
+        /// its whole canvas makes the hole the whole frame, so every side's room is less than none at
+        /// any text size on any window, and the corner the card falls back to lies over the panel:
+        /// the card is not docked there, and the step refuses the panel. On the batch's 640x480
+        /// window the frame is about 1386x1039 units; below and above are each 22 units short, right
+        /// 26, left 32. The objective has room beside it (the top bar's chip has most of the frame's
+        /// height below it, the compact HUD's card most of its width to its right), so the card
+        /// docks there. The stand-in's canvas scales as the HUD's does, as the test above's.</para>
+        ///
+        /// <para>The refusal holds for the step: the tour looks its targets up again every .25 s while
+        /// the phase step is up, and a look that went back to the panel would leave the card over it.</para>
+        /// </summary>
+        [UnityTest]
+        public IEnumerator Tour_PhaseStepGivesUpADecisionThatLeavesTheCardNoSideForTheCurrentObjective()
+        {
+            director.ClosePanels();
+            yield return SettleCast();
+            var tour = DirectorTour();
+            Assert.That(TourChrome("Objective"), Is.Not.Null);
+            var host = new GameObject("Tour test panel host", typeof(RectTransform), typeof(Canvas), typeof(FrameScaler));
+            SceneManager.MoveGameObjectToScene(host, director.gameObject.scene);
+            host.GetComponent<Canvas>().renderMode = RenderMode.ScreenSpaceOverlay;
+            var hudScaler = HudCanvas().GetComponent<UnityEngine.UI.CanvasScaler>();
+            var hostScaler = host.GetComponent<UnityEngine.UI.CanvasScaler>();
+            hostScaler.uiScaleMode = hudScaler.uiScaleMode;
+            hostScaler.referenceResolution = hudScaler.referenceResolution;
+            hostScaler.screenMatchMode = hudScaler.screenMatchMode;
+            hostScaler.matchWidthOrHeight = hudScaler.matchWidthOrHeight;
+            var panel = new GameObject("Episode panel", typeof(RectTransform)).GetComponent<RectTransform>();
+            panel.SetParent(host.transform, false);
+            panel.anchorMin = Vector2.zero;
+            panel.anchorMax = Vector2.one;
+            panel.offsetMin = Vector2.zero;
+            panel.offsetMax = Vector2.zero;
+            try
+            {
+                // The scaler sizes its canvas on the frame's canvas pass: the tour measures the panel after one.
+                yield return null;
+                Canvas.ForceUpdateCanvases();
+                tour.Show(name => name == "Episode panel" ? panel : TourChrome(name));
+                while (tour.StepIndex < 5) { tour.Next(); yield return null; }
+                Assert.That(tour.StepTitles[tour.StepIndex], Is.EqualTo("Phase Panels"));
+                // Both canvases are overlays, whose world units are the screen's pixels.
+                var frame = TourWorldRect(TourPart(tour, HouseTutorial.StepLayerName));
+                Assert.That(TourEncloses(TourWorldRect(panel), frame), Is.True,
+                    "The stand-in decision " + TourWorldRect(panel) + " covers the tour's whole frame " + frame + ", so no side has room.");
+                Assert.That(panel.gameObject.activeInHierarchy, Is.True, "The decision is still open.");
+                Assert.That(tour.CurrentAnchors, Is.EqualTo(new[] { "Objective" }),
+                    "A decision that leaves the card no side is given up for the current objective.");
+                Assert.That(tour.CardDocked, Is.True, "The card docks beside the objective it lights instead.");
+                // Twice the tour's .25 s re-lookup, so the step has looked for its targets again.
+                yield return TourRealSeconds(.6f);
+                Assert.That(panel.gameObject.activeInHierarchy, Is.True);
+                Assert.That(tour.CurrentAnchors, Is.EqualTo(new[] { "Objective" }),
+                    "The step's next look does not go back to the decision it gave up.");
+                Assert.That(tour.CardDocked, Is.True, "The card stays docked beside the objective.");
+                Assert.That(TourText(tour, "Body"), Does.Contain("A phase is the part of the week"));
+            }
+            finally
+            {
+                tour.Skip();
+                if (host != null) Object.Destroy(host);
+            }
+        }
+
         private void AssertExchangeSpeaker(EpisodeHud hud, string speakerId, string expectedName, string line)
         {
             var words = hud.ActivityContent.GetComponentsInChildren<TMP_Text>();

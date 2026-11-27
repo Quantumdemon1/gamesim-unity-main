@@ -38,6 +38,110 @@ namespace Gamesim.Tests.EditMode
         }
 
         /// <summary>
+        /// The front door (AU-06) is the house, not news: its clunk and its thud, as played, sit at
+        /// least 3 dB under the quietest headline, so a door never sounds as big as the eviction it
+        /// follows; and the thud is the bigger of the two, as a landing is.
+        /// </summary>
+        [Test]
+        public void TheFrontDoorSitsUnderTheQuietestHeadline_AndItsThudOverItsClunk()
+        {
+            var loudness = SoundPictures.Rows.ToDictionary(row => row.Cue, row => LoudestDecibels(Recording(row.Cue)) + row.GainDb);
+            double quietestHeadline = Headlines.Min(cue => loudness[cue]);
+            foreach (var row in SoundPictures.Rows.Where(row => row.Kind == SoundKind.World))
+                Assert.That(loudness[row.Cue], Is.LessThanOrEqualTo(quietestHeadline - 3.0),
+                    row.Cue + " plays at " + loudness[row.Cue].ToString("0.00") + " dB against the quietest headline's "
+                    + quietestHeadline.ToString("0.00") + ": at least 3 dB under it.");
+            Assert.That(loudness["DoorShut"], Is.GreaterThan(loudness["DoorOpen"]), "The door lands harder than it gives.");
+        }
+
+        /// <summary>
+        /// A competition's count (AU-08) ticks every second, so it plays at least 3 dB under a ballot's
+        /// tick, and over the interface's loudest answer, as news does; an early press is a small
+        /// thing, at least 2 dB under a miss.
+        /// </summary>
+        [Test]
+        public void TheCountTicksUnderTheBallot_AndAnEarlyPressBuzzesUnderAMiss()
+        {
+            var loudness = SoundPictures.Rows.ToDictionary(row => row.Cue, row => LoudestDecibels(Recording(row.Cue)) + row.GainDb);
+            double loudestAnswer = SoundPictures.Rows.Where(row => row.Kind == SoundKind.Interface).Max(row => loudness[row.Cue]);
+            Assert.That(loudness["CountTick"], Is.LessThanOrEqualTo(loudness["Vote"] - 3.0),
+                "The count's tick plays at " + loudness["CountTick"].ToString("0.00") + " dB against the ballot's " + loudness["Vote"].ToString("0.00") + ".");
+            Assert.That(loudness["CountTick"], Is.GreaterThan(loudestAnswer),
+                "The count's tick is news, over the interface's loudest answer at " + loudestAnswer.ToString("0.00") + " dB.");
+            Assert.That(loudness["FalseStart"], Is.LessThanOrEqualTo(loudness["SocialDown"] - 2.0),
+                "An early press plays at " + loudness["FalseStart"].ToString("0.00") + " dB against a miss's " + loudness["SocialDown"].ToString("0.00") + ".");
+        }
+
+        /// <summary>
+        /// A staged competition (AU-13) sounds under the news as the front door does (the motions on
+        /// screen, above); and a console's click sits at least 3 dB under the show's horn and its
+        /// verdicts, so a field clicking in never outweighs the reveal it waits for.
+        /// </summary>
+        [Test]
+        public void AStagedShowsClickSitsUnderItsHornAndItsVerdicts()
+        {
+            var loudness = SoundPictures.Rows.ToDictionary(row => row.Cue, row => LoudestDecibels(Recording(row.Cue)) + row.GainDb);
+            foreach (var cue in new[] { "ShowHorn", "ShowRight", "ShowWrong" })
+                Assert.That(loudness["ShowLockIn"], Is.LessThanOrEqualTo(loudness[cue] - 3.0),
+                    "The click plays at " + loudness["ShowLockIn"].ToString("0.00") + " dB against " + cue + "'s " + loudness[cue].ToString("0.00") + ".");
+        }
+
+        /// <summary>
+        /// A conversation's trust sounds (AU-09) come up to six times a week, so as played they sit at
+        /// least 4 dB under the quietest headline and under a ballot's tick, and over the interface's
+        /// loudest answer, as news does; and warmer and cooler play within a decibel of each other, so
+        /// neither reads as the bigger news.
+        /// </summary>
+        [Test]
+        public void AConversationsTrustSoundsSitUnderTheHeadlines_AndLevelWithEachOther()
+        {
+            var loudness = SoundPictures.Rows.ToDictionary(row => row.Cue, row => LoudestDecibels(Recording(row.Cue)) + row.GainDb);
+            double quietestHeadline = Headlines.Min(cue => loudness[cue]);
+            double loudestAnswer = SoundPictures.Rows.Where(row => row.Kind == SoundKind.Interface).Max(row => loudness[row.Cue]);
+            foreach (var cue in new[] { "RelationshipUp", "RelationshipDown" })
+            {
+                Assert.That(loudness[cue], Is.LessThanOrEqualTo(quietestHeadline - 4.0),
+                    cue + " plays at " + loudness[cue].ToString("0.00") + " dB against the quietest headline's " + quietestHeadline.ToString("0.00") + ".");
+                Assert.That(loudness[cue], Is.LessThanOrEqualTo(loudness["Vote"]),
+                    cue + " plays at " + loudness[cue].ToString("0.00") + " dB against the ballot's " + loudness["Vote"].ToString("0.00") + ".");
+                Assert.That(loudness[cue], Is.GreaterThan(loudestAnswer),
+                    cue + " is news, over the interface's loudest answer at " + loudestAnswer.ToString("0.00") + " dB.");
+            }
+            Assert.That(Math.Abs(loudness["RelationshipUp"] - loudness["RelationshipDown"]), Is.LessThanOrEqualTo(1.0),
+                "Warmer at " + loudness["RelationshipUp"].ToString("0.00") + " dB, cooler at " + loudness["RelationshipDown"].ToString("0.00") + ".");
+        }
+
+        /// <summary>
+        /// The houseguests' murmurs (AU-16) come under every line of every conversation, so at the whole
+        /// of the Voice volume a murmur sits at least 3 dB under the conversation's trust sounds, the
+        /// news that closes the same conversation, and over the hover's tick, the quietest sound the
+        /// house makes, so it is heard; a witnessed caption's murmur plays at least 5 dB under a
+        /// conversation's own. A murmur is made, not recorded: measured here from its render, as a
+        /// recording is, its loudest 400 ms (the whole of a shorter one).
+        /// </summary>
+        [Test]
+        public void AHouseguestsMurmurSitsUnderTheTrustSounds_AndOverTheHoversTick()
+        {
+            var loudness = SoundPictures.Rows.ToDictionary(row => row.Cue, row => LoudestDecibels(Recording(row.Cue)) + row.GainDb);
+            double trust = Math.Min(loudness["RelationshipUp"], loudness["RelationshipDown"]);
+            int measured = 0;
+            foreach (var speaker in new[] { new[] { "player", "they/them" }, new[] { "maya-hassan", "she/her" }, new[] { "riley-johnson", "he/him" } })
+                foreach (var line in new[] { "I think we should keep this between us until the vote on Thursday, okay?", "How's the day treating you?", "Okay." })
+                {
+                    var plan = Murmur.For(speaker[0], speaker[1], line, false);
+                    double murmur = LoudestDecibels(Murmur.Render(plan, 22050), 22050);
+                    Assert.That(murmur, Is.LessThanOrEqualTo(trust - 3.0),
+                        plan + " plays at " + murmur.ToString("0.00") + " dB against the trust sounds' " + trust.ToString("0.00") + ".");
+                    Assert.That(murmur, Is.GreaterThan(loudness["Hover"]),
+                        plan + " plays at " + murmur.ToString("0.00") + " dB against the hover's " + loudness["Hover"].ToString("0.00") + ".");
+                    double witnessed = murmur + Murmur.For(speaker[0], speaker[1], line, true).GainDb;
+                    Assert.That(witnessed, Is.LessThanOrEqualTo(murmur - 5.0), plan + ": a witnessed caption's murmur is plainly quieter.");
+                    measured++;
+                }
+            Assert.That(measured, Is.EqualTo(9));
+        }
+
+        /// <summary>
         /// A competition's loop takes over from the season's bed at the bed's own gain
         /// (<see cref="MusicFade.CompetitionPeak"/>), so its recording is what sets how loud it is: about
         /// as loud as the bed, measured whole, up to 3 dB over it for its drive and never more than a
@@ -164,6 +268,22 @@ namespace Gamesim.Tests.EditMode
             }
             Assert.Fail(path + " has no data chunk.");
             return 0.0;
+        }
+
+        /// <summary>Samples' loudest 400 milliseconds at <paramref name="rate"/> (the whole of a shorter run), in decibels of full scale: the recordings' measure.</summary>
+        private static double LoudestDecibels(float[] samples, int rate)
+        {
+            Assert.That(samples.Length, Is.GreaterThan(0));
+            int window = Math.Min(samples.Length, (int)(0.4 * rate));
+            double running = 0.0;
+            for (int at = 0; at < window; at++) running += (double)samples[at] * samples[at];
+            double loudest = running;
+            for (int at = window; at < samples.Length; at++)
+            {
+                running += (double)samples[at] * samples[at] - (double)samples[at - window] * samples[at - window];
+                if (running > loudest) loudest = running;
+            }
+            return 10.0 * Math.Log10(loudest / window);
         }
 
         private static string GamesimRoot()

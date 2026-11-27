@@ -779,6 +779,21 @@
     <!-- The sound a commit makes, by its cue's name: the final eviction sounds like an eviction. -->
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/CommitSound.cs" />
     <Compile Include="$(EditMode)CommitSoundTests.cs" />
+    <!-- The front door heard (AU-06): its clunk as the leaves leave the frame, its thud as they land in it. -->
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/DoorLeafSounds.cs" />
+    <Compile Include="$(EditMode)DoorLeafSoundsTests.cs" />
+    <!-- A competition's last seconds tick as the clock's digits come to each whole second (AU-08). -->
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/CountTicks.cs" />
+    <Compile Include="$(EditMode)CountTicksTests.cs" />
+    <!-- A staged competition heard (AU-13): the sounds each beat of a podium, table, tower or course show asks for. -->
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/CompetitionShowSounds.cs" />
+    <Compile Include="$(EditMode)CompetitionShowSoundsTests.cs" />
+    <!-- The houseguests' murmurs (AU-16): a voice from the id and pronouns, a syllable a word up to 1.2 s; its level in CueLoudnessTests. -->
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/Murmur.cs" />
+    <Compile Include="$(EditMode)MurmurTests.cs" />
+    <!-- Every press answers (AU-10): a press that asked for no sound of its own clicks once; one that did is left to it. -->
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/PressAnswer.cs" />
+    <Compile Include="$(EditMode)PressAnswerTests.cs" />
     <!-- The prepared block speech a pad gives without typing (A6): every approach's line is a valid speech carrying it. -->
     <Compile Include="$(EditMode)PreparedSpeechTests.cs" />
     <!-- The standalone profile's performance verdict and arithmetic, and the verification-only stress house. -->

@@ -72,6 +72,8 @@ namespace Gamesim.Episode
                 Say("house", showWholeHouse ? "whole" : "room"),
                 // "Conversation lines" (UI plan D11): wait for a press, or move on by themselves.
                 Say("lines", ConversationLinePace.Name(autoContinueLines)),
+                // The voices' volume (AU-16), last, so every word before it keeps its place.
+                Say(SoundPictures.LogKey(SoundChannel.Voice), voiceVolumePercent.ToString(System.Globalization.CultureInfo.InvariantCulture)),
             };
         }
 

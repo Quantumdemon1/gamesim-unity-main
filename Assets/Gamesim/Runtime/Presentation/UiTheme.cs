@@ -129,6 +129,68 @@ namespace Gamesim.Presentation
         }
 
         /// <summary>
+        /// The edge the pointer lifts an interactive control to: the accent at .40. A step up from
+        /// Interactive (1.72:1 over the panel ground) and still well short of the accent edge the
+        /// keyboard's control wears (3.12:1 under it), so a pad player whose mouse rests on another
+        /// control sees at once which one A presses. The accent itself is the keyboard's alone.
+        ///
+        /// <para>Not Interactive itself: the HUD's hover tint multiplies a ground that is nearly
+        /// black, which shows nothing, so an edge that stayed put would leave the pointer no hover at
+        /// all. <c>UiThemeContrastTests</c> holds both ratios.</para>
+        /// </summary>
+        public static Color HoverEdge => new Color(Accent.r, Accent.g, Accent.b, .40f);
+
+        /// <summary>The focus ring's colour: the theme's glow blue, as the ways out, the cast cards and the creator draw theirs.</summary>
+        public static Color FocusRing => Glow;
+
+        /// <summary>
+        /// The ring round the control the keyboard or the pad is on. Its own name, never "Border"
+        /// (<c>HudEmphasis.Promote</c> finds a panel's edge by that name) and never "Focus ring"
+        /// (the competition boards count theirs by that name).
+        /// </summary>
+        public const string FocusRingName = "Focus outline";
+
+        /// <summary>How far the focus ring stands outside its control, as the other focus rings do.</summary>
+        public const int FocusRingOutset = 4;
+
+        /// <summary>
+        /// Adds the focus ring to <paramref name="control"/>: a <see cref="BorderThickness"/> px line in
+        /// <see cref="FocusRing"/>, <see cref="FocusRingOutset"/> px outside the rect, its corners
+        /// concentric with an edge of <paramref name="radius"/>. Dressing only: it takes no click and
+        /// no part in layout, so nothing moves when it shows. Returned shown; the caller hides it.
+        /// </summary>
+        public static Image AddFocusRing(RectTransform control, int radius)
+        {
+            if (control == null) return null;
+            var ring = new GameObject(FocusRingName, typeof(RectTransform), typeof(Image), typeof(LayoutElement));
+            var rect = (RectTransform)ring.transform;
+            rect.SetParent(control, false);
+            rect.anchorMin = Vector2.zero; rect.anchorMax = Vector2.one;
+            rect.offsetMin = new Vector2(-FocusRingOutset, -FocusRingOutset);
+            rect.offsetMax = new Vector2(FocusRingOutset, FocusRingOutset);
+            ring.GetComponent<LayoutElement>().ignoreLayout = true;
+            var image = ring.GetComponent<Image>();
+            image.sprite = OutlineSprite(radius + FocusRingOutset);
+            image.type = Image.Type.Sliced;
+            image.pixelsPerUnitMultiplier = 1f;
+            image.color = FocusRing;
+            image.raycastTarget = false;
+            return image;
+        }
+
+        /// <summary>
+        /// The corner radius <see cref="AddBorder"/> drew <paramref name="edge"/> at, or
+        /// <paramref name="fallback"/> when the edge is gone or is not one of the theme's outlines.
+        /// </summary>
+        public static int OutlineRadius(Image edge, int fallback)
+        {
+            if (edge == null || edge.sprite == null) return fallback;
+            foreach (var pair in OutlineCache)
+                if (pair.Value == edge.sprite) return pair.Key;
+            return fallback;
+        }
+
+        /// <summary>
         /// Dresses <paramref name="panel"/> as one of the mockups' glass cards: the night ground at
         /// 85 %, a cyan hairline on the edge and a soft glow of the same hue outside it. The glow is
         /// a child that reaches <see cref="GlowWidth"/> px past the rect; layout and overlap checks

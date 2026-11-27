@@ -169,12 +169,12 @@ namespace Gamesim.Presentation
             }
             var button = card.gameObject.AddComponent<Button>();
             button.targetGraphic = image;
-            button.onClick.AddListener(() =>
+            button.onClick.AddListener(() => ControlSounds.Press(button, () =>
             {
                 if (held) draft.RemoveTrait(name);
                 else draft.AddTrait(name);
                 Rebuild();
-            });
+            }));
             Seen(button, 12);
         }
 

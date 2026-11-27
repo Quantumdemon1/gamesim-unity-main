@@ -181,6 +181,71 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(audio.LastCue, Is.EqualTo(HouseAudio.Cue.PanelClose), "and a panel leaving says so.");
         }
 
+        /// <summary>
+        /// Every press answers (AU-10). On the main menu the pointer over a control ticks and a press
+        /// that opens no panel clicks; the cast screen's way back clicks as well; Settings, which opens a
+        /// panel, sounds the panel alone; a tab in it, which opens nothing, clicks once; and a greyed-out
+        /// control - on the menu or in the HUD - is silent under the pointer. Each step is pressed and
+        /// heard inside one frame, so nothing the house does between frames is counted.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator Audio_EveryPressAnswersOnceAndAGreyedControlIsSilent()
+        {
+            HoldTheHouseForTheFixture();
+            var audio = director.GetComponent<HouseAudio>();
+            director.OpenMainMenu();
+            yield return Frames(2);
+            var asked = new System.Collections.Generic.List<HouseAudio.Cue>();
+            void Note(HouseAudio.Cue cue) => asked.Add(cue);
+            void Enter(GameObject control) => UnityEngine.EventSystems.ExecuteEvents.Execute(control,
+                new UnityEngine.EventSystems.PointerEventData(UnityEngine.EventSystems.EventSystem.current),
+                UnityEngine.EventSystems.ExecuteEvents.pointerEnterHandler);
+            audio.CueAsked += Note;
+            try
+            {
+                var start = CastButtons(MainMenu.NewSeasonCaption)[0];
+                var settings = CastButtons(MainMenu.SettingsCaption)[0];
+                settings.interactable = false;
+                Enter(settings.gameObject);
+                settings.interactable = true;
+                Assert.That(asked, Is.Empty, "A greyed-out control on the menu is silent under the pointer.");
+                Enter(start.gameObject);
+                start.onClick.Invoke();
+                Assert.That(asked, Is.EqualTo(new[] { HouseAudio.Cue.Hover, HouseAudio.Cue.Button }),
+                    "The pointer over a menu control ticks, and a press that opens no panel clicks.");
+                yield return Frames(2);
+                Assert.That(CastScreen().IsShowing, Is.True, "The cast screen came up.");
+
+                asked.Clear();
+                var back = CastScreen().GetComponentsInChildren<UnityEngine.UI.Button>()
+                    .Where(button => button.name == WayOut.BackObjectName && button.IsActive() && button.IsInteractable()).Last();
+                back.onClick.Invoke();
+                Assert.That(asked, Is.EqualTo(new[] { HouseAudio.Cue.Button }), "The cast screen's way back clicks too.");
+                yield return Frames(2);
+                Assert.That(Menu().IsShowing, Is.True, "and goes back to the menu.");
+
+                asked.Clear();
+                CastButtons(MainMenu.SettingsCaption)[0].onClick.Invoke();
+                Assert.That(asked, Is.EqualTo(new[] { HouseAudio.Cue.PanelOpen }), "Settings opens a panel: its sound alone, no click on top.");
+                yield return Frames(2);
+
+                asked.Clear();
+                ShellTabs().Single(tab => tab.name == SettingsWords.TabName(SettingsSection.Sound)).onClick.Invoke();
+                Assert.That(director.SettingsSectionShown, Is.EqualTo(SettingsSection.Sound), "The tab shows its section,");
+                Assert.That(asked, Is.EqualTo(new[] { HouseAudio.Cue.Button }), "and, opening nothing, clicks once.");
+                yield return Frames(2);
+
+                asked.Clear();
+                var display = ShellTabs().Single(tab => tab.name == SettingsWords.TabName(SettingsSection.Display));
+                Enter(display.gameObject);
+                display.interactable = false;
+                Enter(display.gameObject);
+                display.interactable = true;
+                Assert.That(asked, Is.EqualTo(new[] { HouseAudio.Cue.Hover }), "A HUD tab ticks under the pointer, and the same tab greyed out is silent.");
+            }
+            finally { audio.CueAsked -= Note; }
+        }
+
         [UnityTest]
         public IEnumerator Audio_ReducedSoundStopsTheRoomToneAndSoftensTheCues()
         {

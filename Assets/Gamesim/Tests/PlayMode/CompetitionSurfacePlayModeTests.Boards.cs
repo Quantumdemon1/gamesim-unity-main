@@ -174,7 +174,8 @@ namespace Gamesim.Tests.PlayMode
         /// <summary>
         /// Under reduced motion nothing on the board pops, pulses, squeezes or fades - GO, the last
         /// seconds, a card turning, a press's mark - and the screen's own beats ask for their sounds:
-        /// a tick on each count, and the start sting once, at GO.
+        /// the count's tick on each count and each last second (AU-08: the count's own cue, not the
+        /// pointer's hover), and the start sting once, at GO.
         /// </summary>
         [UnityTest]
         public IEnumerator ReducedMotion_NothingMovesAndTheBeatsAskForTheirSounds()
@@ -189,7 +190,8 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(screen.IsPlaying, Is.True);
             Assert.That(cues.Count(cue => cue == HouseAudio.Cue.CompetitionStart), Is.EqualTo(1), "The start sting, once, at GO.");
             Assert.That(cues.Last(), Is.EqualTo(HouseAudio.Cue.CompetitionStart));
-            Assert.That(cues.Count(cue => cue == HouseAudio.Cue.Hover), Is.EqualTo(2), "A tick as the count falls to 2 and to 1.");
+            Assert.That(cues.Count(cue => cue == HouseAudio.Cue.CountTick), Is.EqualTo(2), "A tick as the count falls to 2 and to 1.");
+            Assert.That(cues, Has.No.Member(HouseAudio.Cue.Hover), "The count is not the pointer's tick.");
             Assert.That(Text("Countdown").rectTransform.localScale, Is.EqualTo(Vector3.one), "GO does not pop.");
             memory.Flip(0); screen.Refresh();
             var art = Card(1).GetComponentsInChildren<RectTransform>().Single(rect => rect.name == "Card art");
@@ -210,9 +212,10 @@ namespace Gamesim.Tests.PlayMode
             screen.Show(endurance, "Veto · Hold Your Ground", "Player", true, i => {}, () => {}, d => {}, () => {}, () => {});
             yield return null; screen.AdvanceReady(4f);
             endurance.Tick(30 - 5.2); screen.Refresh(); yield return null;
-            int ticks = cues.Count(cue => cue == HouseAudio.Cue.Hover);
+            int ticks = cues.Count(cue => cue == HouseAudio.Cue.CountTick);
             endurance.Tick(.4); screen.Refresh(); yield return null; yield return null;
-            Assert.That(cues.Count(cue => cue == HouseAudio.Cue.Hover), Is.EqualTo(ticks + 1), "The fifth-last second ticks.");
+            Assert.That(cues.Count(cue => cue == HouseAudio.Cue.CountTick), Is.EqualTo(ticks + 1), "The fifth-last second ticks.");
+            Assert.That(cues, Has.No.Member(HouseAudio.Cue.Hover), "with the count's tick, not the pointer's.");
             Assert.That(Text("Competition clock").rectTransform.localScale, Is.EqualTo(Vector3.one), "and the digits do not pulse.");
         }
 

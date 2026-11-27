@@ -341,7 +341,7 @@ namespace Gamesim.Episode
                 director.player.Agent.ResetPath();
                 Physics.SyncTransforms();
                 director.Project();
-                set = OpeningDoorSet.Build(director.gameObject.scene, DoorLayout.Yard, entranceLighting: true);
+                set = director.HearTheDoor(OpeningDoorSet.Build(director.gameObject.scene, DoorLayout.Yard, entranceLighting: true));
                 Placed = true;
                 return true;
             }

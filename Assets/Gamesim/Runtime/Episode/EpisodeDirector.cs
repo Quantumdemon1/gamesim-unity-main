@@ -83,6 +83,8 @@ namespace Gamesim.Episode
         private int volumePercent = 35;
         /// <summary>The music's, the effects' and the interface's shares of the master, as percentages (A11).</summary>
         private int musicVolumePercent = SoundPictures.DefaultVolume, effectsVolumePercent = SoundPictures.DefaultVolume, interfaceVolumePercent = SoundPictures.DefaultVolume;
+        /// <summary>The voices' share of the master (AU-16), from 70 percent.</summary>
+        private int voiceVolumePercent = SoundPictures.DefaultVoiceVolume;
         private bool musicOn = true;
         private HouseNpc promptNpc;
         private string npcPrompt;
@@ -188,6 +190,7 @@ namespace Gamesim.Episode
             musicVolumePercent = SoundPictures.Clamp(preferences.GetInt(SoundPictures.MusicVolumeKey, SoundPictures.DefaultVolume));
             effectsVolumePercent = SoundPictures.Clamp(preferences.GetInt(SoundPictures.EffectsVolumeKey, SoundPictures.DefaultVolume));
             interfaceVolumePercent = SoundPictures.Clamp(preferences.GetInt(SoundPictures.InterfaceVolumeKey, SoundPictures.DefaultVolume));
+            voiceVolumePercent = SoundPictures.Clamp(preferences.GetInt(SoundPictures.VoiceVolumeKey, SoundPictures.DefaultVoiceVolume));
             volumePercent = Mathf.Clamp(preferences.GetInt("Gamesim.Volume", 35), 0, 100);
             musicOn = preferences.GetInt("Gamesim.Music", 1) == 1;
             ceremonyPace = preferences.GetInt("Gamesim.CeremonyPace", 0) == 1 ? CeremonyPace.Quick : CeremonyPace.Suspenseful;
@@ -195,6 +198,9 @@ namespace Gamesim.Episode
             hud = gameObject.AddComponent<EpisodeHud>(); hud.Initialize(this);
             sting = CeremonySting.Attach(gameObject);
             takeover = CeremonyTakeover.Attach(gameObject);
+            // A staged veto meeting sounds the veto with the page that shows its decision (AU-07), a
+            // skipped page included: only the meeting on a set's screen reports that beat.
+            takeover.BeatReached += beat => { if (beat.Kind == CeremonyBeatKind.VetoDecided && audioBed != null) audioBed.PlayCue(HouseAudio.Cue.Veto); };
             voteReveal = VoteReveal.Attach(gameObject);
             // The reveals make their own sounds as they reach each beat - a vote, the result -
             // rather than the commit making the result's sound before the card has counted to it.
@@ -232,6 +238,13 @@ namespace Gamesim.Episode
             castSelect.ConfigureCreator(characterCreator);
             characterCreator.ConfigureSettings(OpenSettingsFromCreator);
             mainMenu = MainMenu.Attach(gameObject);
+            // The front door's screens and the season report sound as the HUD does (AU-10): a hover
+            // tick, and the button's click for a press that asked no sound of its own.
+            var controlSounds = new ControlSounds(cue => { if (audioBed != null) audioBed.PlayCue(cue); }, () => audioBed != null ? audioBed.CuesAsked : 0);
+            mainMenu.Sounds = controlSounds;
+            castSelect.Sounds = controlSounds;
+            characterCreator.Sounds = controlSounds;
+            seasonReport.Sounds = controlSounds;
             // The front door is a screen too: while any of these is up, it owns the keyboard.
             hud.RegisterOverlay(castSelect.GetComponent<CanvasGroup>());
             hud.RegisterOverlay(characterCreator.GetComponent<CanvasGroup>());
@@ -894,6 +907,7 @@ namespace Gamesim.Episode
             if (result.accepted)
             {
                 diaryDraft = null; // A draft never survives a different committed revision.
+                trustCue = null; // A trust sound still owed belonged to the action before (EpisodeDirector.TrustSound.cs).
                 ForgetActionPurchase();
                 ForgetInformationShare();
                 replyCardView = null;
@@ -925,9 +939,10 @@ namespace Gamesim.Episode
                 // reach the block and the result, and a commit that played the result's sound first
                 // announced it before the card had counted to it. A beat of the opening is
                 // bookkeeping and makes none; an introduction clicks through the opening's own hook.
+                // In a conversation, trust gained or lost sounds like it under every bigger beat (AU-09).
                 var commitCue = CommitCue(CommittedEvents(result.state, knownSequence)
                     .Where(entry => entry.audienceIds.Count == 0 || entry.audienceIds.Contains(result.state.playerId))
-                    .Select(entry => entry.kind));
+                    .Select(entry => entry.kind), focusedNpc != null ? lastSocialDelta : 0d);
                 bool revealed = false, vetoStaged = false;
                 // A staged competition's fanfare waits for the card that names the winner (below), not
                 // the commit that starts the show: the show narrates for seconds before the card.
@@ -1038,8 +1053,9 @@ namespace Gamesim.Episode
                             RosterHouseguests(committed), ceremonySpeed);
                     // The veto meeting is staged in the living room and plays on its screen
                     // (EpisodeDirector.CeremonyStageVeto.cs); unstaged it is the generic card below,
-                    // exactly as it was. Its commit still makes the veto's sound, the same for
-                    // either outcome: no card of its own makes one.
+                    // exactly as it was, and its commit makes the veto's sound. Staged, the commit
+                    // only summons the house, with the summons' chime, and the veto sounds with the
+                    // page that shows the decision (CommitSound.SoundsAtTheCommit).
                     if (kind == CeremonySting.VetoKind && TryStageVetoMeeting(committed, text, wasActive, wasNominated, blockBefore))
                         revealed = vetoStaged = true;
                     else if (reveal != null && TryBeginCeremonyStage(kind, committed,
@@ -1107,11 +1123,12 @@ namespace Gamesim.Episode
                     }
                 }
                 if (revealed) HoldHudForReveal();
-                if ((!revealed || vetoStaged) && !winCueWithCard && command.kind != EpisodeCommandKind.MarkOpeningBeat && command.kind != EpisodeCommandKind.Introduce)
-                    audioBed.PlayCue(commitCue);
+                if (CommitSound.SoundsAtTheCommit(commitCue.ToString(), revealed, vetoStaged) && !winCueWithCard
+                    && command.kind != EpisodeCommandKind.MarkOpeningBeat && command.kind != EpisodeCommandKind.Introduce)
+                    PlayCommitCue(commitCue);
             }
             BeginConversationExchange(exchangeBefore, result, command);
-            Render(); return result;
+            Render(); SettleTrustCue(result.accepted); return result;
         }
 
         /// <summary>

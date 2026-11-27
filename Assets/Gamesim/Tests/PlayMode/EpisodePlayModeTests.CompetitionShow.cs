@@ -225,6 +225,55 @@ namespace Gamesim.Tests.PlayMode
             finally { audio.CueAsked -= listen; }
         }
 
+        /// <summary>
+        /// A staged podium quiz sounds its apparatus (AU-13): each round's consoles click in as the
+        /// hands press them, once for each moment a hand comes down, and each reveal sounds once - the
+        /// player's own verdict while they are in it, then wrong for each round that puts somebody out
+        /// and right for the one that leaves the winner alone. No horn on a podium, and the winner's
+        /// fanfare after all of them, with the card.
+        /// </summary>
+        [UnityTest, Timeout(300000)]
+        public IEnumerator CompetitionShow_APodiumQuizClicksInItsAnswersAndSoundsEachRevealOnce()
+        {
+            yield return InstallShowAtFirstHoH("Mental");
+            var audio = director.GetComponent<HouseAudio>();
+            Assert.That(audio, Is.Not.Null);
+            var listened = new[] { HouseAudio.Cue.ShowHorn, HouseAudio.Cue.ShowLockIn, HouseAudio.Cue.ShowRight, HouseAudio.Cue.ShowWrong, HouseAudio.Cue.CompetitionWin };
+            var heard = new List<HouseAudio.Cue>();
+            System.Action<HouseAudio.Cue> listen = cue => { if (listened.Contains(cue)) heard.Add(cue); };
+            audio.CueAsked += listen;
+            try
+            {
+                yield return CommitAndFollowTheStaging("Mental", CompetitionShowFamily.Podium, EpisodeHud.SimulateCompetitionCaption);
+                yield return null;
+            }
+            finally { audio.CueAsked -= listen; }
+
+            var record = director.LastCompetitionShowFamily;
+            string playerId = director.Snapshot.playerId;
+            var staged = record.Staged.ToList();
+            var still = staged.ToList();
+            var sizes = CompetitionShowTimeline.RoundSizes(staged.Count - 1);
+            Assert.That(record.Rounds, Is.EqualTo(sizes.Count), "Every round was played.");
+            var expected = new List<HouseAudio.Cue>();
+            int taken = 0;
+            for (int round = 0; round < sizes.Count; round++)
+            {
+                // The hands come down at four moments at most: ranks four apart press together.
+                int moments = still.Select(id => staged.IndexOf(id) % 4).Distinct().Count();
+                expected.AddRange(Enumerable.Repeat(HouseAudio.Cue.ShowLockIn, moments));
+                var outs = record.Outs.Skip(taken).Take(sizes[round]).ToList();
+                taken += outs.Count;
+                if (still.Contains(playerId)) expected.Add(outs.Contains(playerId) ? HouseAudio.Cue.ShowWrong : HouseAudio.Cue.ShowRight);
+                else expected.Add(still.Count - outs.Count == 1 ? HouseAudio.Cue.ShowRight : HouseAudio.Cue.ShowWrong);
+                foreach (var id in outs) still.Remove(id);
+            }
+            expected.Add(HouseAudio.Cue.CompetitionWin);
+            TestContext.WriteLine("Podium of " + staged.Count + " (player " + (staged.Contains(playerId) ? "in" : "watching") + "): " + string.Join(", ", heard));
+            Assert.That(heard, Is.EqualTo(expected),
+                "Each round's clicks then its one verdict, in order, and the fanfare with the card after them all.");
+        }
+
         [UnityTest, Timeout(300000)]
         public IEnumerator CompetitionShow_ReducedMotionHoldsAStillFieldAndThenTheCard()
         {

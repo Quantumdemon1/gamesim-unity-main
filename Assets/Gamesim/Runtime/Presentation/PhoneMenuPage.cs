@@ -140,7 +140,10 @@ namespace Gamesim.Presentation
             var button = label.gameObject.AddComponent<Button>();
             button.transition = Selectable.Transition.None;
             button.targetGraphic = label;
-            button.onClick.AddListener(() => { if (CanAct(button)) follow(); });
+            // On a sounded screen (AU-10) the line ticks under the pointer and its press is answered,
+            // as the screen's other controls are; on any other screen both stay silent.
+            button.onClick.AddListener(() => { if (CanAct(button)) ControlSounds.Press(button, follow); });
+            ControlSounds.Tick(button);
             int index = entries.Count;
             entries.Add(new Entry { Rect = label.rectTransform, Control = button, Scroll = summary });
             return (message, navigable) =>
@@ -246,7 +249,9 @@ namespace Gamesim.Presentation
             var button = row.gameObject.AddComponent<Button>();
             button.targetGraphic = graphic;
             button.interactable = enabled && action != null;
-            button.onClick.AddListener(() => { if (CanAct(button)) action(); });
+            // The phone layout's menu, cast and creator rows sound as their desktop controls do (AU-10).
+            button.onClick.AddListener(() => { if (CanAct(button)) ControlSounds.Press(button, action); });
+            ControlSounds.Tick(button);
             entries.Add(new Entry { Label = label.text, Rect = row, Scroll = choices, Control = button,
                 Role = AccessibilityRole.Button, Selected = selected });
             return button;

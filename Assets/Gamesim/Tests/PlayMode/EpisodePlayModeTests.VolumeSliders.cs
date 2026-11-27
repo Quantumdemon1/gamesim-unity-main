@@ -21,6 +21,8 @@ namespace Gamesim.Tests.PlayMode
         {
             "Master volume", SoundPictures.MeterCaption(SoundChannel.Music),
             SoundPictures.MeterCaption(SoundChannel.Effects), SoundPictures.MeterCaption(SoundChannel.Interface),
+            // The houseguests' murmurs (AU-16).
+            SoundPictures.MeterCaption(SoundChannel.Voice),
         };
 
         /// <summary>A volume's slider row: since menu slice 4 the kit's slider, named for the setting itself.</summary>
@@ -66,7 +68,7 @@ namespace Gamesim.Tests.PlayMode
             if (caption == "Master volume") Assert.That(audio.Volume, Is.EqualTo(percent / 100f).Within(1e-5f));
             else
             {
-                var channel = new[] { SoundChannel.Music, SoundChannel.Effects, SoundChannel.Interface }
+                var channel = new[] { SoundChannel.Music, SoundChannel.Effects, SoundChannel.Interface, SoundChannel.Voice }
                     .Single(each => SoundPictures.MeterCaption(each) == caption);
                 Assert.That(director.ChannelVolumePercent(channel), Is.EqualTo(percent));
                 Assert.That(audio.ChannelVolume(channel), Is.EqualTo(percent / 100f).Within(1e-5f));
@@ -105,7 +107,7 @@ namespace Gamesim.Tests.PlayMode
             }
             AssertVolumeCaptionsKept();
             Assert.That(JsonUtility.ToJson(director.Snapshot), Is.EqualTo(seasonBefore), "Preferences are not season commands and consume no season RNG.");
-            if (!pad) yield return AssertKeyboardRing("Settings with four literal volume sliders", "Episode panel");
+            if (!pad) yield return AssertKeyboardRing("Settings with five literal volume sliders", "Episode panel");
         }
 
         [UnityTest]
@@ -132,7 +134,8 @@ namespace Gamesim.Tests.PlayMode
                 };
                 ExecuteEvents.Execute(slider.gameObject, pointer, ExecuteEvents.pointerDownHandler);
                 yield return null;
-                int desired = 40 + index * 17;
+                // Five sliders since the voices' (AU-16): each a share no step of ten lands on, and none its default.
+                int desired = 41 + index * 12;
                 pointer.position = Point(desired / 100f);
                 ExecuteEvents.Execute(slider.gameObject, pointer, ExecuteEvents.dragHandler);
                 yield return null;
@@ -154,6 +157,7 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(stored.GetInt(SoundPictures.MusicVolumeKey, -1), Is.EqualTo(expected[1]));
             Assert.That(stored.GetInt(SoundPictures.EffectsVolumeKey, -1), Is.EqualTo(expected[2]));
             Assert.That(stored.GetInt(SoundPictures.InterfaceVolumeKey, -1), Is.EqualTo(expected[3]));
+            Assert.That(stored.GetInt(SoundPictures.VoiceVolumeKey, -1), Is.EqualTo(expected[4]));
             director.FreezeForReloadForDiagnostics();
             yield return ReloadEpisode();
             HoldTheHouseForTheFixture();

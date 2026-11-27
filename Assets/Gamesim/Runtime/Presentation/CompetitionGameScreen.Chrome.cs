@@ -229,6 +229,9 @@ namespace Gamesim.Presentation
             else if (previewStarted) { digits = run.TimeLimit.ToString("0"); state = "MEMORIZE · " + Mathf.Max(1, Mathf.CeilToInt(countdownLeft)); }
             else { digits = run.TimeLimit.ToString("0"); state = "STARTS IN " + Mathf.Max(1, Mathf.CeilToInt(countdownLeft)); }
             clock.text = FixedDigits(digits);
+            // The last seconds tick as the digits come to each whole second (AU-08): read from the
+            // digits just drawn, so the tick sounds in the frame they change.
+            if (playing && !finished) TickFinalSecond(CountTicks.WholeSecondShown(digits));
             clockState.text = state;
             var tone = final ? UiTheme.Danger : UiTheme.Paper;
             clock.color = tone;
@@ -252,16 +255,21 @@ namespace Gamesim.Presentation
             return "<mspace=0.6em>" + digits.Substring(0, point) + "</mspace>." + "<mspace=0.6em>" + digits.Substring(point + 1) + "</mspace>";
         }
 
-        /// <summary>The last seconds tick, and the digits pulse on each one (not under reduced motion).</summary>
+        /// <summary>
+        /// One of the last five seconds reached on the clock's digits: it ticks, on the effects'
+        /// volume as the game's news (AU-08), and the digits pulse with it (not under reduced motion).
+        /// </summary>
+        private void TickFinalSecond(int shown)
+        {
+            if (!CountTicks.Ticks(shown, lastWholeSecond)) return;
+            lastWholeSecond = shown; Cue(HouseAudio.Cue.CountTick);
+            clockPulse = ReducedMotion ? 0f : .25f;
+        }
+
+        /// <summary>The digits' pulse from a last second's tick (<see cref="TickFinalSecond"/>), easing back.</summary>
         private void AdvanceClockBeats(float delta)
         {
             if (!playing || run == null || run.Finished) return;
-            int whole = Mathf.CeilToInt((float)run.Remaining);
-            if (whole >= 1 && whole <= 5 && whole != lastWholeSecond)
-            {
-                lastWholeSecond = whole; Cue(HouseAudio.Cue.Hover);
-                clockPulse = ReducedMotion ? 0f : .25f;
-            }
             if (clockPulse > 0f) clockPulse = Mathf.Max(0f, clockPulse - Mathf.Max(0f, delta));
             float scale = 1f + .06f * Mathf.Clamp01(clockPulse / .25f);
             clock.rectTransform.localScale = new Vector3(scale, scale, 1f);

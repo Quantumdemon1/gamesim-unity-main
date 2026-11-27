@@ -28,6 +28,8 @@ namespace Gamesim.Episode
         /// The veto meeting's card for a stage: the meeting on the set's screen when the stage has
         /// one, and the generic card on the HUD when it has none - which a stage asks for only once
         /// it has let the house go, so the generic card's framing and reactions never run under it.
+        /// The meeting sounds the veto with its decision's page; the generic card stands in for that
+        /// page, so it sounds the veto as it comes up (AU-07): the staged commit made only the summons.
         /// </summary>
         private bool TryStageVetoMeeting(EpisodeState committed, string text, HashSet<string> wasActive, HashSet<string> wasNominated,
             IReadOnlyList<string> blockBefore)
@@ -36,8 +38,16 @@ namespace Gamesim.Episode
             return TryBeginCeremonyStage(CeremonySting.VetoKind, committed,
                 screen => screen != null
                     ? takeover.PlayVetoMeeting(VetoMeetingScriptFor(committed, blockBefore), reducedMotion, ceremonyPace, screen, ceremonySpeed)
-                    : PlayGenericCeremonyCard(committed, CeremonySting.VetoKind, text, wasActive, wasNominated),
+                    : PlayGenericVetoCard(committed, text, wasActive, wasNominated),
                 blockBefore);
+        }
+
+        /// <summary>The generic veto card a stage falls back to, with the veto's sound, which the staged commit left to the meeting.</summary>
+        private bool PlayGenericVetoCard(EpisodeState committed, string text, HashSet<string> wasActive, HashSet<string> wasNominated)
+        {
+            bool up = PlayGenericCeremonyCard(committed, CeremonySting.VetoKind, text, wasActive, wasNominated);
+            if (audioBed != null) audioBed.PlayCue(HouseAudio.Cue.Veto);
+            return up;
         }
 
         /// <summary>

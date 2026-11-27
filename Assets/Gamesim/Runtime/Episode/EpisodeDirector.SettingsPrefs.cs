@@ -26,8 +26,8 @@ namespace Gamesim.Episode
             hud.SettingSwitch(SettingRowWords.AllSoundRow, !muted, on => { muted = !on; ApplyPreferences(); Render(); });
             hud.SettingSlider(SettingRowWords.MasterVolumeRow, volumePercent, SetMasterVolumeLive, SetMasterVolumeFromSlider);
             hud.SettingSwitch(SettingRowWords.MusicRow, musicOn, on => { musicOn = on; ApplyPreferences(); Render(); });
-            // The music, the effects and the interface, each a share of the master (A11).
-            foreach (var channel in new[] { SoundChannel.Music, SoundChannel.Effects, SoundChannel.Interface })
+            // The music, the effects and the interface, each a share of the master (A11), and the voices (AU-16).
+            foreach (var channel in SoundPictures.Channels)
             {
                 var each = channel;
                 hud.SettingSlider(SoundPictures.MeterCaption(each), ChannelVolumePercent(each),

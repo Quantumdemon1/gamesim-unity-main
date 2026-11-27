@@ -218,7 +218,9 @@ namespace Gamesim.Presentation
             if (countdownLeft > 0)
             {
                 if (!preview) ShowOverlay(OverlayState.Count, "");
-                if (Mathf.CeilToInt(countdownLeft) != before) Cue(HouseAudio.Cue.Hover);
+                // The count's tick is news on the effects' volume (AU-08), not the pointer's tick:
+                // its digit has just stepped down above, and the clock's line steps with it below.
+                if (Mathf.CeilToInt(countdownLeft) != before) Cue(HouseAudio.Cue.CountTick);
                 Refresh(); return false;
             }
             playing = true; controls.interactable = true;

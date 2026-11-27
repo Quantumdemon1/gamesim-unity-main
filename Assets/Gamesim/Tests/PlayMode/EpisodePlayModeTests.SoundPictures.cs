@@ -343,7 +343,27 @@ namespace Gamesim.Tests.PlayMode
                 return new SoundPictureWatch.Expected("explicit timing-bar diagnostic panel, not a naturally dealt competition")
                     .At(director, null, InputGlossary.ChallengeLine(false)).At(director, null, "STOP marker  [Space]");
             }
-            if ((cue == HouseAudio.Cue.SocialUp || cue == HouseAudio.Cue.SocialDown) && run != null)
+            // A competition's count (AU-08): before GO the big digit steps down (the clock's line, while
+            // a memory board shows its cards); in the last five seconds the clock's digits come to a
+            // whole second, read from the run as the clock draws them.
+            if (cue == HouseAudio.Cue.CountTick && screen != null && run != null)
+            {
+                if (!SoundSourceField<bool>(screen, "playing"))
+                {
+                    int count = Mathf.Max(1, Mathf.CeilToInt(SoundSourceField<float>(screen, "countdownLeft")));
+                    var ready = new SoundPictureWatch.Expected("actual " + run.Kind + " ready count " + count);
+                    if (SoundSourceField<bool>(screen, "previewStarted")) return ready.At(screen, "Clock state", "MEMORIZE · " + count);
+                    return ready.At(screen, "Countdown", count.ToString());
+                }
+                string digits = run.Remaining.ToString("0.0");
+                int point = digits.IndexOf('.');
+                string drawn = point < 0 ? "<mspace=0.6em>" + digits + "</mspace>"
+                    : "<mspace=0.6em>" + digits.Substring(0, point) + "</mspace>.<mspace=0.6em>" + digits.Substring(point + 1) + "</mspace>";
+                return new SoundPictureWatch.Expected("actual " + run.Kind + " clock at " + digits + " s left")
+                    .At(screen, "Competition clock", drawn);
+            }
+            // An early press (AU-08) is told on the reaction board's lines as its hits and misses are.
+            if ((cue == HouseAudio.Cue.SocialUp || cue == HouseAudio.Cue.SocialDown || cue == HouseAudio.Cue.FalseStart) && run != null)
             {
                 var picture = new SoundPictureWatch.Expected("actual " + run.Kind + " outcome; hits=" + run.Hits
                     + ", wrong=" + run.WrongDirections + ", expired=" + run.ExpiredTargets + ", pairs=" + run.MatchedPairs
@@ -367,6 +387,16 @@ namespace Gamesim.Tests.PlayMode
                         return picture.At(screen, "Finish headline", "KEPT " + run.KeptTotal)
                             .At(screen, "Finish measure", "Total " + run.KeptTotal + " of 18  ·  roll " + run.RollsUsed + " of " + MiniGameRun.MaxRolls);
                 }
+            }
+            // A conversation that moved trust (AU-09): the trust chip the page draws as it comes back, its
+            // words read from the change the director committed, never from the chip.
+            if (cue == HouseAudio.Cue.RelationshipUp || cue == HouseAudio.Cue.RelationshipDown)
+            {
+                int steps = Mathf.RoundToInt((float)SoundSourceField<double>(director, "lastSocialDelta"));
+                if (steps == 0 || (steps > 0) != (cue == HouseAudio.Cue.RelationshipUp))
+                    throw new InvalidOperationException(cue + " against a committed change of " + steps + " in trust.");
+                return new SoundPictureWatch.Expected("actual committed change of " + steps + " in trust")
+                    .At(director.GetComponent<EpisodeHud>(), "Text", (steps > 0 ? "+" : "") + steps + (steps > 0 ? " trust gained" : " trust lost"));
             }
             var state = director.Snapshot;
             if (cue == HouseAudio.Cue.CompetitionWin)
@@ -442,6 +472,72 @@ namespace Gamesim.Tests.PlayMode
             }
         }
 
+        /// <summary>
+        /// A conversation that raises trust sounds like it (AU-09), where its commit clicked like a
+        /// button. A Talk's spoken lines have the panel first, so the press still clicks at the commit;
+        /// RelationshipUp is asked once, in the frame the page comes back with the trust chip reading
+        /// what was gained - its picture - never under the lines, and not again as the page redraws.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator Audio_ATalkThatRaisesTrustSoundsInTheFrameTheTrustChipShowsIt()
+        {
+            yield return InstallExchangeFlowHouse();
+            yield return EnterConversationCategory(EpisodeDirector.ConnectCategoryCaption);
+            var audio = director.GetComponent<HouseAudio>();
+            var hud = director.GetComponent<EpisodeHud>();
+            var asked = new List<HouseAudio.Cue>();
+            var askedIn = new List<int>();
+            void Note(HouseAudio.Cue cue) { asked.Add(cue); askedIn.Add(Time.frameCount); }
+            TMP_Text Chip() => hud.GetComponentsInChildren<TMP_Text>()
+                .LastOrDefault(label => label.isActiveAndEnabled && label.transform.parent != null && label.transform.parent.name == "Trust chip");
+            audio.CueAsked += Note;
+            try
+            {
+                using (var watch = new SoundPictureWatch(audio, () => "a Talk with " + exchangeFlowNpcId, InformationPictureFor))
+                {
+                    var before = director.Snapshot;
+                    double trustBefore = before.Score(before.playerId, exchangeFlowNpcId);
+                    var result = director.Submit(ExchangeFlowCommand(before, EpisodeCommandKind.Talk));
+                    Assert.That(result.accepted, Is.True, result.reason);
+                    var committed = director.Snapshot;
+                    int gained = Mathf.RoundToInt((float)(committed.Score(committed.playerId, exchangeFlowNpcId) - trustBefore));
+                    Assert.That(gained, Is.GreaterThan(0), "Spending time together raises the player's trust.");
+                    Assert.That(director.IsConversationExchangePlaying, Is.True, "The spoken lines have the panel first.");
+                    Assert.That(asked, Has.Member(HouseAudio.Cue.Button), "The press still clicks at the commit.");
+                    Assert.That(asked, Has.No.Member(HouseAudio.Cue.RelationshipUp), "No chip is drawn under the lines, so no trust sound yet.");
+                    Assert.That(Chip(), Is.Null, "The lines have the panel.");
+
+                    yield return null;
+                    ButtonWithCaption(EpisodeHud.ConversationContinueCaption).onClick.Invoke();
+                    yield return null;
+                    Assert.That(director.IsConversationExchangePlaying, Is.True, "The houseguest's answer is up.");
+                    Assert.That(asked, Has.No.Member(HouseAudio.Cue.RelationshipUp), "Nor under the houseguest's answer.");
+
+                    int frame = Time.frameCount;
+                    ButtonWithCaption(EpisodeHud.ConversationContinueCaption).onClick.Invoke();
+                    Assert.That(director.IsConversationExchangePlaying, Is.False, "The lines give the page back.");
+                    var chip = Chip();
+                    Assert.That(chip, Is.Not.Null, "The page comes back with its trust chip.");
+                    Assert.That(chip.text, Is.EqualTo("+" + gained + " trust gained"));
+                    Assert.That(asked.Count(cue => cue == HouseAudio.Cue.RelationshipUp), Is.EqualTo(1), "Trust gained sounds as the chip says so.");
+                    Assert.That(askedIn[asked.IndexOf(HouseAudio.Cue.RelationshipUp)], Is.EqualTo(frame), "In the frame the chip is drawn.");
+
+                    // The page drawn again (a setting changed under it) keeps its chip and asks nothing more.
+                    yield return null;
+                    director.SetAutoContinueLines(director.AutoContinueLines);
+                    yield return null;
+                    Assert.That(Chip(), Is.Not.Null, "The chip stays with the page.");
+                    Assert.That(asked.Count(cue => cue == HouseAudio.Cue.RelationshipUp), Is.EqualTo(1), "Once for the action, not once a redraw.");
+                    Assert.That(asked, Has.No.Member(HouseAudio.Cue.RelationshipDown));
+                    Assert.That(watch.Checked.ContainsKey(HouseAudio.Cue.RelationshipUp) ? watch.Checked[HouseAudio.Cue.RelationshipUp] : 0, Is.EqualTo(1),
+                        "The trust sound was judged against the screen in its own frame.");
+                    Assert.That(watch.Silent, Is.Empty, "A trust sound in a frame whose text did not say it: " + string.Join(" | ", watch.Silent));
+                    watch.AssertAccounted();
+                }
+            }
+            finally { audio.CueAsked -= Note; }
+        }
+
         /// <summary>The board each kind of competition is played on here: the kind's standard definition, and the waves for endurance's drop.</summary>
         private static CompetitionDefinition CueBoard(CompetitionMiniGames.Kind kind)
         {
@@ -469,7 +565,8 @@ namespace Gamesim.Tests.PlayMode
         /// The competition's own news has pictures too (A11): each kind of board practised from the
         /// briefing of a season's first Head of Household - GO is its start, a hit, a pair, a kept roll
         /// or a solved word rises, a wrong way, a let-go target, a wrong pair, a pressure wave or a
-        /// wrong word falls - and each of those sounds in a frame whose words changed with it. The
+        /// wrong word falls, the count before GO ticks and an early press buzzes (AU-08) - and each of
+        /// those sounds in a frame whose words changed with it. The
         /// timing bar, which no category deals any more, is started through its seam: its start is the
         /// panel coming up.
         /// </summary>
@@ -488,6 +585,10 @@ namespace Gamesim.Tests.PlayMode
             bool falls = kind != CompetitionMiniGames.Kind.Precision && kind != CompetitionMiniGames.Kind.Dice;
             if (rises) expected.Add(HouseAudio.Cue.SocialUp);
             if (falls) expected.Add(HouseAudio.Cue.SocialDown);
+            // The count before GO ticks on every board the screen plays, and an early press buzzes on the
+            // reaction board's (AU-08): both news now, so both are held to their pictures.
+            if (kind != CompetitionMiniGames.Kind.Precision) expected.Add(HouseAudio.Cue.CountTick);
+            if (kind == CompetitionMiniGames.Kind.Reaction) expected.Add(HouseAudio.Cue.FalseStart);
 
             MiniGameRun run = null;
             using (var watch = new SoundPictureWatch(audio, () => kind + (run != null ? " at " + run.Elapsed.ToString("0.00") + " s" : " at the briefing"), InformationPictureFor))
@@ -534,9 +635,15 @@ namespace Gamesim.Tests.PlayMode
             }
         }
 
-        /// <summary>A hit on the target's own way, a wrong way on the next, and one let go.</summary>
+        /// <summary>A press before any target is up, a hit on the target's own way, a wrong way on the next, and one let go.</summary>
         private IEnumerator PlayReactionForCues(MiniGameRun run)
         {
+            yield return WaitFor(() => !run.TargetLive, 5f, "No target is up yet.");
+            int early = run.FalseStarts;
+            director.TapTarget();
+            yield return null;
+            Assert.That(run.FalseStarts, Is.EqualTo(early + 1), "A press with no target up is an early press.");
+
             yield return WaitFor(() => run.TargetLive, 10f, "A target comes up.");
             int hits = run.Hits;
             director.TapTarget();

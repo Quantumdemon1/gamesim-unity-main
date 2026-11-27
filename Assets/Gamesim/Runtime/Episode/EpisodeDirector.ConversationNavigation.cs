@@ -226,7 +226,8 @@ namespace Gamesim.Episode
             // only in lines the player may have skipped (UI U3). The topics view above keeps its own gate.
             if (!string.IsNullOrEmpty(conversationNarration))
             { hud.Heading("WHAT HAPPENED"); hud.Paragraph(conversationNarration); }
-            if (lastSocialAction.HasValue) hud.OutcomeChips(lastSocialDelta);
+            // The chip's own sound, warmer or cooler, in the frame it is drawn (EpisodeDirector.TrustSound.cs).
+            if (lastSocialAction.HasValue) { hud.OutcomeChips(lastSocialDelta); SoundTheTrustChip(); }
 
             bool allied = state.Allied(state.playerId, npc.id);
             switch (conversationCategory)

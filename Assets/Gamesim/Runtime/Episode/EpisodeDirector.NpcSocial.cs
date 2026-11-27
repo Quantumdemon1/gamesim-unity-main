@@ -520,8 +520,12 @@ namespace Gamesim.Episode
                     // Drawn only over a pair the room scope draws (RS4); the witness itself is unchanged.
                     captionFirstId = pending.firstId; captionSecondId = pending.secondId;
                     npcCaption.PairDrawn = IsBodyDrawn(HousemateBody(pending.firstId)) && IsBodyDrawn(HousemateBody(pending.secondId));
+                    int linesBefore = npcCaption.LinesShown;
                     npcCaption.Show(projected.Find(pending.firstId).name, projected.Find(pending.secondId).name,
                         pending.topic, TextScale, between);
+                    // A new line over a pair the player sees murmurs, quieter, in the voice of the one with the floor (AU-16).
+                    if (npcCaption.LinesShown != linesBefore && npcCaption.PairDrawn)
+                        MurmurWitnessedLine(firstSpeaks ? pending.firstId : pending.secondId, npcCaption.CurrentText);
                     npcShownLease = lease;
                     witnessed = true;
                 }

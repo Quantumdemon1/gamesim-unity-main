@@ -470,11 +470,14 @@ namespace Gamesim.Episode
             competitionScreen.Refresh();
         }
 
-        /// <summary>A hit rises, a miss falls, an early press ticks; a press the rules ignore is silent.</summary>
+        /// <summary>
+        /// A hit rises, a miss falls, an early press buzzes - the game's news on the effects' volume
+        /// (AU-08), not the pointer's tick it used to borrow; a press the rules ignore is silent.
+        /// </summary>
         private void ReactionCue(bool hit, int earlyBefore, int wrongBefore)
         {
             if (hit) audioBed.PlayCue(HouseAudio.Cue.SocialUp);
-            else if (challengeRun.FalseStarts > earlyBefore) audioBed.PlayCue(HouseAudio.Cue.Hover);
+            else if (challengeRun.FalseStarts > earlyBefore) audioBed.PlayCue(HouseAudio.Cue.FalseStart);
             else if (challengeRun.WrongDirections > wrongBefore) audioBed.PlayCue(HouseAudio.Cue.SocialDown);
         }
 
@@ -484,7 +487,7 @@ namespace Gamesim.Episode
             int early = challengeRun.FalseStarts, missed = challengeRun.PointerMisses;
             challengeRun.MissPointer();
             if (challengeRun.PointerMisses > missed) audioBed.PlayCue(HouseAudio.Cue.SocialDown);
-            else if (challengeRun.FalseStarts > early) audioBed.PlayCue(HouseAudio.Cue.Hover);
+            else if (challengeRun.FalseStarts > early) audioBed.PlayCue(HouseAudio.Cue.FalseStart);
             competitionScreen.Refresh();
         }
 

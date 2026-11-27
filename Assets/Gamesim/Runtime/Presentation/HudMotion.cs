@@ -16,7 +16,11 @@ namespace Gamesim.Presentation
         /// <summary>Called when the pointer arrives over the control: the HUD plays the hover foley.</summary>
         public System.Action Hovered;
 
-        public void OnPointerEnter(PointerEventData eventData) => Hovered?.Invoke();
+        // Not over a greyed-out control (AU-10): a tick there offered a press that would do nothing.
+        public void OnPointerEnter(PointerEventData eventData)
+        {
+            if (ControlSounds.CanPress(gameObject)) Hovered?.Invoke();
+        }
 
         public void OnPointerDown(PointerEventData eventData)
         {
@@ -28,8 +32,13 @@ namespace Gamesim.Presentation
     }
 
     /// <summary>
-    /// Lifts a panel's edge one level while the pointer is over it or the keyboard is on it, and
-    /// puts it back afterwards. Resting becomes interactive; interactive becomes the accent.
+    /// Lifts a panel's edge while the pointer is over it or the keyboard is on it, and puts it back
+    /// afterwards. The two are told apart: the control the keyboard or the pad is on - the one Enter
+    /// or A presses - wears the accent edge and a ring round it (<see cref="UiTheme.AddFocusRing"/>),
+    /// and nothing else does. The pointer lifts an edge one step short of that: resting becomes
+    /// interactive, interactive becomes <see cref="UiTheme.HoverEdge"/>, and a control already lit
+    /// stays lit. Before, hover and focus were one colour, so a pad player whose mouse rested on
+    /// another control saw two lit controls and could not tell which one A would press.
     ///
     /// <para>An edge rather than a colour multiplier. The dial's petals carry their action's own
     /// colour on a glyph, and a multiplier tints whatever it is given - the old highlight was
@@ -37,17 +46,19 @@ namespace Gamesim.Presentation
     /// anything exactly when the player was looking at it.</para>
     ///
     /// <para>Visual only: no layout, no focus movement, nothing a rebuild can race. It reads the
-    /// Border child that <see cref="UiTheme.AddBorder"/> makes, and does nothing without one.</para>
+    /// Border child that <see cref="UiTheme.AddBorder"/> makes, and does nothing without one. The
+    /// ring is made the first time the control is focused, so a control never focused carries no
+    /// extra child.</para>
     /// </summary>
     [DisallowMultipleComponent]
     public sealed class HudEmphasis : MonoBehaviour,
         IPointerEnterHandler, IPointerExitHandler, ISelectHandler, IDeselectHandler
     {
-        private Image edge;
-        private Color resting, promoted;
+        private Image edge, ring;
+        private Color resting, hover;
         private bool hovered, focused;
 
-        /// <summary>Gives <paramref name="panel"/> a hover and focus step up from its resting level.</summary>
+        /// <summary>Gives <paramref name="panel"/> a hover step up from its resting level, and the accent edge and ring under focus.</summary>
         public static void Promote(RectTransform panel, UiTheme.Emphasis level)
         {
             if (panel == null) return;
@@ -55,13 +66,24 @@ namespace Gamesim.Presentation
             var image = child != null ? child.GetComponent<Image>() : null;
             if (image == null) return;
             var component = panel.gameObject.GetComponent<HudEmphasis>();
-            if (component == null) component = panel.gameObject.AddComponent<HudEmphasis>();
+            if (component == null)
+            {
+                component = panel.gameObject.AddComponent<HudEmphasis>();
+                // A control the keyboard is already on shows it from the start.
+                var events = EventSystem.current;
+                component.focused = events != null && events.currentSelectedGameObject == panel.gameObject;
+            }
             component.edge = image;
             component.resting = UiTheme.Edge(level);
-            component.promoted = UiTheme.Edge(level == UiTheme.Emphasis.Resting
-                ? UiTheme.Emphasis.Interactive : UiTheme.Emphasis.Active);
+            component.hover = Hover(level);
             component.Apply();
         }
+
+        /// <summary>The edge the pointer lifts a control of <paramref name="level"/> to: one step, never the keyboard's accent.</summary>
+        public static Color Hover(UiTheme.Emphasis level) =>
+            level == UiTheme.Emphasis.Resting ? UiTheme.Edge(UiTheme.Emphasis.Interactive)
+            : level == UiTheme.Emphasis.Interactive ? UiTheme.HoverEdge
+            : UiTheme.Edge(level);
 
         public void OnPointerEnter(PointerEventData eventData) { hovered = true; Apply(); }
         public void OnPointerExit(PointerEventData eventData) { hovered = false; Apply(); }
@@ -70,7 +92,25 @@ namespace Gamesim.Presentation
 
         private void Apply()
         {
-            if (edge != null) edge.color = hovered || focused ? promoted : resting;
+            if (edge != null) edge.color = focused ? UiTheme.Edge(UiTheme.Emphasis.Active) : hovered ? hover : resting;
+            ring = ShowRing((RectTransform)transform, ring, edge, focused);
+        }
+
+        /// <summary>
+        /// Shows or hides <paramref name="control"/>'s focus ring, making it the first time it is
+        /// shown, its corners round <paramref name="edge"/>'s (the glass radius when the edge is
+        /// gone). Returns the ring, or null while none has been needed.
+        /// </summary>
+        public static Image ShowRing(RectTransform control, Image ring, Image edge, bool shown)
+        {
+            if (ring == null)
+            {
+                if (!shown || control == null) return null;
+                ring = UiTheme.AddFocusRing(control, UiTheme.OutlineRadius(edge, UiTheme.GlassRadius));
+                if (ring == null) return null;
+            }
+            if (ring.gameObject.activeSelf != shown) ring.gameObject.SetActive(shown);
+            return ring;
         }
     }
 

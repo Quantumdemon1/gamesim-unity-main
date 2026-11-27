@@ -15,7 +15,24 @@ namespace Gamesim.Presentation
             PanelOpen, PanelClose, Hover,
             // The tour moving on a step: the reference build's tutorialStep, a glide from 500 to
             // 700 Hz over a tenth of a second (useGameSFX.ts). Appended, so no cue's value moves.
-            TutorialStep
+            TutorialStep,
+            // The front door (AU-06): its leaves giving after the rattle, and landing shut. The
+            // director plays them as the door set says its leaves moved (OpeningDoorSet). Appended.
+            DoorOpen, DoorShut,
+            // The chime that calls the house to a staged ceremony (AU-07), with the summons line on
+            // the strip. Appended.
+            Summons,
+            // A competition's count (AU-08): each step of the 3-2-1 before GO and each of the attempt's
+            // last five seconds, and an early press on the reaction board. The game's news on the
+            // effects' volume, where the pointer's tick used to stand in for them. Appended.
+            CountTick, FalseStart,
+            // A staged competition watched in the yard (AU-13): the start horn (and time called), a
+            // console locking an answer in (and a finish), and a podium reveal's right and wrong.
+            // The director plays them from the show's beats (CompetitionShowSounds). Appended.
+            ShowHorn, ShowLockIn, ShowRight, ShowWrong,
+            // A conversation that moved trust (AU-09): warmer, and cooler, asked as the page draws the
+            // trust chip that says so, where every conversation's commit clicked like a button. Appended.
+            RelationshipUp, RelationshipDown
         }
 
         /// <summary>The last cue asked for, muted or not - what a test listens to.</summary>
@@ -336,15 +353,26 @@ namespace Gamesim.Presentation
         // effects - the game's news and the house's air - and the interface's answers to a hand.
         private float musicShare = 1f, effectsShare = 1f, interfaceShare = 1f;
 
+        // And a fourth since AU-16: the houseguests' murmurs, from 70 percent (SoundPictures.DefaultVoiceVolume).
+        private float voiceShare = SoundPictures.DefaultVoiceVolume / 100f;
+
         /// <summary>A channel's share of the master, 0 to 1.</summary>
         public float ChannelVolume(SoundChannel channel) =>
-            channel == SoundChannel.Music ? musicShare : channel == SoundChannel.Interface ? interfaceShare : effectsShare;
+            channel == SoundChannel.Music ? musicShare : channel == SoundChannel.Interface ? interfaceShare
+            : channel == SoundChannel.Voice ? voiceShare : effectsShare;
 
-        /// <summary>Sets the three shares of the master: the music's, the effects' and the interface's, each 0 to 1.</summary>
+        /// <summary>Sets the three shares of the master: the music's, the effects' and the interface's, each 0 to 1. The voices' share is left as it is.</summary>
         public void SetChannelVolumes(float music, float effects, float interfaceVolume)
         {
             musicShare = Share(music); effectsShare = Share(effects); interfaceShare = Share(interfaceVolume);
             ApplySettings();
+        }
+
+        /// <summary>Sets the four shares of the master: the music's, the effects', the interface's and the voices', each 0 to 1.</summary>
+        public void SetChannelVolumes(float music, float effects, float interfaceVolume, float voice)
+        {
+            voiceShare = Share(voice);
+            SetChannelVolumes(music, effects, interfaceVolume);
         }
 
         private static float Share(float value) => float.IsNaN(value) ? 1f : Mathf.Clamp01(value);
@@ -471,6 +499,7 @@ namespace Gamesim.Presentation
             musicShare = SoundPictures.Clamp(saved.GetInt(SoundPictures.MusicVolumeKey, SoundPictures.DefaultVolume)) / 100f;
             effectsShare = SoundPictures.Clamp(saved.GetInt(SoundPictures.EffectsVolumeKey, SoundPictures.DefaultVolume)) / 100f;
             interfaceShare = SoundPictures.Clamp(saved.GetInt(SoundPictures.InterfaceVolumeKey, SoundPictures.DefaultVolume)) / 100f;
+            voiceShare = SoundPictures.Clamp(saved.GetInt(SoundPictures.VoiceVolumeKey, SoundPictures.DefaultVoiceVolume)) / 100f;
         }
 
         public static HouseAudio Attach(GameObject root)
@@ -882,6 +911,76 @@ namespace Gamesim.Presentation
             CueVoicesStarted++;
         }
 
+        // ---------------------------------------------------------------- the houseguests' murmurs (AU-16)
+
+        private AudioSource voiceSource;
+        private AudioClip murmurClip;
+        private float[] murmurSamples;
+        // The murmur sounding's place under the Voice volume, as a share: kept so a change of volume reaches it.
+        private float murmurGain = 1f;
+
+        /// <summary>The last murmur asked for, muted or not - what a test listens to.</summary>
+        public Murmur.Plan LastMurmur { get; private set; }
+
+        /// <summary>How many murmurs have been asked for, muted or not.</summary>
+        public int MurmursAsked { get; private set; }
+
+        /// <summary>How many murmurs were heard: started on the voice, with the sound on and the Voice volume above nothing.</summary>
+        public int MurmursStarted { get; private set; }
+
+        /// <summary>Every murmur asked for, muted or not, as it is asked. Nothing in the game subscribes.</summary>
+        public event System.Action<Murmur.Plan> MurmurAsked;
+
+        /// <summary>Whether a murmur is sounding now.</summary>
+        public bool MurmurPlaying => voiceSource != null && voiceSource.isPlaying;
+
+        /// <summary>The voice's volume now: the master, reduced audio, the Voice volume and the murmur's place (a witnessed one sits lower).</summary>
+        public float MurmurVolume => voiceSource != null ? voiceSource.volume : 0f;
+
+        /// <summary>
+        /// A houseguest's murmur under a line on screen (AU-16): made from the speaker's id, their
+        /// pronouns and the line (<see cref="Murmur"/>), never the season's random stream, and played
+        /// on the Voice volume, at half under reduced audio as every cue is; a witnessed caption's
+        /// lower. It takes over from a murmur still sounding. A line with no words has none.
+        /// </summary>
+        public void PlayMurmur(string speakerId, string pronouns, string line, bool witnessed)
+        {
+            var plan = Murmur.For(speakerId, pronouns, line, witnessed);
+            LastMurmur = plan;
+            MurmursAsked++;
+            MurmurAsked?.Invoke(plan);
+            if (plan.Syllables == 0 || !isActiveAndEnabled || Muted || volume <= 0f || voiceShare <= 0f) return;
+            Initialize();
+            if (voiceSource == null) return;
+            if (murmurClip == null)
+            {
+                int length = Murmur.MaxSampleCount(SampleRate);
+                murmurSamples = new float[length];
+                murmurClip = Own(AudioClip.Create("Gamesim murmur", length, 1, SampleRate, false));
+            }
+            voiceSource.Stop();
+            Murmur.Render(plan, SampleRate, murmurSamples);
+            murmurClip.SetData(murmurSamples, 0);
+            murmurGain = Mathf.Pow(10f, plan.GainDb / 20f);
+            voiceSource.clip = murmurClip;
+            WriteVoiceVolume();
+            voiceSource.Play();
+            MurmursStarted++;
+        }
+
+        /// <summary>The murmur sounding stops: its line was skipped or its conversation ended.</summary>
+        public void StopMurmur()
+        {
+            if (voiceSource != null) voiceSource.Stop();
+        }
+
+        private void WriteVoiceVolume()
+        {
+            if (voiceSource == null) return;
+            voiceSource.mute = Muted;
+            voiceSource.volume = CueVolume * voiceShare * murmurGain;
+        }
+
         private void OnEnable()
         {
             if (Application.isPlaying) Initialize();
@@ -926,6 +1025,14 @@ namespace Gamesim.Presentation
             competitionSource = MusicVoice();
             // And the main menu's title voice after that, last of all.
             titleSource = MusicVoice();
+            // The houseguests' murmurs after the title's (AU-16), so every source before keeps its
+            // place: one voice, so a new line's murmur takes over from the last, as a new speaker does.
+            voiceSource = gameObject.AddComponent<AudioSource>();
+            voiceSource.playOnAwake = false;
+            voiceSource.loop = false;
+            voiceSource.spatialBlend = 0f;
+            voiceSource.priority = 100;
+            voiceSource.volume = 0f;
 
             // A supplied recording wins over the synthesised bed, and neither is required.
             var recordedTheme = Resources.Load<AudioClip>("Audio/Theme");
@@ -1006,6 +1113,20 @@ namespace Gamesim.Presentation
             new Composition(Cue.PanelClose, "Panel closes", 0.24f, new Tone(760, 0.1f, 0, 0.08f), new Tone(460, 0.12f, 0.09f, 0.08f)),
             new Composition(Cue.Hover, "Hover", 0.09f, new Tone(1800, 0.07f, 0, 0.05f)),
             new Composition(Cue.TutorialStep, "Tutorial step", 0.1f, new Tone(500, 0.1f, 0, 0.15f, 700)),
+            new Composition(Cue.DoorOpen, "Door opens", 0.6f, new Tone(160, 0.12f, 0, 0.14f, 90), new Tone(220, 0.45f, 0.1f, 0.05f, 300)),
+            new Composition(Cue.DoorShut, "Door shuts", 0.55f, new Tone(120, 0.4f, 0, 0.16f, 45), new Tone(1800, 0.05f, 0.03f, 0.04f)),
+            new Composition(Cue.Summons, "Summons", 1.2f,
+                new Tone(392f, 0.6f, 0, 0.12f), new Tone(659.25f, 0.6f, 0.24f, 0.12f), new Tone(523.25f, 0.7f, 0.48f, 0.12f)),
+            // The reference build's compProgress: a 1000 Hz sine for 50 ms (useGameSFX.ts).
+            new Composition(Cue.CountTick, "Count tick", 0.1f, new Tone(1000, 0.05f, 0, 0.15f)),
+            new Composition(Cue.FalseStart, "False start", 0.24f, new Tone(196, 0.1f, 0, 0.13f), new Tone(196, 0.12f, 0.12f, 0.13f, 175)),
+            new Composition(Cue.ShowHorn, "Show horn", 0.7f, new Tone(233.08f, 0.65f, 0, 0.12f), new Tone(349.23f, 0.65f, 0, 0.1f)),
+            new Composition(Cue.ShowLockIn, "Show lock in", 0.1f, new Tone(1480, 0.06f, 0, 0.1f)),
+            new Composition(Cue.ShowRight, "Show right", 0.5f, new Tone(880, 0.3f, 0, 0.12f), new Tone(1174.66f, 0.38f, 0.11f, 0.12f)),
+            new Composition(Cue.ShowWrong, "Show wrong", 0.45f, new Tone(118, 0.45f, 0, 0.14f), new Tone(123, 0.45f, 0, 0.12f)),
+            // The reference build's relationshipUp and relationshipDown: a sine swept between 300 and 600 Hz over 0.2 s (useGameSFX.ts).
+            new Composition(Cue.RelationshipUp, "Trust gained", 0.2f, new Tone(300, 0.2f, 0, 0.15f, 600)),
+            new Composition(Cue.RelationshipDown, "Trust lost", 0.2f, new Tone(600, 0.2f, 0, 0.15f, 300)),
         };
 
         /// <summary>How many of the cues' clips are loaded, or loading, rather than waiting for their first sounding: every cue once the house has started.</summary>
@@ -1051,6 +1172,8 @@ namespace Gamesim.Presentation
                 cueSource.mute = Muted;
                 cueSource.volume = CueVolume;
             }
+            // The murmur sounding follows the master, reduced audio and the Voice volume at once (AU-16).
+            WriteVoiceVolume();
             // The music's volumes, and only its volumes. Starting, stopping and fading the voices
             // belongs to EnterMusic and TickMusic, so a preference changed - or a room crossed -
             // in the middle of a fade cannot jump it, restart it or cut it.
@@ -1236,6 +1359,7 @@ namespace Gamesim.Presentation
             if (activityVoice != null) activityVoice.Stop();
             activity.Silence();
             if (cueSource != null) cueSource.Stop();
+            if (voiceSource != null) voiceSource.Stop();
             // The music too. A disabled component ticks no fades, and the bed used to play on under
             // one with nothing left to fade it or stop it. The theme goes; the bed keeps its place -
             // when it has one - and OnEnable brings back whatever is asked for then.
@@ -1258,6 +1382,7 @@ namespace Gamesim.Presentation
             if (competitionSource != null) { competitionSource.Stop(); Release(competitionSource); }
             if (titleSource != null) { titleSource.Stop(); Release(titleSource); }
             if (activityVoice != null) { activityVoice.Stop(); Release(activityVoice); }
+            if (voiceSource != null) { voiceSource.Stop(); Release(voiceSource); }
             foreach (var clip in owned) if (clip != null) Release(clip);
             owned.Clear();
             clips.Clear();

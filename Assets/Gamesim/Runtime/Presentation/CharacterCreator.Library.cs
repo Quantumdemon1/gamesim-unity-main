@@ -125,7 +125,7 @@ namespace Gamesim.Presentation
             var button = card.gameObject.AddComponent<Button>();
             button.targetGraphic = image;
             Seen(button, 14);
-            button.onClick.AddListener(() => AskToReplace(null, () =>
+            button.onClick.AddListener(() => ControlSounds.Press(button, () => AskToReplace(null, () =>
             {
                 draft = CharacterDraft.Blank();
                 profileId = focusedProfile = null;
@@ -141,7 +141,7 @@ namespace Gamesim.Presentation
                 if (!editingCastSlot) editingName = null;
                 MarkSaved();
                 Rebuild();
-            }));
+            })));
         }
 
         /// <summary>
@@ -182,12 +182,12 @@ namespace Gamesim.Presentation
             var button = card.gameObject.AddComponent<Button>();
             button.targetGraphic = image;
             Seen(button, 14);
-            button.onClick.AddListener(() =>
+            button.onClick.AddListener(() => ControlSounds.Press(button, () =>
             {
                 if (pendingDeleteProfile != entry.id) pendingDeleteProfile = null;
                 focusedProfile = entry.id;
                 AskToReplace(entry.name, () => AdoptLibraryDraft(entry, false));
-            });
+            }));
             // The card loads its houseguest, as it always has; this looks without loading, so the bar's
             // Duplicate and Delete reach any card without replacing the draft on screen.
             GlyphButton(parent, "Details for " + entry.name, new Rect(r.x + r.width - 44f, r.y + 8f, 36f, 36f), null, UiTheme.Pack(PackArt.KitIconMore),

@@ -16,8 +16,9 @@ namespace Gamesim.Tests.EditMode
         [Test]
         public void TheVersionIsABoundOverAClosedSetEachAtTheSchemaThatIntroducedIt()
         {
-            Assert.That(DialogueRules.Version, Is.EqualTo(4), "The highest version this build defines: 4 since D4 defined the veto question.");
-            Assert.That(Enumerable.Range(-2, 8).Where(DialogueRules.IsDefined), Is.EqualTo(new[] { 0, 1, 2, 3, 4 }));
+            // Repinned at D5b-1, which defines rules 5 (the HoH consultation), switched off: the chip still writes 4.
+            Assert.That(DialogueRules.Version, Is.EqualTo(5), "The highest version this build defines: 5 since D5b-1 defined the HoH consultation.");
+            Assert.That(Enumerable.Range(-2, 9).Where(DialogueRules.IsDefined), Is.EqualTo(new[] { 0, 1, 2, 3, 4, 5 }));
             Assert.That(DialogueRules.IsDefined(DialogueRules.Version + 1), Is.False);
             Assert.That(DialogueRules.SchemaFor(0), Is.EqualTo(29));
             Assert.That(DialogueRules.SchemaFor(1), Is.EqualTo(29));
@@ -29,6 +30,7 @@ namespace Gamesim.Tests.EditMode
                 Assert.That(DialogueRules.Admits(2, schema), Is.EqualTo(schema >= 30));
                 Assert.That(DialogueRules.Admits(3, schema), Is.EqualTo(schema >= 30), "Rules 3 is defined from 30, as rules 2 is (D3).");
                 Assert.That(DialogueRules.Admits(4, schema), Is.EqualTo(schema >= 30), "Rules 4 is defined from 30, as rules 2 and 3 are (D4).");
+                Assert.That(DialogueRules.Admits(5, schema), Is.EqualTo(schema >= 30), "Rules 5 is defined from 30, as rules 2 to 4 are (D5b-1).");
                 Assert.That(DialogueRules.Admits(DialogueRules.Version + 1, schema), Is.False, "An undefined version is never admitted.");
                 Assert.That(DialogueRules.Admits(-1, schema), Is.False);
             }

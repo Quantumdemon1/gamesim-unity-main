@@ -33,11 +33,12 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(audio.ChannelVolume(SoundChannel.Voice), Is.EqualTo(.7f).Within(1e-5f));
                 Assert.That(audio.Muted, Is.False, "The fixture's sound is on.");
                 var before = director.Snapshot;
+                // Counted before the press: Submit draws the player's line, and its murmur, in the same call.
+                int started = audio.MurmursStarted;
                 var result = director.Submit(ExchangeFlowCommand(before, EpisodeCommandKind.SmallTalk));
                 Assert.That(result.accepted, Is.True, result.reason);
                 var committed = director.Snapshot;
                 byte[] savedBytes = File.ReadAllBytes(director.SavePath);
-                int started = audio.MurmursStarted;
                 yield return null;
 
                 AssertExchangeFlowStep(before.playerId, "How's the day treating you?");

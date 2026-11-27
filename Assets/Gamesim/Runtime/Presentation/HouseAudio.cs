@@ -29,7 +29,10 @@ namespace Gamesim.Presentation
             // A staged competition watched in the yard (AU-13): the start horn (and time called), a
             // console locking an answer in (and a finish), and a podium reveal's right and wrong.
             // The director plays them from the show's beats (CompetitionShowSounds). Appended.
-            ShowHorn, ShowLockIn, ShowRight, ShowWrong
+            ShowHorn, ShowLockIn, ShowRight, ShowWrong,
+            // A conversation that moved trust (AU-09): warmer, and cooler, asked as the page draws the
+            // trust chip that says so, where every conversation's commit clicked like a button. Appended.
+            RelationshipUp, RelationshipDown
         }
 
         /// <summary>The last cue asked for, muted or not - what a test listens to.</summary>
@@ -1031,6 +1034,9 @@ namespace Gamesim.Presentation
             new Composition(Cue.ShowLockIn, "Show lock in", 0.1f, new Tone(1480, 0.06f, 0, 0.1f)),
             new Composition(Cue.ShowRight, "Show right", 0.5f, new Tone(880, 0.3f, 0, 0.12f), new Tone(1174.66f, 0.38f, 0.11f, 0.12f)),
             new Composition(Cue.ShowWrong, "Show wrong", 0.45f, new Tone(118, 0.45f, 0, 0.14f), new Tone(123, 0.45f, 0, 0.12f)),
+            // The reference build's relationshipUp and relationshipDown: a sine swept between 300 and 600 Hz over 0.2 s (useGameSFX.ts).
+            new Composition(Cue.RelationshipUp, "Trust gained", 0.2f, new Tone(300, 0.2f, 0, 0.15f, 600)),
+            new Composition(Cue.RelationshipDown, "Trust lost", 0.2f, new Tone(600, 0.2f, 0, 0.15f, 300)),
         };
 
         /// <summary>How many of the cues' clips are loaded, or loading, rather than waiting for their first sounding: every cue once the house has started.</summary>

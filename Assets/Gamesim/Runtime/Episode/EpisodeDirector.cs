@@ -897,6 +897,7 @@ namespace Gamesim.Episode
             if (result.accepted)
             {
                 diaryDraft = null; // A draft never survives a different committed revision.
+                trustCue = null; // A trust sound still owed belonged to the action before (EpisodeDirector.TrustSound.cs).
                 ForgetActionPurchase();
                 ForgetInformationShare();
                 replyCardView = null;
@@ -928,9 +929,10 @@ namespace Gamesim.Episode
                 // reach the block and the result, and a commit that played the result's sound first
                 // announced it before the card had counted to it. A beat of the opening is
                 // bookkeeping and makes none; an introduction clicks through the opening's own hook.
+                // In a conversation, trust gained or lost sounds like it under every bigger beat (AU-09).
                 var commitCue = CommitCue(CommittedEvents(result.state, knownSequence)
                     .Where(entry => entry.audienceIds.Count == 0 || entry.audienceIds.Contains(result.state.playerId))
-                    .Select(entry => entry.kind));
+                    .Select(entry => entry.kind), focusedNpc != null ? lastSocialDelta : 0d);
                 bool revealed = false, vetoStaged = false;
                 // A staged competition's fanfare waits for the card that names the winner (below), not
                 // the commit that starts the show: the show narrates for seconds before the card.
@@ -1113,10 +1115,10 @@ namespace Gamesim.Episode
                 if (revealed) HoldHudForReveal();
                 if (CommitSound.SoundsAtTheCommit(commitCue.ToString(), revealed, vetoStaged) && !winCueWithCard
                     && command.kind != EpisodeCommandKind.MarkOpeningBeat && command.kind != EpisodeCommandKind.Introduce)
-                    audioBed.PlayCue(commitCue);
+                    PlayCommitCue(commitCue);
             }
             BeginConversationExchange(exchangeBefore, result, command);
-            Render(); return result;
+            Render(); SettleTrustCue(result.accepted); return result;
         }
 
         /// <summary>

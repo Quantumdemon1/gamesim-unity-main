@@ -119,6 +119,13 @@ namespace Gamesim.Presentation
                 "A podium reveal the player comes through, or the last, which leaves the winner alone: the consoles still in light mint, and those out light red and walk aside.", gainDb: ShowGainDb),
             new Row("ShowWrong", SoundKind.World, SoundChannel.Effects,
                 "A podium reveal that puts the player out - or, once they are out or watching, any but the last: the consoles of those out light red and they walk aside.", gainDb: ShowGainDb),
+            // A conversation that moved trust (AU-09): the game's news - where the player stands with
+            // somebody - so a picture is owed, and it is the trust chip. Its place in the mix is set in
+            // the recording, as the count's is: a conversation comes six times a week.
+            new Row("RelationshipUp", SoundKind.Information, SoundChannel.Effects,
+                "A conversation raised trust: the page comes back with the trust chip reading what was gained, under the houseguest's standing."),
+            new Row("RelationshipDown", SoundKind.Information, SoundChannel.Effects,
+                "A conversation cost trust: the page comes back with the trust chip reading what was lost, under the houseguest's standing."),
         };
 
         /// <summary>

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Gamesim.Presentation;
+using Gamesim.Simulation;
 using NUnit.Framework;
 
 namespace Gamesim.Tests.EditMode
@@ -49,6 +50,49 @@ namespace Gamesim.Tests.EditMode
             Assert.That(CommitSound.SoundsAtTheCommit("Nomination", revealed: true, vetoStaged: false), Is.False,
                 "A staged key ceremony makes its own sounds.");
             Assert.That(CommitSound.SoundsAtTheCommit("Button", revealed: false, vetoStaged: false), Is.True, "Every other commit sounds.");
+        }
+
+        /// <summary>
+        /// A conversation that warms or cools a relationship sounds like it (AU-09), where every
+        /// conversation's commit clicked like a button: with no bigger beat in the commit, trust gained
+        /// is RelationshipUp and trust lost RelationshipDown, counted as the trust chip counts it - so a
+        /// change the chip calls "No change in trust" keeps the click - and every bigger beat still wins.
+        /// Both wait for the chip; nothing else does.
+        /// </summary>
+        [Test]
+        public void AConversationThatMovesTrustSoundsLikeIt_UnderEveryBiggerBeat()
+        {
+            Assert.That(CommitSound.CueName(new[] { "conversation", "memory" }, 4.4), Is.EqualTo(CommitSound.RelationshipUp),
+                "Trust gained sounds warmer than a click.");
+            Assert.That(CommitSound.CueName(new[] { "conversation" }, -3.0), Is.EqualTo(CommitSound.RelationshipDown), "Trust lost sounds cooler.");
+            Assert.That(CommitSound.CueName(new[] { "conversation" }, 0.0), Is.EqualTo("Button"), "No change keeps the click.");
+            Assert.That(CommitSound.CueName(new[] { "conversation" }, double.NaN), Is.EqualTo("Button"), "Nor does a change that is not a number.");
+
+            // The chip rounds as Unity's Mathf.RoundToInt rounds a float, half to even: what it calls no
+            // change sounds like none.
+            Assert.That(CommitSound.CueName(new[] { "conversation" }, 0.5), Is.EqualTo("Button"), "Half a point reads 'No change in trust'.");
+            Assert.That(CommitSound.CueName(new[] { "conversation" }, -0.5), Is.EqualTo("Button"));
+            Assert.That(CommitSound.CueName(new[] { "conversation" }, 0.6), Is.EqualTo(CommitSound.RelationshipUp));
+            Assert.That(CommitSound.CueName(new[] { "conversation" }, -1.5), Is.EqualTo(CommitSound.RelationshipDown));
+            Assert.That(new[] { 2.5, 1.5, -2.5, 3.49 }.Select(CommitSound.TrustChipSteps), Is.EqualTo(new[] { 2, 2, -2, 3 }),
+                "The chip's own count of the change.");
+
+            var bigger = new Dictionary<string, string>
+            {
+                { "winner", "Finale" }, { "eviction", "Eviction" }, { "final-eviction", "Eviction" }, { "nomination", "Nomination" },
+                { "veto", "Veto" }, { "competition", "CompetitionWin" }, { StoryLog.Expulsion, "Eviction" },
+            };
+            foreach (var pair in bigger)
+                foreach (var delta in new[] { 6.0, -6.0 })
+                    Assert.That(CommitSound.CueName(new[] { "conversation", pair.Key }, delta), Is.EqualTo(pair.Value),
+                        pair.Key + " still wins over a change of " + delta + " in trust.");
+            foreach (var kinds in new[] { null, new[] { "conversation" }, new[] { "veto", "deal-outcome" }, new[] { "eviction", "winner" } })
+                Assert.That(CommitSound.CueName(kinds, 0.0), Is.EqualTo(CommitSound.CueName(kinds)), "With no change, a commit sounds as it always did.");
+
+            Assert.That(CommitSound.SoundsWithTheTrustChip(CommitSound.RelationshipUp) && CommitSound.SoundsWithTheTrustChip(CommitSound.RelationshipDown),
+                Is.True, "Both trust sounds wait for the chip that says so.");
+            foreach (var cue in new[] { "Button", "Veto", "CompetitionWin", "SocialUp", null })
+                Assert.That(CommitSound.SoundsWithTheTrustChip(cue), Is.False, (cue ?? "null") + " plays at the commit, as it did.");
         }
 
 #if UNITY_5_3_OR_NEWER

@@ -132,6 +132,47 @@ def cues():
     yield "ShowLockIn", stereo(show_lock_in(), rev=0.08, size=0.3)
     yield "ShowRight", stereo(show_right(), rev=0.2, size=0.6)
     yield "ShowWrong", level(stereo(show_wrong(), rev=0.15, size=0.5), SHOW_WRONG_DB)
+    # A conversation that moved trust (AU-09), appended: the reference build's relationshipUp and
+    # relationshipDown (a sine swept between 300 and 600 Hz over 0.2 s, useGameSFX.ts), warmed into a
+    # rise that lands on a soft bar and a fall that settles on a dull low one, so neither is a panel's
+    # sweep. News, played as recorded, so their place in the mix is set here.
+    yield "RelationshipUp", level(stereo(trust_up(), rev=0.18, size=0.5), TRUST_UP_DB)
+    yield "RelationshipDown", level(stereo(trust_down(), rev=0.18, size=0.5), TRUST_DOWN_DB)
+
+
+# The recorded level of a conversation's trust sounds, in decibels under the -1.5 dB peak: a conversation
+# comes six times a week, so they sit under the ceremonies' news and over the interface's answers.
+TRUST_UP_DB = -6.0
+TRUST_DOWN_DB = -7.2
+
+
+def trust_sweep(f_start, f_end, dur=0.2, cutoff=2600.0, gain=0.4):
+    """The reference build's sweep: a glide from f_start to f_end over dur, exponential in pitch, its gain
+    falling in a line to nothing at dur (a 3 ms attack so it does not click), on a triangle's softer edge."""
+    n = s.seconds(dur)
+    t = np.arange(n) / s.SR
+    freq = f_start * (f_end / f_start) ** (t / dur)
+    phase = 2.0 * np.pi * np.cumsum(freq) / s.SR
+    triangle = 2.0 / np.pi * np.arcsin(np.sin(phase))
+    shape = np.minimum(1.0, t / 0.003) * np.clip(1.0 - t / dur, 0.0, 1.0)
+    return s.lowpass(triangle * shape, cutoff) * gain
+
+
+def trust_up():
+    """Trust gained: the sweep up from 300 to 600 Hz, landing on a soft bar at its top with the fifth over it."""
+    track = s.Track(0.6)
+    track.add(trust_sweep(300.0, 600.0), 0.0)
+    track.add(bell(600.0, 0.32, gain=0.22), 0.15, pan=-0.08)
+    track.add(bell(900.0, 0.28, gain=0.1), 0.15, pan=0.08)
+    return track
+
+
+def trust_down():
+    """Trust lost: the sweep down from 600 to 300 Hz, duller, settling on a low bar a semitone under its foot."""
+    track = s.Track(0.6)
+    track.add(trust_sweep(600.0, 300.0, cutoff=1600.0), 0.0)
+    track.add(bell(283.0, 0.32, gain=0.24), 0.15)
+    return track
 
 
 def show_horn():

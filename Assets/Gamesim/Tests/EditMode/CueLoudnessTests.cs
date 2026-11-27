@@ -87,6 +87,31 @@ namespace Gamesim.Tests.EditMode
         }
 
         /// <summary>
+        /// A conversation's trust sounds (AU-09) come up to six times a week, so as played they sit at
+        /// least 4 dB under the quietest headline and under a ballot's tick, and over the interface's
+        /// loudest answer, as news does; and warmer and cooler play within a decibel of each other, so
+        /// neither reads as the bigger news.
+        /// </summary>
+        [Test]
+        public void AConversationsTrustSoundsSitUnderTheHeadlines_AndLevelWithEachOther()
+        {
+            var loudness = SoundPictures.Rows.ToDictionary(row => row.Cue, row => LoudestDecibels(Recording(row.Cue)) + row.GainDb);
+            double quietestHeadline = Headlines.Min(cue => loudness[cue]);
+            double loudestAnswer = SoundPictures.Rows.Where(row => row.Kind == SoundKind.Interface).Max(row => loudness[row.Cue]);
+            foreach (var cue in new[] { "RelationshipUp", "RelationshipDown" })
+            {
+                Assert.That(loudness[cue], Is.LessThanOrEqualTo(quietestHeadline - 4.0),
+                    cue + " plays at " + loudness[cue].ToString("0.00") + " dB against the quietest headline's " + quietestHeadline.ToString("0.00") + ".");
+                Assert.That(loudness[cue], Is.LessThanOrEqualTo(loudness["Vote"]),
+                    cue + " plays at " + loudness[cue].ToString("0.00") + " dB against the ballot's " + loudness["Vote"].ToString("0.00") + ".");
+                Assert.That(loudness[cue], Is.GreaterThan(loudestAnswer),
+                    cue + " is news, over the interface's loudest answer at " + loudestAnswer.ToString("0.00") + " dB.");
+            }
+            Assert.That(Math.Abs(loudness["RelationshipUp"] - loudness["RelationshipDown"]), Is.LessThanOrEqualTo(1.0),
+                "Warmer at " + loudness["RelationshipUp"].ToString("0.00") + " dB, cooler at " + loudness["RelationshipDown"].ToString("0.00") + ".");
+        }
+
+        /// <summary>
         /// A competition's loop takes over from the season's bed at the bed's own gain
         /// (<see cref="MusicFade.CompetitionPeak"/>), so its recording is what sets how loud it is: about
         /// as loud as the bed, measured whole, up to 3 dB over it for its drive and never more than a

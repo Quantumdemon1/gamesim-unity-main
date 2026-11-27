@@ -101,6 +101,29 @@ namespace Gamesim.Tests.EditMode
                 Assert.That(SoundPictures.Find(cue).Channel, Is.Not.EqualTo(SoundChannel.Interface), cue + " is still heard with the interface at nothing.");
         }
 
+        /// <summary>
+        /// A conversation's trust sounds (AU-09) are the game's news - where the player stands with
+        /// somebody - so each has its row, owes its picture (the trust chip), plays as effects and as
+        /// recorded; and every name a conversation's commit can give is a row of this table. Before,
+        /// such a commit clicked as the interface, and turning the interface down silenced it.
+        /// </summary>
+        [Test]
+        public void AConversationsTrustSoundsAreNews_PlayedAsEffects_WithTheTrustChipForTheirPicture()
+        {
+            foreach (var cue in new[] { CommitSound.RelationshipUp, CommitSound.RelationshipDown })
+            {
+                var row = SoundPictures.Find(cue);
+                Assert.That(row, Is.Not.Null, cue + " has its row.");
+                Assert.That(row.Kind, Is.EqualTo(SoundKind.Information), cue + " carries news, so its picture is owed.");
+                Assert.That(row.Channel, Is.EqualTo(SoundChannel.Effects), cue + " follows the Effects volume.");
+                Assert.That(row.GainDb, Is.EqualTo(0f), cue + " is news and plays as recorded.");
+                Assert.That(row.Picture, Does.Contain("trust chip"), cue + "'s picture is the chip that says what moved.");
+            }
+            foreach (var delta in new[] { 5.0, -5.0, 0.0 })
+                Assert.That(SoundPictures.Find(CommitSound.CueName(new[] { "conversation" }, delta)), Is.Not.Null,
+                    "A conversation's commit, at a change of " + delta + ", names a cue the table has.");
+        }
+
         [Test]
         public void ASweepDownAListTicksOnceIn60Milliseconds_AndEveryOtherCueEveryTime()
         {

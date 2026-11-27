@@ -1619,9 +1619,9 @@ namespace Gamesim.Episode
             var rect = Chrome(option.Label, grid, UiTheme.Emphasis.Interactive);
             HudEmphasis.Promote(rect, UiTheme.Emphasis.Interactive);
             var button = Pressable(rect, press);
+            // The pointer's tint only: the card the keyboard is on wears the accent edge and ring.
             var colours = button.colors;
             colours.highlightedColor = new Color(1.15f, 1.15f, 1.15f);
-            colours.selectedColor = colours.highlightedColor;
             button.colors = colours;
 
             var state = director != null ? director.Snapshot : null;
@@ -2517,11 +2517,13 @@ namespace Gamesim.Episode
             var label = button.GetComponentInChildren<TMP_Text>();
             AutoSize(label, 18);
             var edge = rect.Find("Border") is Transform border ? border.GetComponent<Image>() : null;
-            if (edge != null)
-            {
-                var follow = rect.gameObject.AddComponent<EdgeWithGlass>();
-                follow.Button = button; follow.Edge = edge; follow.Resting = edge.color;
-            }
+            // The keyboard's control is told by the accent edge and the ring (EdgeWithGlass), never by
+            // the pointer's tint, so its ground stays as it is under focus.
+            var colours = button.colors;
+            colours.selectedColor = colours.normalColor;
+            button.colors = colours;
+            var follow = rect.gameObject.AddComponent<EdgeWithGlass>();
+            follow.Button = button; follow.Edge = edge; follow.Resting = edge != null ? edge.color : Color.clear;
             return button;
         }
 
@@ -2544,21 +2546,34 @@ namespace Gamesim.Episode
         /// Dims a fixed button's edge with its glass while the button cannot be pressed - set so, or
         /// in a group that stands its controls down - by the Button's own disabled tint, and puts it
         /// back when it can. Read on change only: nothing is written while the state holds.
+        ///
+        /// <para>And shows the keyboard on it as every HUD control does (<see cref="HudEmphasis"/>):
+        /// the accent edge and the focus ring while it is selected, dimmed with the glass too. Still
+        /// no hover step: the secondary slot's chrome takes none. A button whose pack face put the
+        /// chrome's edge away (<see cref="WearFace"/>) still wears the ring.</para>
         /// </summary>
-        private sealed class EdgeWithGlass : MonoBehaviour
+        private sealed class EdgeWithGlass : MonoBehaviour, ISelectHandler, IDeselectHandler
         {
             public Selectable Button;
             public Image Edge;
             public Color Resting;
             private int shown = -1;
+            private bool focused;
+            private Image ring;
 
-            private void LateUpdate()
+            public void OnSelect(BaseEventData eventData) { focused = true; Show(); }
+            public void OnDeselect(BaseEventData eventData) { focused = false; Show(); }
+            private void LateUpdate() => Show();
+
+            private void Show()
             {
-                if (Button == null || Edge == null) return;
-                int now = Button.IsInteractable() ? 1 : 0;
+                if (Button == null) return;
+                int now = (Button.IsInteractable() ? 1 : 0) | (focused ? 2 : 0);
                 if (now == shown) return;
                 shown = now;
-                Edge.color = now == 1 ? Resting : Resting * Button.colors.disabledColor;
+                var lit = focused ? UiTheme.Edge(UiTheme.Emphasis.Active) : Resting;
+                if (Edge != null) Edge.color = (now & 1) == 1 ? lit : lit * Button.colors.disabledColor;
+                ring = HudEmphasis.ShowRing((RectTransform)transform, ring, Edge, focused);
             }
         }
         private Button FinishButton(RectTransform rect,string caption,Action action,float leftInset = 16f,float rightInset = 16f)

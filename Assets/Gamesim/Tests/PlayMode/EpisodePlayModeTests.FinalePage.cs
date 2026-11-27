@@ -432,13 +432,14 @@ namespace Gamesim.Tests.PlayMode
                 AssertFinalePage(where + " on the run's canvas", PagesOnTheHudNow(FinalePagesPlayed));
                 yield return AssertFinalePageOnBothFrames(where, FinalePagesPlayed);
 
-                // A face the keyboard is on is seen: its edge steps up from the others' (HudEmphasis).
+                // A face the keyboard is on is seen: it wears the accent edge the keyboard's control
+                // always wears, and its ring (HudEmphasis), over the others' resting edge.
                 var faces = FinalePart(EpisodeHud.FinaleJuryCardName).GetComponentsInChildren<Button>().Where(button => button.IsActive()).ToList();
                 Assert.That(faces.Count, Is.GreaterThanOrEqualTo(2), where + ": two faces to tell apart.");
                 Color Edge(Button face) => face.transform.Find("Border").GetComponent<Image>().color;
                 EventSystem.current.SetSelectedGameObject(faces[0].gameObject);
                 yield return null;
-                Assert.That(Edge(faces[0]), Is.EqualTo(UiTheme.Edge(UiTheme.Emphasis.Interactive)), where + ": the face the keyboard is on wears the lifted edge,");
+                Assert.That(Edge(faces[0]), Is.EqualTo(UiTheme.Edge(UiTheme.Emphasis.Active)), where + ": the face the keyboard is on wears the accent edge,");
                 Assert.That(Edge(faces[1]), Is.EqualTo(UiTheme.Edge(UiTheme.Emphasis.Resting)), where + ": the others their resting edge,");
                 Assert.That(Edge(faces[0]), Is.Not.EqualTo(Edge(faces[1])), where + ": so the two are told apart.");
 

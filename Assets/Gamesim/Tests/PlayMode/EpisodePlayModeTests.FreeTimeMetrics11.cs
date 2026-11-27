@@ -809,7 +809,9 @@ namespace Gamesim.Tests.PlayMode
             var labelSource = requiredInventory.Labels.Concat(FreeTimeLabels11(board)).Distinct().ToArray();
             FreeTimeIssue11(failures, labelSource.Length <= 256, "LabelCap");
             var labels = labelSource.Take(256).Select(label => FreeTimeObserveLabel11(label, board, viewport, panel, failures)).ToArray();
-            var partSource = board.GetComponentsInChildren<RectTransform>(true);
+            // The keyboard's focus ring (UiTheme.FocusRingName) stands outside the control it marks by design and takes no
+            // layout: it is the HUD's dressing, not a part of the board, so its mesh is not held to its parent's rect.
+            var partSource = board.GetComponentsInChildren<RectTransform>(true).Where(part => part.name != UiTheme.FocusRingName).ToArray();
             FreeTimeIssue11(failures, partSource.Length <= 512, "PartCap");
             var parts = new List<FreeTimePartMetric11>();
             foreach (var part in partSource.Take(512))

@@ -503,15 +503,15 @@ namespace Gamesim.Tests.PlayMode
                     int gained = Mathf.RoundToInt((float)(committed.Score(committed.playerId, exchangeFlowNpcId) - trustBefore));
                     Assert.That(gained, Is.GreaterThan(0), "Spending time together raises the player's trust.");
                     Assert.That(director.IsConversationExchangePlaying, Is.True, "The spoken lines have the panel first.");
-                    Assert.That(asked, Does.Contain(HouseAudio.Cue.Button), "The press still clicks at the commit.");
-                    Assert.That(asked, Does.Not.Contain(HouseAudio.Cue.RelationshipUp), "No chip is drawn under the lines, so no trust sound yet.");
+                    Assert.That(asked, Has.Member(HouseAudio.Cue.Button), "The press still clicks at the commit.");
+                    Assert.That(asked, Has.No.Member(HouseAudio.Cue.RelationshipUp), "No chip is drawn under the lines, so no trust sound yet.");
                     Assert.That(Chip(), Is.Null, "The lines have the panel.");
 
                     yield return null;
                     ButtonWithCaption(EpisodeHud.ConversationContinueCaption).onClick.Invoke();
                     yield return null;
                     Assert.That(director.IsConversationExchangePlaying, Is.True, "The houseguest's answer is up.");
-                    Assert.That(asked, Does.Not.Contain(HouseAudio.Cue.RelationshipUp), "Nor under the houseguest's answer.");
+                    Assert.That(asked, Has.No.Member(HouseAudio.Cue.RelationshipUp), "Nor under the houseguest's answer.");
 
                     int frame = Time.frameCount;
                     ButtonWithCaption(EpisodeHud.ConversationContinueCaption).onClick.Invoke();
@@ -528,7 +528,7 @@ namespace Gamesim.Tests.PlayMode
                     yield return null;
                     Assert.That(Chip(), Is.Not.Null, "The chip stays with the page.");
                     Assert.That(asked.Count(cue => cue == HouseAudio.Cue.RelationshipUp), Is.EqualTo(1), "Once for the action, not once a redraw.");
-                    Assert.That(asked, Does.Not.Contain(HouseAudio.Cue.RelationshipDown));
+                    Assert.That(asked, Has.No.Member(HouseAudio.Cue.RelationshipDown));
                     Assert.That(watch.Checked.ContainsKey(HouseAudio.Cue.RelationshipUp) ? watch.Checked[HouseAudio.Cue.RelationshipUp] : 0, Is.EqualTo(1),
                         "The trust sound was judged against the screen in its own frame.");
                     Assert.That(watch.Silent, Is.Empty, "A trust sound in a frame whose text did not say it: " + string.Join(" | ", watch.Silent));

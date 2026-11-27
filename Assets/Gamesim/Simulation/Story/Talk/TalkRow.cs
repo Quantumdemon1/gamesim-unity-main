@@ -14,6 +14,15 @@ namespace Gamesim.Simulation
         Standing,
 
         /// <summary>
+        /// A week-event talk (slice S5, talk rules 5): what just happened in the house this week, said while its
+        /// <see cref="TalkGate.Event"/> holds (<see cref="TalkEvents"/>), at priority 100 (<see cref="FreeTalk.EventPriority"/>), and
+        /// spent once. Otherwise an ordinary talk: tones, layer 0, nothing revealed. Never offered below talk rules 5
+        /// (<see cref="TalkRow.FromRules"/>). Placed before <see cref="Stage"/> so every check that reads "<c>Kind &lt;= Stage</c>"
+        /// as "not a romance kind" reads it so; no kind's number is saved anywhere.
+        /// </summary>
+        Event,
+
+        /// <summary>
         /// A friendship stage talk (slice S2, talk rules 2): said once, the first time its <see cref="TalkRow.Stage"/> holds with
         /// the housemate, ahead of every other talk (<see cref="TalkFriendship"/>). Never offered below talk rules 2, and never as
         /// an ordinary talk. The Close friend talk asks a favour: its replies carry <see cref="TalkReply.Favour"/>.
@@ -113,6 +122,13 @@ namespace Gamesim.Simulation
         public int Priority;
 
         /// <summary>
+        /// The talk level a season must hold for the row to be offered at all (<see cref="TalkRules.At"/>), or 0 for every level
+        /// free talk plays. A row written for a later level carries that level, so the talk on offer at every earlier level stays
+        /// exactly as it was (slice S5's rows carry <see cref="TalkRules.ComesToTalk"/>).
+        /// </summary>
+        public int FromRules;
+
+        /// <summary>
         /// A "the usual" talk (the source's <c># usual</c> line): once every talk the housemate has is spent, it may come round again
         /// with the small gain (ruling R9). Repeating never adds a second entry to <c>contact.spentTalks</c>.
         /// </summary>
@@ -172,6 +188,13 @@ namespace Gamesim.Simulation
         /// row may also use <see cref="Week"/> and <see cref="Window"/>; <see cref="First"/> and <see cref="Layer"/> are never read on one.
         /// </summary>
         public int Spark;
+
+        /// <summary>
+        /// <c>event=&lt;kind&gt;</c> (talk rules 5): one of <see cref="TalkEvents.All"/>, which must hold this week for the talk with
+        /// this housemate (<see cref="TalkEvents.Holds"/>, read from the season's committed state); null for no gate. Never holds
+        /// below talk rules 5.
+        /// </summary>
+        public string Event;
     }
 
     /// <summary>One reply the player can give, and their reaction to it at each landing.</summary>

@@ -162,14 +162,86 @@ namespace Gamesim.Episode
         /// </summary>
         private void TickActivityEffects()
         {
-            if (player == null) return;
+            TickFootsteps();
+            if (player == null) { TickActivitySound(false); return; }
             if (activityEffects == null) activityEffects = HouseActivityEffects.Attach(gameObject.scene, transform);
             var pose = player.GetComponent<HouseFurniturePose>();
             bool doing = IsPlayerHouseActivityActive && pose != null && pose.IsPerforming && !pose.Ending;
+            TickActivitySound(doing);
             var seat = player.GetComponent<HouseSeatPresentation>();
             Vector3? swimmer = doing && playerActivityKind == HouseFurnitureActivity.Swim && seat != null && seat.Settled
                 ? seat.VisualFeet : (Vector3?)null;
             activityEffects.Tick(cameraRig != null && cameraRig.ReducedMotion, doing && playerActivityKind == HouseFurnitureActivity.Cook, swimmer);
+        }
+
+        /// <summary>The activities by their names, indexed by value: the enum is appended to, never reordered.</summary>
+        private static readonly string[] ActivityNames = Enum.GetNames(typeof(HouseFurnitureActivity));
+
+        /// <summary>
+        /// The sound of what the player is doing (ActivitySounds): the activity's loop while the
+        /// pose is under way, as the effects above, and from the moment they start to get up the
+        /// loop fades out. Reduced motion keeps it: a sound is not motion. Nothing is heard of it
+        /// behind a setup screen, where the house is not the game. Presentation only.
+        /// </summary>
+        private void TickActivitySound(bool doing)
+        {
+            if (audioBed == null) return;
+            bool setup = SetupScreenShowing;
+            int kind = (int)playerActivityKind;
+            audioBed.SetActivity(doing && !setup && kind >= 0 && kind < ActivityNames.Length ? ActivityNames[kind] : null);
+        }
+
+        /// <summary>Whether a setup screen is up - the main menu, cast select, the creator or the season's report - where the house is not the game.</summary>
+        private bool SetupScreenShowing => (mainMenu != null && mainMenu.IsShowing) || (castSelect != null && castSelect.IsShowing)
+                                           || (characterCreator != null && characterCreator.IsShowing) || (seasonReport != null && seasonReport.IsShowing);
+
+        private HouseFootsteps footsteps;
+
+        /// <summary>
+        /// The player's footsteps (HouseFootsteps): a foot lands every stride the body's speed
+        /// implies while they walk or run the house, on the ground of the room the room scope has
+        /// them in (tracked this frame, TickRoomScope), louder the nearer the camera's focus. Silent
+        /// while they sit, lie, swim, soak or stand at the furniture - the seat or the pose has the
+        /// body then - and behind a setup screen. Only the player's: every houseguest's feet at once
+        /// would be a crowd's. Presentation only.
+        /// </summary>
+        private void TickFootsteps()
+        {
+            if (audioBed == null) return;
+            if (footsteps == null) footsteps = HouseFootsteps.Attach(audioBed);
+            if (footsteps == null) return;
+            bool afoot = player != null && player.isActiveAndEnabled && !SetupScreenShowing;
+            if (afoot)
+            {
+                var seat = player.GetComponent<HouseSeatPresentation>();
+                var pose = player.GetComponent<HouseFurniturePose>();
+                var body = player.GetComponent<CharacterPresentation>();
+                afoot = (seat == null || !seat.Active) && (pose == null || !pose.IsPerforming) && (body == null || !body.IsSeated);
+            }
+            if (!footsteps.Walk(player != null ? player.transform : null, player != null && player.IsRunning, afoot)) return;
+            var feet = player.transform.position;
+            string room = roomScope != null ? HouseRoomScope.RoomId(roomScope.LastRoom(player.transform)) : null;
+            float metres = 0f;
+            if (cameraRig != null)
+            {
+                var focus = cameraRig.DesiredFocus;
+                metres = new Vector2(focus.x - feet.x, focus.z - feet.z).magnitude;
+            }
+            footsteps.Land(HouseSteps.SurfaceOf(room, RaisedOverFloor(room, feet)), metres);
+        }
+
+        /// <summary>How far <paramref name="feet"/> stand over <paramref name="room"/>'s floor: 0 on it, or with no floor to read.</summary>
+        private float RaisedOverFloor(string room, Vector3 feet)
+        {
+            var query = roomScope != null ? roomScope.Query : null;
+            if (query == null || room == null) return 0f;
+            for (int i = 0; i < query.FloorCount; i++)
+            {
+                if (query.FloorRoom(i) != room) continue;
+                var floor = query.FloorCollider(i);
+                return floor != null ? feet.y - floor.bounds.max.y : 0f;
+            }
+            return 0f;
         }
 
         /// <summary>

@@ -88,6 +88,7 @@ namespace Gamesim.Tests.PlayMode
             public void SendHome(string id) { }
             public bool AllHome => true;
             public void HoldForIntroductions() { }
+            public void Abandon() { Placed = false; }
         }
 
         // ---------------------------------------------------------------- the title

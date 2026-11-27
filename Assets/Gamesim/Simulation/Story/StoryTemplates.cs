@@ -146,6 +146,14 @@ namespace Gamesim.Simulation
         public string venue;
 
         /// <summary>
+        /// For an Approach beat whose words have a houseguest come to the player ("{TELLER} pulls you aside"): the role who
+        /// comes. While houseguests bring their asks to the player, that houseguest walks up with the beat
+        /// (<see cref="ComesToYou.Source.Story"/>) instead of the Pull's card that names nobody. Null, the default, for every
+        /// beat the player goes to. Code only: nothing saves it, and no rule reads it.
+        /// </summary>
+        public string speaker;
+
+        /// <summary>
         /// The ceremony the house marks this beat's answer with (plan §5.1, Fallout): one of
         /// <see cref="StoryLog.Fallout"/>, logged as its own line when the player answers it. Null
         /// for the many beats whose outcome is only a line in the log.

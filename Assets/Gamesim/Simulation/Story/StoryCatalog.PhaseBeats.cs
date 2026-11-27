@@ -58,7 +58,7 @@ namespace Gamesim.Simulation
             },
             new BeatTemplate
             {
-                id = "lobby", surface = StorySurfaces.Approach, venue = Hallway, closes = StoryAnchors.NomsSet,
+                id = "lobby", surface = StorySurfaces.Approach, venue = Hallway, closes = StoryAnchors.NomsSet, speaker = "LOBBYIST",
                 title = "The Lobby", summary = "Somebody wants to talk strategy before nominations.",
                 text = "Nominations are coming. {LOBBYIST} catches you in the hallway. \"{HOH} is naming names soon. We need to talk. Now.\"",
                 lapse = "not-now",
@@ -84,7 +84,7 @@ namespace Gamesim.Simulation
             },
             new BeatTemplate
             {
-                id = "tensions", surface = StorySurfaces.Approach, venue = Hallway,
+                id = "tensions", surface = StorySurfaces.Approach, venue = Hallway, speaker = "CONFIDANT",
                 title = "Tensions Rise", summary = "The nominations are out, and somebody wants to talk about the vote.",
                 text = "The nomination ceremony has just ended, and two people are sitting in the chairs nobody wants. {CONFIDANT} pulls you aside in the hallway.",
                 lapse = "not-now",
@@ -269,7 +269,7 @@ namespace Gamesim.Simulation
             },
             new BeatTemplate
             {
-                id = "pleas", surface = StorySurfaces.Approach, venue = Bedroom,
+                id = "pleas", surface = StorySurfaces.Approach, venue = Bedroom, speaker = "NOMINEE",
                 title = "Final Pleas", summary = "A nominee wants to know where your head is at before the vote.",
                 text = "Minutes before the vote, {NOMINEE} pulls you aside. The voice is steady; the eyes are not. \"I need to know where your head is at. Right now.\"",
                 lapse = "not-now",
@@ -301,7 +301,7 @@ namespace Gamesim.Simulation
             },
             new BeatTemplate
             {
-                id = "campaign", surface = StorySurfaces.Approach, venue = Kitchen,
+                id = "campaign", surface = StorySurfaces.Approach, venue = Kitchen, speaker = "NOMINEE",
                 title = "Last-Minute Campaign", summary = "A nominee comes to you for your vote.",
                 text = "It's eviction night. {NOMINEE} comes to find you, and the desperation is right there. \"I need your vote. Please.\"",
                 lapse = "undecided",

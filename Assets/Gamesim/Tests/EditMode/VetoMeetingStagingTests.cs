@@ -46,7 +46,7 @@ namespace Gamesim.Tests.EditMode
             };
             foreach (var (where, said) in names)
                 Assert.That(said.ToLowerInvariant(), Is.EqualTo("veto meeting"), where + " calls it '" + said + "'.");
-            Assert.That(EpisodeDirector.PhaseLine(EpisodePhase.VetoMeeting, 2), Is.EqualTo("Week 2 · Veto meeting"), "and so does the status line's phase.");
+            Assert.That(EpisodeDirector.PhaseLine(EpisodePhase.VetoMeeting, 2), Does.StartWith("Veto meeting: "), "and so does the status line's phase.");
             Assert.That(CeremonySting.HeadlineFor(CeremonySting.NominationKind), Is.EqualTo("NOMINATION CEREMONY"),
                 "The nomination is still a ceremony: only the veto meeting was two things.");
         }

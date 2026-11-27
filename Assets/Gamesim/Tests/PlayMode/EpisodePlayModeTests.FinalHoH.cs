@@ -86,8 +86,8 @@ namespace Gamesim.Tests.PlayMode
         }
 
         /// <summary>
-        /// The status line after a commit into a new phase says it in words ("Week 4 · Final HoH,
-        /// Part 2 of 3"), never by the enum's own name, which the saved event keeps.
+        /// The status line after a commit into a new phase says it in words ("Final HoH, Part 2 of 3:
+        /// the two who lost Part 1 compete"), never by the enum's own name, which the saved event keeps.
         /// </summary>
         private void AssertTheStatusLineWordsThePhase(EpisodePhase phase)
         {

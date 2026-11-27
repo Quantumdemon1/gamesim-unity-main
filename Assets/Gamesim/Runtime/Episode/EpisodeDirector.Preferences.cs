@@ -70,6 +70,8 @@ namespace Gamesim.Episode
                 // "Show the whole house" (ROOM-SCOPE-PLAN D12, RS5): the before-and-after's switch, last so the
                 // session line's positional device word keeps its place.
                 Say("house", showWholeHouse ? "whole" : "room"),
+                // "Conversation lines" (UI plan D11): wait for a press, or move on by themselves.
+                Say("lines", ConversationLinePace.Name(autoContinueLines)),
             };
         }
 

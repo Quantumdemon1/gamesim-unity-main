@@ -154,5 +154,78 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(player.InputEnabled,Is.True);
             Assert.That(player.Agent.enabled && player.Agent.isOnNavMesh,Is.True);
         }
+
+        /// <summary>
+        /// Cooking is heard: the sizzle comes in while the player cooks, Reduce sound and Mute sound
+        /// take it away at once and give it back from silence, and it fades out - not cut - as the
+        /// player gets up. The fades run on the real clock (ActivitySounds: 0.4 s in, 0.6 s out, no
+        /// more than a twentieth of a second a frame), so the waits are on the clock.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator HouseActivities_CookingIsHeardUntilThePlayerGetsUp()
+        {
+            var audio = director.GetComponent<HouseAudio>();
+            audio.SetMuted(false);
+            audio.SetVolume(.35f);
+            audio.SetChannelVolumes(1f, 1f, 1f);
+            Assert.That(audio.ActivityPlaying, Is.False, "Nobody is cooking yet, and the activity voice is silent.");
+            var stove = PlacesFor(HouseFurnitureActivity.Cook).Single();
+            yield return BeginInHouse(stove, HouseFurnitureActivity.Cook);
+            float deadline = Time.realtimeSinceStartup + 5f;
+            while (audio.ActivityLevel < 1f && Time.realtimeSinceStartup < deadline) yield return null;
+            Assert.That(director.PlayerActivity, Is.EqualTo(HouseFurnitureActivity.Cook), "Still cooking. Status: " + director.StatusMessage);
+            Assert.That(audio.ActivitySounding, Is.EqualTo("Cook"), "The stove's sizzle plays");
+            Assert.That(audio.ActivityLevel, Is.EqualTo(1f), "at its full level,");
+            Assert.That(audio.ActivityVolume, Is.GreaterThan(0f), "and is heard.");
+
+            audio.SetReducedAudio(true);
+            Assert.That(audio.ActivityPlaying, Is.False, "Reduce sound takes it away at once");
+            audio.SetReducedAudio(false);
+            Assert.That(audio.ActivitySounding, Is.EqualTo("Cook"), "and gives it back");
+            Assert.That(audio.ActivityLevel, Is.EqualTo(0f), "from silence.");
+            audio.SetMuted(true);
+            Assert.That(audio.ActivityPlaying, Is.False, "Mute sound takes it away too,");
+            audio.SetMuted(false);
+            deadline = Time.realtimeSinceStartup + 5f;
+            while (audio.ActivityLevel < 1f && Time.realtimeSinceStartup < deadline) yield return null;
+            Assert.That(audio.ActivityLevel, Is.EqualTo(1f), "and it comes back up while the cooking goes on.");
+
+            director.FinishPlayerHouseActivity();
+            yield return null;
+            Assert.That(audio.ActivitySounding, Is.EqualTo("Cook"), "Getting up fades the sizzle rather than cutting it:");
+            deadline = Time.realtimeSinceStartup + 5f;
+            while ((audio.ActivityPlaying || director.IsPlayerHouseActivityActive) && Time.realtimeSinceStartup < deadline) yield return null;
+            Assert.That(director.IsPlayerHouseActivityActive, Is.False, "The player is up,");
+            Assert.That(audio.ActivityPlaying, Is.False, "and the sizzle has faded out");
+            Assert.That(audio.ActivityLevel, Is.EqualTo(0f), "to silence.");
+        }
+
+#if GAMESIM_UMA
+        // UMA only: the dance floor is proven on a UMA body (HouseLife_DancingInTheLivingRoom).
+        /// <summary>Dancing plays the house's beat, and the season's music steps back under it until the player stops.</summary>
+        [UnityTest]
+        public IEnumerator HouseActivities_DancingPlaysABeatAndTheMusicStepsBack()
+        {
+            var audio = director.GetComponent<HouseAudio>();
+            audio.SetMuted(false);
+            audio.SetVolume(.35f);
+            audio.SetChannelVolumes(1f, 1f, 1f);
+            var floor = PlacesFor(HouseFurnitureActivity.Dance).Single();
+            yield return BeginInHouse(floor, HouseFurnitureActivity.Dance);
+            float deadline = Time.realtimeSinceStartup + 5f;
+            while ((audio.ActivityLevel < 1f || audio.MusicDuckLevel > MusicFade.ActivityMusicDuck) && Time.realtimeSinceStartup < deadline)
+                yield return null;
+            Assert.That(audio.ActivitySounding, Is.EqualTo("Dance"), "The dance has its beat,");
+            Assert.That(audio.ActivityLevel, Is.EqualTo(1f));
+            Assert.That(audio.MusicDuckLevel, Is.EqualTo(MusicFade.ActivityMusicDuck), "the season's music steps back under it,");
+            Assert.That(audio.BedDuckLevel, Is.EqualTo(1f), "and the room's bed does not.");
+
+            director.FinishPlayerHouseActivity();
+            deadline = Time.realtimeSinceStartup + 5f;
+            while ((audio.ActivityPlaying || audio.MusicDuckLevel < 1f) && Time.realtimeSinceStartup < deadline) yield return null;
+            Assert.That(audio.ActivityPlaying, Is.False, "Off the floor, the beat fades out");
+            Assert.That(audio.MusicDuckLevel, Is.EqualTo(1f), "and the music comes back up.");
+        }
+#endif
     }
 }

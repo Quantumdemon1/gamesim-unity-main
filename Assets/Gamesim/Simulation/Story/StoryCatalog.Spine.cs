@@ -129,7 +129,7 @@ namespace Gamesim.Simulation
             beats = ThreeActs(
                 new BeatTemplate
                 {
-                    id = "discovery", surface = StorySurfaces.Approach, venue = Storage,
+                    id = "discovery", surface = StorySurfaces.Approach, venue = Storage, speaker = "ALLY",
                     title = "Act I · Discovery",
                     summary = "An ally has something to confess.",
                     text = "Late at night, {ALLY} pulls you into the storage room, eyes on the door the whole time, and finally comes out with it: {OFFERER} has offered {ALLY.them} a final two, and {ALLY} is thinking about taking it.",

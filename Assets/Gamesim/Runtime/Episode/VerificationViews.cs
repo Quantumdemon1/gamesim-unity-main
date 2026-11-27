@@ -618,6 +618,61 @@ namespace Gamesim.Episode
             return scale;
         }
 
+        // ------------------------------------------------------------------------------------
+        // The lamps' shadow tiers (SB1). URP divides every map in a frame by one scale, so a lamp's
+        // fixed tier cannot follow how many lamps a frame keeps: the room scope leaves only the viewed
+        // room's lamps on, a room view keeps all of them and a two-shot one or two. A lamp asks for the
+        // smallest tier at which no frame of its room's lamps gets a lamp fewer pixels than the High
+        // tier gave, so no view's lamp shadows get softer, the atlas is divided less, and the follow
+        // spotlight (the pipeline's Low tier) keeps more of its own map.
+        // ------------------------------------------------------------------------------------
+
+        /// <summary>URP's per-light shadow tiers as UniversalAdditionalLightData stores them (AdditionalLightsShadowResolutionTierLow, Medium, High).</summary>
+        public const int ShadowTierLow = 0, ShadowTierMedium = 1, ShadowTierHigh = 2;
+
+        /// <summary>The size a tier asks for, from the pipeline's three tier sizes.</summary>
+        public static int TierResolution(int tier, int low, int medium, int high)
+            => tier <= ShadowTierLow ? low : tier == ShadowTierMedium ? medium : high;
+
+        /// <summary>
+        /// The tier for a lamp whose home room holds <paramref name="lampsAtHome"/> lamps: the smallest
+        /// at which every frame of one of them up to all, with and without the follow spotlight's one
+        /// hard face at <paramref name="followSpot"/> px, gives each lamp at least the pixels the High
+        /// tier would. High when no smaller tier does.
+        /// </summary>
+        public static int LampShadowTier(int lampsAtHome, int atlasSize, int low, int medium, int high, int followSpot)
+        {
+            int lamps = Math.Max(1, lampsAtHome);
+            for (int tier = ShadowTierLow; tier < ShadowTierHigh; tier++)
+            {
+                int resolution = TierResolution(tier, low, medium, high);
+                bool keeps = true;
+                for (int seen = 1; seen <= lamps && keeps; seen++)
+                    foreach (int spot in new[] { 0, followSpot })
+                        if (LampPixels(LampFrame(seen, resolution, atlasSize, spot), resolution)
+                            < LampPixels(LampFrame(seen, high, atlasSize, spot), high)) { keeps = false; break; }
+                if (keeps) return tier;
+            }
+            return ShadowTierHigh;
+        }
+
+        /// <summary>
+        /// The atlas a frame of <paramref name="lamps"/> soft lamps at <paramref name="resolution"/> px
+        /// needs (six faces each), with the follow spotlight's one hard face at <paramref name="followSpot"/>
+        /// px (0: no spotlight).
+        /// </summary>
+        public static VerificationShadowAtlas LampFrame(int lamps, int resolution, int atlasSize, int followSpot)
+        {
+            var lights = new List<VerificationShadowLight>();
+            for (int i = 0; i < lamps; i++) lights.Add(new VerificationShadowLight("lamp " + i, i, 1, 0, 6, false, true, resolution));
+            if (followSpot > 0) lights.Add(new VerificationShadowLight("follow spot", 0, 4, 0, 8, true, false, followSpot));
+            return LayoutShadowAtlas(lights, 0, 20, -10, atlasSize);
+        }
+
+        /// <summary>The pixels a lamp asking for <paramref name="resolution"/> gets in <paramref name="atlas"/>: 0 when a map was dropped.</summary>
+        public static int LampPixels(VerificationShadowAtlas atlas, int resolution)
+            => atlas == null || atlas.tooMany || atlas.slicesKept < atlas.slicesRequested ? 0 : resolution / Math.Max(1, atlas.scale);
+
         private struct Request
         {
             public int Light, Slice, Resolution;

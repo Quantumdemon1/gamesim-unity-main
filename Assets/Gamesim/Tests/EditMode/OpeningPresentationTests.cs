@@ -46,6 +46,66 @@ namespace Gamesim.Tests.EditMode
         }
 
         /// <summary>
+        /// A competition under way - from the attempt opening, or a show starting, to the result card -
+        /// plays its own loop where the season's bed would play; with none under way the house has its
+        /// bed as before. The switch and the setup screens are still silence, and the intro still has
+        /// its theme and its two silences, competition or not.
+        /// </summary>
+        [Test]
+        public void MusicPlaysTheCompetitionLoopFromTheAttemptToItsCard()
+        {
+            Assert.That(EpisodeDirector.MusicFor(true, false, false, null, false, false, competition: true), Is.EqualTo(HouseAudio.Music.Competition),
+                "A competition under way plays its own loop.");
+            Assert.That(EpisodeDirector.MusicFor(true, false, false, null, false, false, competition: false), Is.EqualTo(HouseAudio.Music.Season),
+                "With none, the house plays the season's bed.");
+            foreach (var beat in new[] { OpeningBeat.HouseEntry, OpeningBeat.WalkIn, OpeningBeat.Tutorial, OpeningBeat.MeetAndGreet })
+                Assert.That(EpisodeDirector.MusicFor(true, false, true, beat, false, false, competition: false), Is.EqualTo(HouseAudio.Music.Season),
+                    "The season's bed still plays under " + beat + ".");
+
+            Assert.That(EpisodeDirector.MusicFor(false, false, false, null, false, false, competition: true), Is.EqualTo(HouseAudio.Music.Silent),
+                "Music off is silence under a competition too.");
+            Assert.That(EpisodeDirector.MusicFor(true, true, false, null, false, false, competition: true), Is.EqualTo(HouseAudio.Music.Silent),
+                "A setup screen is silent over a competition.");
+            Assert.That(EpisodeDirector.MusicFor(true, false, true, OpeningBeat.Intro, false, false, competition: true), Is.EqualTo(HouseAudio.Music.Theme),
+                "The intro keeps its theme,");
+            Assert.That(EpisodeDirector.MusicFor(true, false, true, OpeningBeat.Intro, true, false, competition: true), Is.EqualTo(HouseAudio.Music.Silent),
+                "its silence while the house is built");
+            Assert.That(EpisodeDirector.MusicFor(true, false, true, OpeningBeat.Intro, false, true, competition: true), Is.EqualTo(HouseAudio.Music.Silent),
+                "and its closing fade.");
+        }
+
+        /// <summary>
+        /// The main menu - and the Settings it opens - plays its quiet title loop, over whatever is
+        /// behind it; cast select, the creator and the season's report stay silent and win over it;
+        /// the switch silences it; and without the menu the rule is exactly what it was, the intro's
+        /// theme included.
+        /// </summary>
+        [Test]
+        public void MusicPlaysTheTitleLoopOnTheMainMenuOnly()
+        {
+            Assert.That(EpisodeDirector.MusicFor(true, false, false, null, false, false, competition: false, titleShowing: true), Is.EqualTo(HouseAudio.Music.Title),
+                "The main menu plays its title loop.");
+            Assert.That(EpisodeDirector.MusicFor(true, false, true, OpeningBeat.Intro, false, false, competition: false, titleShowing: true), Is.EqualTo(HouseAudio.Music.Title),
+                "over an intro behind it");
+            Assert.That(EpisodeDirector.MusicFor(true, false, false, null, false, false, competition: true, titleShowing: true), Is.EqualTo(HouseAudio.Music.Title),
+                "and over a competition.");
+            Assert.That(EpisodeDirector.MusicFor(true, true, false, null, false, false, competition: false, titleShowing: true), Is.EqualTo(HouseAudio.Music.Silent),
+                "Cast select, the creator and the report are silent, over the menu too.");
+            Assert.That(EpisodeDirector.MusicFor(true, true, false, null, false, false, competition: false, titleShowing: false), Is.EqualTo(HouseAudio.Music.Silent));
+            Assert.That(EpisodeDirector.MusicFor(false, false, false, null, false, false, competition: false, titleShowing: true), Is.EqualTo(HouseAudio.Music.Silent),
+                "Music off is silence on the menu too.");
+
+            Assert.That(EpisodeDirector.MusicFor(true, false, true, OpeningBeat.Intro, false, false, competition: false, titleShowing: false), Is.EqualTo(HouseAudio.Music.Theme),
+                "Without the menu, the intro has its theme,");
+            Assert.That(EpisodeDirector.MusicFor(true, false, true, OpeningBeat.Intro, true, false, competition: false, titleShowing: false), Is.EqualTo(HouseAudio.Music.Silent),
+                "its silence while the house is built,");
+            Assert.That(EpisodeDirector.MusicFor(true, false, false, null, false, false, competition: false, titleShowing: false), Is.EqualTo(HouseAudio.Music.Season),
+                "the house its bed");
+            Assert.That(EpisodeDirector.MusicFor(true, false, false, null, false, false, competition: true, titleShowing: false), Is.EqualTo(HouseAudio.Music.Competition),
+                "and a competition its loop.");
+        }
+
+        /// <summary>
         /// A reveal waits the reference build's 2.8 s at the door and holds its houseguest on the
         /// mark for a second up to a house of eight, then shortens in a straight line to 2.0 s and
         /// 0.4 s at sixteen - so a big house does not spend a minute and a half at the front door,

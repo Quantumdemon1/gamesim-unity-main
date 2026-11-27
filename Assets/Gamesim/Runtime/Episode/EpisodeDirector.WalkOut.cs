@@ -31,8 +31,9 @@ namespace Gamesim.Episode
     /// goodbye stops at the door and turns back for the evicted take; then the door opens with no
     /// flare, they go through, it closes behind them, and the shot holds on the shut door before
     /// the body is switched off behind it, under a dip that hands the camera back. The chrome is
-    /// aside the whole way. A press goes straight to the shut door; nothing the commit decided
-    /// changes.</para>
+    /// aside the whole way, and a key light of the walk's own keeps their face from the camera's
+    /// side until the door closes. A press goes straight to the shut door; nothing the commit
+    /// decided changes.</para>
     ///
     /// <para><b>The jury.</b> From jury questioning to the end of the season, the jurors are back in
     /// the living room, standing along it, facing the middle: the jury the finalists face and the
@@ -79,6 +80,15 @@ namespace Gamesim.Episode
         private int walkOutLeg;
         private float walkOutUntil, walkOutPressGuard;
         private OpeningDoorSet walkOutDoor;
+
+        /// <summary>The staged walk's own key light, which tests find under the director by this name.</summary>
+        public const string WalkOutKeyLightName = "Walk-out key light";
+
+        /// <summary>The staged walk's key light, from its first route until the door comes down; null otherwise.</summary>
+        private Light walkOutKey;
+        /// <summary>When the walk's key began to fade, on the unscaled clock: NaN until they are past the close line.</summary>
+        private float walkOutKeyFadeFrom = float.NaN;
+        private static readonly RaycastHit[] walkOutKeyHits = new RaycastHit[8];
 
         /// <summary>The frame a press skipped the walk out: the walk is over by the time Escape's chain runs in it.</summary>
         private int walkOutSkippedFrame = -1;
@@ -285,7 +295,12 @@ namespace Gamesim.Episode
                 SkipWalkOut();
                 return;
             }
-            if (walkOutStaged) { TickStagedWalkOut(); return; }
+            if (walkOutStaged)
+            {
+                TickStagedWalkOut();
+                KeyTheWalk();
+                return;
+            }
             switch (walkOutLeg)
             {
                 case 0:
@@ -296,7 +311,7 @@ namespace Gamesim.Episode
                     if (!npcMeetings.CanWalk(walkingOutId)) return;
                     if (!npcMeetings.BeginDeparture(walkingOutId, out var departureReason)) { AbortWalkOut(departureReason); return; }
                     if (!TryWalkOutTo(WalkOutInside)) { FinishWalkOut(); return; }
-                    walkOutDoor = OpeningDoorSet.Build(gameObject.scene);
+                    walkOutDoor = OpeningDoorSet.Build(gameObject.scene, DoorLayout.Yard, DoorLighting.Exit);
                     var body = BodyFor(walkingOutId);
                     if (body != null && cameraRig != null) cameraRig.FocusSubject(body, false);
                     walkOutLeg = 1;
@@ -393,6 +408,8 @@ namespace Gamesim.Episode
                     // The yard's walk leaves the room, and the house watches it go; the living
                     // room's stays in it, and the exit wide holds the door in frame the whole way.
                     if (ceremonyStage != null) ceremonyStage.WatchTheWalk(body, ExitIsTheLivingRoom ? LivingExitWide : (HouseCameraRig.Shot?)null, WatchSeconds);
+                    // The goodbye's key went with the goodbye; the walk has its own, on from the cut to the watch.
+                    LightTheWalk();
                     return;
                 case StagedLeg.Walking:
                     LookAhead(body);
@@ -465,7 +482,7 @@ namespace Gamesim.Episode
         {
             stagedDoorCut = true;
             BeginTravelDip();
-            if (walkOutDoor == null) walkOutDoor = OpeningDoorSet.Build(gameObject.scene, ExitLayout);
+            if (walkOutDoor == null) walkOutDoor = OpeningDoorSet.Build(gameObject.scene, ExitLayout, DoorLighting.Exit);
             if (ceremonyStage != null) ceremonyStage.StopTheWatch();
             if (cameraRig != null)
             {
@@ -502,7 +519,7 @@ namespace Gamesim.Episode
         {
             var visual = body != null ? body.GetComponent<CharacterPresentation>() : null;
             if (visual != null) visual.SetFacing(float.NaN);
-            if (walkOutDoor == null) walkOutDoor = OpeningDoorSet.Build(gameObject.scene, ExitLayout);
+            if (walkOutDoor == null) walkOutDoor = OpeningDoorSet.Build(gameObject.scene, ExitLayout, DoorLighting.Exit);
             walkOutDoor.Open(reducedMotion, false);
             if (cameraRig == null) return;
             if (!ExitIsTheLivingRoom) { cameraRig.MoveTo(YardPushInShot); return; }
@@ -526,6 +543,110 @@ namespace Gamesim.Episode
             if (ahead.sqrMagnitude < 0.0001f) ahead = Vector3.forward;
             walkOutLookMark.position = body.position + ahead.normalized * LookAheadMetres;
             visual.LookAtPoint(walkOutLookMark, 0.5f);
+        }
+
+        // ---------------------------------------------------------------- the walk's key light
+
+        /// <summary>How far from the head the walk's key stands, toward the lens: near enough to read the face in a wide.</summary>
+        private const float WalkKeyReach = 2.0f;
+        /// <summary>How far it turns from the lens, to the lens's right as the goodbye's key does: one cheek lit, the other falling off.</summary>
+        private const float WalkKeySide = -20f;
+        /// <summary>The lowest and the steepest it looks down on the head, in degrees: never under the eyes, never straight down on the crown.</summary>
+        private const float WalkKeyLowest = 12f, WalkKeySteepest = 45f;
+        /// <summary>Its strength at full reach: softer than the goodbye's 4.6, as the walk is quieter and its lens wider.</summary>
+        private const float WalkKeyIntensity = 3.2f;
+        /// <summary>How far it reaches: past the head and not much further, so the room behind them keeps its own light.</summary>
+        private const float WalkKeyRange = 4f;
+        /// <summary>How long it takes to fade once they are past the close line and the door is closing.</summary>
+        private const float WalkKeyFadeSeconds = 0.5f;
+        /// <summary>How far in front of a wall it stops when one stands between the head and the lens, and the nearest the head it comes.</summary>
+        private const float WalkKeyWallMargin = 0.2f, WalkKeyNearest = 0.6f;
+        /// <summary>Where the head is taken to be on a body with no head bone: a standing face, as the goodbye's.</summary>
+        private const float WalkKeyFallbackHead = 1.55f;
+        /// <summary>Warm-neutral: the goodbye's warmth taken half back toward white, for the walk away from it.</summary>
+        private static readonly Color WalkKeyColour = new Color(1f, 0.93f, 0.82f);
+
+        /// <summary>
+        /// The staged walk's key light comes on (from its first route, on the cut to the house watching):
+        /// an unshadowed warm-neutral spot that keeps the departing face readable through the walk, the
+        /// last look and the door, where the goodbye's key no longer reaches. A child of the director;
+        /// <see cref="KeyTheWalk"/> places it every frame and <see cref="StrikeWalkOutDoor"/> takes it down.
+        /// </summary>
+        private void LightTheWalk()
+        {
+            if (walkOutKey != null) return;
+            var lamp = new GameObject(WalkOutKeyLightName);
+            lamp.transform.SetParent(transform, false);
+            walkOutKey = lamp.AddComponent<Light>();
+            walkOutKey.type = LightType.Spot;
+            walkOutKey.color = WalkKeyColour;
+            walkOutKey.intensity = 0f;
+            walkOutKey.range = WalkKeyRange;
+            // A head and shoulders' worth at two metres, soft at its edge.
+            walkOutKey.spotAngle = 36f;
+            walkOutKey.innerSpotAngle = 20f;
+            walkOutKey.shadows = LightShadows.None;
+            walkOutKey.enabled = false;
+            walkOutKeyFadeFrom = float.NaN;
+        }
+
+        /// <summary>
+        /// Each frame of a staged walk: the key on the lens's side of the departing head, aimed at it,
+        /// turning with a cut because the lens is where the camera is going. A wall between the head
+        /// and the lens brings it in on the walker's side - dimmed with the square of the distance, so
+        /// the face is lit the same - since an unshadowed light on the far side would paint the wall
+        /// the camera sees. Once they are past the close line it fades over half a second, and goes
+        /// out at once under reduced motion. Presentation only.
+        /// </summary>
+        private void KeyTheWalk()
+        {
+            if (walkOutKey == null || walkingOutId == null) return;
+            var body = BodyFor(walkingOutId);
+            if (body == null || cameraRig == null) { walkOutKey.enabled = false; return; }
+            if (stagedLeg >= StagedLeg.Closing && float.IsNaN(walkOutKeyFadeFrom)) walkOutKeyFadeFrom = Time.unscaledTime;
+            float level = float.IsNaN(walkOutKeyFadeFrom) ? 1f
+                : reducedMotion ? 0f : 1f - Mathf.Clamp01((Time.unscaledTime - walkOutKeyFadeFrom) / WalkKeyFadeSeconds);
+            var visual = body.GetComponent<CharacterPresentation>();
+            var bone = visual != null ? visual.HeadBone : null;
+            var head = bone != null ? bone.position : body.position + Vector3.up * WalkKeyFallbackHead;
+            // The lens where the camera is going, at the boom it actually has: a wall behind the lens
+            // pulls the camera in, and a walker passing near it would otherwise be keyed from beyond it.
+            float boom = cameraRig.AppliedDistance > 0f ? Mathf.Min(cameraRig.DesiredDistance, cameraRig.AppliedDistance) : cameraRig.DesiredDistance;
+            var lens = cameraRig.DesiredFocus + Quaternion.Euler(cameraRig.Pitch, cameraRig.Yaw, 0f) * Vector3.back * boom;
+            var toLens = lens - head;
+            var flat = new Vector3(toLens.x, 0f, toLens.z);
+            float elevation = Mathf.Clamp(Mathf.Atan2(toLens.y, flat.magnitude) * Mathf.Rad2Deg, WalkKeyLowest, WalkKeySteepest);
+            flat = flat.sqrMagnitude > 0.0001f ? flat.normalized : body.forward;
+            flat = Quaternion.AngleAxis(WalkKeySide, Vector3.up) * flat;
+            float rise = elevation * Mathf.Deg2Rad;
+            var outward = (flat * Mathf.Cos(rise) + Vector3.up * Mathf.Sin(rise)).normalized;
+            float reach = WalkKeyClearReach(head, outward);
+            if (level <= 0f || reach <= 0f) { walkOutKey.enabled = false; return; }
+            var at = head + outward * reach;
+            walkOutKey.transform.SetPositionAndRotation(at, Quaternion.LookRotation(head - at));
+            float near = reach / WalkKeyReach;
+            walkOutKey.intensity = WalkKeyIntensity * near * near * level;
+            walkOutKey.enabled = true;
+        }
+
+        /// <summary>
+        /// How far out along <paramref name="outward"/> the walk's key may stand: its full reach, or
+        /// just short of the first wall in the way - the houseguests never count - or 0 when that wall
+        /// is nearer the head than the key may come, and the key goes dark.
+        /// </summary>
+        private float WalkKeyClearReach(Vector3 head, Vector3 outward)
+        {
+            int count = gameObject.scene.GetPhysicsScene().Raycast(head, outward, walkOutKeyHits, WalkKeyReach,
+                HouseLayers.Sight, QueryTriggerInteraction.Ignore);
+            float reach = WalkKeyReach;
+            for (int i = 0; i < count; i++)
+            {
+                var hit = walkOutKeyHits[i];
+                if (hit.collider == null) continue;
+                if (hit.collider.GetComponentInParent<HouseNpc>() != null || hit.collider.GetComponentInParent<HousePlayerController>() != null) continue;
+                reach = Mathf.Min(reach, hit.distance - WalkKeyWallMargin);
+            }
+            return reach < WalkKeyNearest ? 0f : reach;
         }
 
         /// <summary>
@@ -626,6 +747,15 @@ namespace Gamesim.Episode
         {
             if (walkOutDoor != null) { Destroy(walkOutDoor.gameObject); walkOutDoor = null; }
             if (walkOutLookMark != null) { Destroy(walkOutLookMark.gameObject); walkOutLookMark = null; }
+            // The walk's key goes with its door: every way a walk ends - finished, skipped, aborted,
+            // a competition or the stage taking the frame, the season replaced - strikes the door here.
+            if (walkOutKey != null)
+            {
+                walkOutKey.enabled = false;
+                Destroy(walkOutKey.gameObject);
+                walkOutKey = null;
+            }
+            walkOutKeyFadeFrom = float.NaN;
             foreach (var prop in walkOutHidden) if (prop != null) prop.enabled = true;
             walkOutHidden.Clear();
             walkOutDoorUsed = WalkOutDoor.Yard;
@@ -649,7 +779,7 @@ namespace Gamesim.Episode
                 return;
             }
             walkOutDoorUsed = WalkOutDoor.Living;
-            walkOutDoor = OpeningDoorSet.Build(gameObject.scene, DoorLayout.Living);
+            walkOutDoor = OpeningDoorSet.Build(gameObject.scene, DoorLayout.Living, DoorLighting.Exit);
             HidePropsInTheDoorway(DoorLayout.Living);
         }
 

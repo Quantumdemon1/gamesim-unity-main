@@ -35,6 +35,8 @@ namespace Gamesim.Tests.PlayMode
             TextSizes.SizeKey, CaptionTiming.Key,
             // The three volumes beside the master (A11) and the player's own keys (A5).
             SoundPictures.MusicVolumeKey, SoundPictures.EffectsVolumeKey, SoundPictures.InterfaceVolumeKey, KeyBindings.PreferenceKey,
+            // Whether conversation lines move on by themselves (UI plan D11).
+            ConversationLinePace.Key,
         };
 
         /// <summary>The machine's PlayerPrefs for every settings key: present or not, and what each holds as text and as a number.</summary>

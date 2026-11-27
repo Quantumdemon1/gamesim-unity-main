@@ -26,6 +26,10 @@ namespace Gamesim.Episode
         /// commands scattered through the code, so there is one place that decides and no way for two
         /// screens to disagree about what is playing.</para>
         ///
+        /// <para>One departure: the main menu plays a quiet title loop made from the theme, where the
+        /// reference's is silent. Cast select, the creator and the final stats stay silent, and the
+        /// house's air is off behind all of them.</para>
+        ///
         /// <para>Safe to call from anywhere and often: <see cref="HouseAudio.SetMusic"/> ignores a
         /// state it is already in, so this does not restart the track on every render. The director
         /// asks it every frame as well (Update), because two of its inputs - the opening's loading
@@ -36,16 +40,36 @@ namespace Gamesim.Episode
         {
             if (audioBed == null) return;
 
-            bool setup = (mainMenu != null && mainMenu.IsShowing)
-                         || (castSelect != null && castSelect.IsShowing)
+            // The main menu has its title loop, and so do the Settings it opens, which lead back to
+            // it; the other setup screens - and the Settings the creator's gear opens - are silent.
+            bool title = (mainMenu != null && mainMenu.IsShowing) || (settingsOpen && settingsFromMainMenu);
+            bool setup = (castSelect != null && castSelect.IsShowing)
                          || (characterCreator != null && characterCreator.IsShowing)
-                         || (seasonReport != null && seasonReport.IsShowing);
+                         || (seasonReport != null && seasonReport.IsShowing)
+                         || (settingsOpen && settingsFromFrontDoor && !settingsFromMainMenu);
             // A skipped show has no theme left to play: the skip hands over to the season's bed at
             // the press, not after the house has been put back behind black.
             bool show = opening != null && opening.IsPlaying && !opening.WasSkipped;
             audioBed.SetMusic(MusicFor(musicOn, setup, show, opening != null ? opening.CurrentBeat : null,
-                opening != null && opening.MusicHeld, opening != null && opening.MusicClosing));
+                opening != null && opening.MusicHeld, opening != null && opening.MusicClosing, CompetitionUnderWay, title));
+            // The house's air and the rooms' beds are off behind the front door, where the house is
+            // not the game, and come back in from silence when it is.
+            audioBed.SetAmbienceEnabled(!(title || setup));
+            // The music steps back while the game menu card is open (the rooms' beds with it) and
+            // under the big moments; the Settings frame is not the card, so its sliders are heard
+            // at the level they set. A level only: the state asked for above is untouched.
+            bool menuCard = IsGameMenuOpen;
+            // And under the player's own dance, whose beat is the music while it is heard.
+            audioBed.SetDuck(MusicFade.MusicDuckFor(menuCard, IsMusicDuckMoment, audioBed.ActivityDucksMusic), MusicFade.BedDuckFor(menuCard));
         }
+
+        /// <summary>
+        /// Whether one of the moments the music steps back for is on: the diary room, a vote, key or
+        /// jury reveal running, or a ceremony staged in the house.
+        /// </summary>
+        private bool IsMusicDuckMoment =>
+            IsDiaryOpen || IsCeremonyStaged || JuryRevealPlaying
+            || (voteReveal != null && voteReveal.IsPlaying) || (keyCeremony != null && keyCeremony.IsPlaying);
 
         /// <summary>
         /// The music rule as a question: silence with the music off or on a setup screen, the theme
@@ -72,6 +96,40 @@ namespace Gamesim.Episode
             if (!openingPlaying || beat != OpeningBeat.Intro) return HouseAudio.Music.Season;
             return themeHeld || themeClosing ? HouseAudio.Music.Silent : HouseAudio.Music.Theme;
         }
+
+        /// <summary>
+        /// The same rule with a competition in it: where the season's bed would play, a competition
+        /// under way plays its own loop instead (<see cref="CompetitionUnderWay"/>). Everything else
+        /// is as above: the switch and the setup screens are silence, and the intro has its theme.
+        /// A departure from the reference build, whose bed plays until the game is over.
+        /// </summary>
+        public static HouseAudio.Music MusicFor(bool musicOn, bool setupShowing, bool openingPlaying, string beat,
+            bool themeHeld, bool themeClosing, bool competition)
+        {
+            var music = MusicFor(musicOn, setupShowing, openingPlaying, beat, themeHeld, themeClosing);
+            return competition && music == HouseAudio.Music.Season ? HouseAudio.Music.Competition : music;
+        }
+
+        /// <summary>
+        /// The same rule with the main menu in it: with the music on, the main menu - and the
+        /// Settings it opens - plays its quiet title loop over anything behind it, an intro or a
+        /// competition included. <paramref name="setupShowing"/> here is the other setup screens -
+        /// cast select, the creator and the season's report - which stay silent and win over the
+        /// menu. A departure from the reference build, whose menu is silent.
+        /// </summary>
+        public static HouseAudio.Music MusicFor(bool musicOn, bool setupShowing, bool openingPlaying, string beat,
+            bool themeHeld, bool themeClosing, bool competition, bool titleShowing)
+        {
+            if (musicOn && !setupShowing && titleShowing) return HouseAudio.Music.Title;
+            return MusicFor(musicOn, setupShowing, openingPlaying, beat, themeHeld, themeClosing, competition);
+        }
+
+        /// <summary>
+        /// Whether a competition is under way for the music: from the attempt opening - the walk to
+        /// the stations, the game and its finish, a practice too - or a staged show starting, to the
+        /// result card. Presentation only; it reads what is on screen and changes nothing.
+        /// </summary>
+        private bool CompetitionUnderWay => challengeActive || CompetitionShowHoldsTheCard;
 
         /// <summary>
         /// The tour is offered again only from the house's own Settings: from the front door or a
@@ -547,6 +605,7 @@ namespace Gamesim.Episode
             // The size as 0 to 2, and the boolean an earlier build reads beside it.
             store.SetInt(TextSizes.SizeKey, (int)textSize); store.SetInt(TextSizes.LegacyKey, TextSizes.LegacyRecord(textSize));
             store.SetInt(CaptionTiming.Key, (int)captionTime);
+            store.SetInt(ConversationLinePace.Key, ConversationLinePace.Record(autoContinueLines));
             store.SetInt(SoundPictures.MusicVolumeKey, musicVolumePercent); store.SetInt(SoundPictures.EffectsVolumeKey, effectsVolumePercent);
             store.SetInt(SoundPictures.InterfaceVolumeKey, interfaceVolumePercent);
             store.Save();

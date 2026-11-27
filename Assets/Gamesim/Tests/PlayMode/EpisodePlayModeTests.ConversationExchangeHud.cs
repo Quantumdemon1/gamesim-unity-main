@@ -180,6 +180,12 @@ namespace Gamesim.Tests.PlayMode
         /// rebuilds whenever a body finishes assembling, so a stand-in hung under the HUD was destroyed
         /// mid-test on the UMA build only (r1, 2026-10-16). The rebuild after the panel closes is forced
         /// here, the same Render a body arrival makes, so both builds prove the fallback survives one.</para>
+        ///
+        /// <para>The stand-in is measured in the HUD's units, as a real decision panel is: its canvas
+        /// scales as the HUD's does. On a canvas with no scaler its 700x300 were screen pixels, wider
+        /// than the whole frame on a 640x480 window, and the step rightly gave the open panel up for
+        /// the objective, because its card had no side to dock on (HouseTutorial.Place). Here the
+        /// card has room beside the panel, so the step must light the panel, and dock clear of it.</para>
         /// </summary>
         [UnityTest]
         public IEnumerator Tour_PhaseStepPrefersTheDecisionAndFallsBackToTheCurrentObjective()
@@ -188,18 +194,28 @@ namespace Gamesim.Tests.PlayMode
             yield return SettleCast();
             var tour = DirectorTour();
             Assert.That(TourChrome("Objective"), Is.Not.Null);
-            var host = new GameObject("Tour test panel host", typeof(RectTransform), typeof(Canvas));
+            var host = new GameObject("Tour test panel host", typeof(RectTransform), typeof(Canvas), typeof(FrameScaler));
             SceneManager.MoveGameObjectToScene(host, director.gameObject.scene);
             host.GetComponent<Canvas>().renderMode = RenderMode.ScreenSpaceOverlay;
+            var hudScaler = HudCanvas().GetComponent<UnityEngine.UI.CanvasScaler>();
+            var hostScaler = host.GetComponent<UnityEngine.UI.CanvasScaler>();
+            hostScaler.uiScaleMode = hudScaler.uiScaleMode;
+            hostScaler.referenceResolution = hudScaler.referenceResolution;
+            hostScaler.screenMatchMode = hudScaler.screenMatchMode;
+            hostScaler.matchWidthOrHeight = hudScaler.matchWidthOrHeight;
             var panel = new GameObject("Episode panel", typeof(RectTransform)).GetComponent<RectTransform>();
             panel.SetParent(host.transform, false);
             panel.sizeDelta = new Vector2(700f, 300f);
             try
             {
+                // The scaler sizes its canvas on the frame's canvas pass: the tour measures the panel after one.
+                yield return null;
+                Canvas.ForceUpdateCanvases();
                 tour.Show(name => name == "Episode panel" ? panel : TourChrome(name));
                 while (tour.StepIndex < 5) { tour.Next(); yield return null; }
                 Assert.That(tour.CurrentAnchors, Is.EqualTo(new[] { "Episode panel" }),
                     "The current decision is the phase step's first choice.");
+                Assert.That(tour.CardDocked, Is.True, "The phase step's card stands clear of the decision it lights.");
                 panel.gameObject.SetActive(false);
                 var shown = TourChrome("Objective");
                 Assert.That(shown != null, Is.True, "The HUD shows a current objective before the rebuild.");

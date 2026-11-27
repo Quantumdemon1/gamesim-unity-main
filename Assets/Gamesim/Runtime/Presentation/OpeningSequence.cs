@@ -86,6 +86,7 @@ namespace Gamesim.Presentation
             float BodyReadiness { get; }
             /// <summary>Puts everybody behind the front door and builds it. False when it cannot.</summary>
             bool TryPlace();
+            /// <summary>Whether the house is behind the front door: false before it is placed, and again once it is abandoned.</summary>
             bool Placed { get; }
             /// <summary>Whether the house has bound everybody again after placing, so they can walk.</summary>
             bool Ready { get; }
@@ -116,6 +117,13 @@ namespace Gamesim.Presentation
             /// houseguest framed where they stand is still there when they answer.
             /// </summary>
             void HoldForIntroductions();
+            /// <summary>
+            /// Lets go of a house that was placed and never bound, for good: everybody put back where
+            /// the season started them, the front door down, and <see cref="Placed"/> false from then
+            /// on, so no later beat walks, holds or puts back anybody and the show plays on cards.
+            /// Only ever under an opaque frame.
+            /// </summary>
+            void Abandon();
         }
 
         /// <summary>What the sequence needs from the game around it.</summary>

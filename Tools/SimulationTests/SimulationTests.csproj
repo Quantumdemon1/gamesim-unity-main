@@ -146,6 +146,14 @@
     <Compile Include="$(EditMode)TourDockTests.cs" />
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/TourDock.cs" />
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/TourOfferWords.cs" />
+    <!-- SB1: the lamps' shadow tiers against the shadow-map model; the model and its rooms are plain C#, so they run here too. -->
+    <Compile Include="$(EditMode)LampShadowTierTests.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Episode/VerificationViews.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Episode/VerificationPerformance.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/House/RoomLayers.cs" />
+    <!-- LT6: the conversation's soft key, where it stands, what it covers and how it eases; plain C#, so it runs here too. -->
+    <Compile Include="$(EditMode)ConversationKeyLightTests.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Episode/ConversationKeyLight.cs" />
     <!-- Menu slice 2, part d: the decisions' and the cards' one way out, held in the source; pure, so it runs here too. -->
     <Compile Include="$(EditMode)MenuOneWayBackDecisionsScanTests.cs" />
     <!-- No slogan on a screen or a sign (the owner, 2026-11-14 and 2026-11-21), held in the source and the scenes. -->
@@ -447,6 +455,9 @@
     <!-- Explicit, and compiled out of Unity: the final Head of Household's choice over sampled seasons (C9), run on demand. -->
     <Compile Include="$(EditMode)FinalChoiceSeasonHarness.cs" />
     <Compile Include="$(EditMode)CampaignBriefTests.cs" />
+    <!-- What a talk from the campaign board opens on: the plea, the vote question or the topics (UI-UX plan D9); pure, so it runs here too. -->
+    <Compile Include="$(EditMode)CampaignTalkTests.cs" />
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/CampaignTalk.cs" />
     <Compile Include="$(EditMode)WaitingOnYouTests.cs" />
     <Compile Include="$(EditMode)FinalistReadTests.cs" />
     <Compile Include="$(EditMode)KnownOddsTests.cs" />
@@ -568,6 +579,8 @@
     <Compile Include="$(EditMode)TalkScreenStageLinesTests.cs" />
     <!-- Free talk slice 3, the screen: the romance choices, the Flirt reply's place, the witness, the scene and the pages at talk rules 3. -->
     <Compile Include="$(EditMode)TalkScreenRomanceLinesTests.cs" />
+    <!-- Talk polish TP-1: first names in every talk line, the saved standing line and stage row keyed to talk rules 4, and the grudge talk's opener. -->
+    <Compile Include="$(EditMode)FreeTalkNamesTests.cs" />
     <Compile Include="$(EditMode)NominationStepsTests.cs" />
     <Compile Include="$(EditMode)ThreatAssessmentTests.cs" />
     <Compile Include="$(EditMode)WebDiaryParityTests.cs" />
@@ -602,6 +615,15 @@
     -->
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/MusicFade.cs" />
     <Compile Include="$(EditMode)MusicFadeTests.cs" />
+    <!-- The house's two bed voices and the director's hold on a doorway, on the same fade arithmetic; the tests read the room beds' WAVs. -->
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/RoomToneBlend.cs" />
+    <Compile Include="$(EditMode)RoomToneBlendTests.cs" />
+    <!-- The player's activities' loops and their one voice, on the same fade arithmetic; the tests read the loops' WAVs. -->
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/ActivitySounds.cs" />
+    <Compile Include="$(EditMode)ActivitySoundsTests.cs" />
+    <!-- The player's footsteps: the stride a speed implies, each room's ground and the takes in turn; the tests read the steps' WAVs. -->
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/HouseSteps.cs" />
+    <Compile Include="$(EditMode)HouseStepsTests.cs" />
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/WardrobeSlots.cs" />
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/CharacterOutfits.cs" />
     <Compile Include="$(EditMode)WardrobeSlotsTests.cs" />
@@ -629,6 +651,9 @@
     <Compile Include="$(EditMode)DecisionPickTests.cs" />
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/ObjectiveWords.cs" />
     <Compile Include="$(EditMode)ObjectiveWordsTests.cs" />
+    <!-- One phase-word table (UI-UX plan D15): the week chip's word and the status line's news line. -->
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/PhaseWords.cs" />
+    <Compile Include="$(EditMode)PhaseWordsTests.cs" />
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/CompetitionMiniGames.cs" />
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/MiniGameRun.cs" />
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/MiniGameRun.Dice.cs" />
@@ -733,9 +758,23 @@
     <Compile Include="$(EditMode)TextSizesTests.cs" />
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/CaptionTiming.cs" />
     <Compile Include="$(EditMode)CaptionTimingTests.cs" />
+    <!-- "Conversation lines: Move on" (UI plan D11): a spoken line moves on after its reading time, once; a press starts the next line's own clock. -->
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/ConversationLinePace.cs" />
+    <Compile Include="$(EditMode)ConversationLinePaceTests.cs" />
+    <!-- The house screen's This Week card (menu review change 7): the events and the vibe in one card, inside the room the right column folds around. -->
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/ThisWeekShape.cs" />
+    <Compile Include="$(EditMode)ThisWeekShapeTests.cs" />
+    <!-- The Episode button opens a decision of the player's own where they stand (UI-UX plan Q2): the four decisions, nothing else, and the director's wiring by its source. -->
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/WaitingDecision.cs" />
+    <Compile Include="$(EditMode)WaitingDecisionTests.cs" />
     <!-- Every sound has a picture, and the three volumes beside the master (A11). -->
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/SoundPictures.cs" />
     <Compile Include="$(EditMode)SoundPicturesTests.cs" />
+    <!-- The cues' mix, read from the recordings: every interface answer under the news. -->
+    <Compile Include="$(EditMode)CueLoudnessTests.cs" />
+    <!-- The sound a commit makes, by its cue's name: the final eviction sounds like an eviction. -->
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/CommitSound.cs" />
+    <Compile Include="$(EditMode)CommitSoundTests.cs" />
     <!-- The prepared block speech a pad gives without typing (A6): every approach's line is a valid speech carrying it. -->
     <Compile Include="$(EditMode)PreparedSpeechTests.cs" />
     <!-- The standalone profile's performance verdict and arithmetic, and the verification-only stress house. -->

@@ -54,22 +54,12 @@ namespace Gamesim.Episode
         /// <summary>
         /// The sound a commit makes, chosen from every line it appended rather than its last one. The
         /// biggest beat wins: an eviction is followed by its votes read out and the next week's diary,
-        /// and a veto meeting by a deal settling, and keying off the last line lost both sounds.
+        /// and a veto meeting by a deal settling, and keying off the last line lost both sounds. The
+        /// choice itself is <see cref="CommitSound.CueName"/>, Unity-free so the suite that runs
+        /// without Unity holds it; this turns its name into the cue.
         /// </summary>
-        public static HouseAudio.Cue CommitCue(IEnumerable<string> appendedKinds)
-        {
-            var kinds = new HashSet<string>(appendedKinds ?? Enumerable.Empty<string>(), StringComparer.Ordinal);
-            if (kinds.Contains("winner")) return HouseAudio.Cue.Finale;
-            if (kinds.Contains("eviction")) return HouseAudio.Cue.Eviction;
-            if (kinds.Contains("nomination")) return HouseAudio.Cue.Nomination;
-            if (kinds.Contains("veto")) return HouseAudio.Cue.Veto;
-            if (kinds.Contains("competition")) return HouseAudio.Cue.CompetitionWin;
-            // The story's ceremonies (plan §5.1): a removal sounds like the house losing somebody, and
-            // the rest like the block being set.
-            if (kinds.Contains(StoryLog.Expulsion)) return HouseAudio.Cue.Eviction;
-            if (kinds.Any(StoryFallout.IsFallout)) return HouseAudio.Cue.Nomination;
-            return HouseAudio.Cue.Button;
-        }
+        public static HouseAudio.Cue CommitCue(IEnumerable<string> appendedKinds) =>
+            (HouseAudio.Cue)Enum.Parse(typeof(HouseAudio.Cue), CommitSound.CueName(appendedKinds));
 
         /// <summary>
         /// The order the safe keys are dealt in: shuffled, the same way every time for the same week of

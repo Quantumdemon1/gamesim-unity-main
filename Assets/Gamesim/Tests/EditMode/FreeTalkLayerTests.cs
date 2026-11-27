@@ -185,7 +185,8 @@ namespace Gamesim.Tests.EditMode
                 var snapshot = TalkNotes.FromThem(after, npc.id);
                 Assert.That(snapshot.Week, Is.EqualTo(after.week));
                 Assert.That(snapshot.Current, Is.True);
-                Assert.That(snapshot.Line, Is.EqualTo(result.StandingLine));
+                Assert.That(snapshot.Line, Is.EqualTo(result.StandingSaid), "The page shows what the talk screen said.");
+                Assert.That(FreeTalk.Contact(after, npc.id).standing, Is.EqualTo(result.StandingLine), "The season keeps the line as it saves it.");
 
                 int week = after.week, key = FreeTalk.WindowKey(after);
                 FreeTalkFixture.WalkUntil(engine, x => FreeTalk.WindowKey(x) != 0 && FreeTalk.WindowKey(x) != key || x.week != week);

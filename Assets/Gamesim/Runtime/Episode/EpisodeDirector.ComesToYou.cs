@@ -25,6 +25,13 @@ namespace Gamesim.Episode
     /// it opens that ask in the same conversation or card (way Chained), or their pitch as Hear does. The player asked for
     /// it, so it counts no presentation and sets no asker gap. Never across houseguests, never before an answer.</para>
     ///
+    /// <para><b>Story beats (walk-ups name the houseguest).</b> An Approach beat whose words have a houseguest come to the
+    /// player (<see cref="ComesToYou.Source.Story"/>) walks up through the same queue, caps and gaps: they say
+    /// <see cref="ComesToYou.StoryLine"/>, and hearing them out opens the beat's scene card where the player stands, the
+    /// card the Pull's "Hear them out" opens; "Maybe later" turns it down as the Pull's "Not now" does, so it waits on the
+    /// episode screen. While asks are on such a beat is no Pull (EpisodeDirector.Story.cs, CurrentPull); with them off, a
+    /// beat without a speaker, or a speaker who has left, it is the Pull it always was.</para>
+    ///
     /// <para><b>The walk-over holds.</b> The asker walks on a budget of their own route, and the player's time to answer
     /// starts once they are there (HouseMeetingCoordinator.TryReserveNpcInvitation's answerFromArrival). They turn to the
     /// player as they arrive and the player turns to them as the dialogue opens; letting go - the visit's end, a panel's
@@ -500,14 +507,15 @@ namespace Gamesim.Episode
         /// <summary>
         /// Whether the way an ask opens is open now: the conversation's own phase and window gate for the sources that open
         /// on a conversation (<see cref="NpcInvitationConversationAvailable"/>); a pitch opens no conversation, so it is held
-        /// to no conversation gate - its gate is its own IsCurrent (OFFERS-COME-TO-YOU-PLAN §C.4, the Pitch source).
+        /// to no conversation gate - its gate is its own IsCurrent (OFFERS-COME-TO-YOU-PLAN §C.4, the Pitch source); nor is a
+        /// story beat, which opens the scene card (<see cref="AskOpensTheSceneCard"/>).
         /// </summary>
         private bool AskWayInOpen(ComesToYou.Ask ask) => AskOpensInPerson(ask)
-            ? NpcInvitationConversationAvailable(projected, ask.askerId) : AskOpensThePitches(ask);
+            ? NpcInvitationConversationAvailable(projected, ask.askerId) : AskOpensThePitches(ask) || AskOpensTheSceneCard(ask);
 
-        /// <summary>Whether an ask can be walked over now: current, not set aside, under its cap, past its retry and its asker's gap, and the way it opens is open.</summary>
+        /// <summary>Whether an ask can be walked over now: current, not set aside or turned down, under its cap, past its retry and its asker's gap, and the way it opens is open.</summary>
         private bool AskMayCome(ComesToYou.Ask ask) => ask != null && ask.IsCurrent(projected) && !askSetAside.Contains(ask.recordId)
-            && AskPresentationsOf(ask.recordId) < askRecordCap
+            && !AskTurnedDown(ask) && AskPresentationsOf(ask.recordId) < askRecordCap
             && askClock >= (askRetryAt.TryGetValue(ask.recordId, out float retry) ? retry : 0f)
             && askClock >= (askerNextAt.TryGetValue(ask.askerId, out float asker) ? asker : 0f)
             && AskWayInOpen(ask);
@@ -517,8 +525,14 @@ namespace Gamesim.Episode
         /// when its asker cannot come.
         /// </summary>
         private bool AskCanStillCome(ComesToYou.Ask ask) => ask != null && ask.IsCurrent(projected)
-            && !askSetAside.Contains(ask.recordId) && AskPresentationsOf(ask.recordId) < askRecordCap
+            && !askSetAside.Contains(ask.recordId) && !AskTurnedDown(ask) && AskPresentationsOf(ask.recordId) < askRecordCap
             && AskWayInOpen(ask);
+
+        /// <summary>
+        /// A story beat the player said "Maybe later" to: turned down as the Pull's "Not now" turns one down
+        /// (<c>declinedPulls</c>, never cleared by a phase), so it waits on the episode screen and never walks up again.
+        /// </summary>
+        private bool AskTurnedDown(ComesToYou.Ask ask) => AskOpensTheSceneCard(ask) && declinedPulls.Contains(ask.recordId);
 
         /// <summary>
         /// Whether an ask could still come to the player by itself this phase, for the "N more" line: one that can still come
@@ -570,12 +584,14 @@ namespace Gamesim.Episode
         /// <summary>
         /// Hear their offer, E, a click on the asker, or the dialogue opening by itself: the visit goes and the
         /// conversation opens on the ask (<see cref="OpenOnAsk"/>), the asker held out of pairing across the open. A
-        /// conversation that cannot open is a miss. A pitch opens the pitches instead (<see cref="HearPitch"/>).
+        /// conversation that cannot open is a miss. A pitch opens the pitches instead (<see cref="HearPitch"/>), and a story
+        /// beat its scene card (<see cref="HearStory"/>).
         /// </summary>
         private void HearAsk(object view, long generation, ComesToYou.Ask ask)
         {
             if (!AskCallbackCurrent(view, generation, ask)) return;
             if (AskOpensThePitches(ask)) { HearPitch(ask); return; }
+            if (AskOpensTheSceneCard(ask)) { HearStory(ask); return; }
             bool opened;
             askOpenWith = ask; askOpeningFor = ask.askerId;
             try
@@ -599,6 +615,23 @@ namespace Gamesim.Episode
         {
             CancelAskVisit();
             if (!OpenHoHPitches()) { RecordAskMiss(ask.recordId); return; }
+            askSetAside.Add(ask.recordId);
+            CountAskPresentation(ask);
+            askerNextAt[ask.askerId] = askClock + AskerGapSeconds;
+            askNextAt = askClock + AskGapSeconds;
+        }
+
+        /// <summary>
+        /// Hear a houseguest who came with a story beat (walk-ups name the houseguest): the visit goes and the beat opens as
+        /// the scene card where the player stands, the card the Pull's "Hear them out" opens (<see cref="OpenSceneCard"/>),
+        /// its answers the beat's own. Nothing is answered or committed by the hearing. As a pitch's hearing does
+        /// (<see cref="HearPitch"/>): one presentation counted, the beat set aside for the phase, its asker's gap and the next
+        /// ask's gap. A card that cannot open is a miss.
+        /// </summary>
+        private void HearStory(ComesToYou.Ask ask)
+        {
+            CancelAskVisit();
+            if (!OpenSceneCard(ask.recordId)) { RecordAskMiss(ask.recordId); return; }
             askSetAside.Add(ask.recordId);
             CountAskPresentation(ask);
             askerNextAt[ask.askerId] = askClock + AskerGapSeconds;
@@ -655,10 +688,15 @@ namespace Gamesim.Episode
             return true;
         }
 
-        /// <summary>Not right now, or Escape on the line: put off for the phase, counted, and the next ask waits its gap. For a pitch ("Let it wait") as for any ask: silence on a pitch costs nothing.</summary>
+        /// <summary>
+        /// Not right now, or Escape on the line: put off for the phase, counted, and the next ask waits its gap. For a pitch
+        /// ("Let it wait") as for any ask: silence on a pitch costs nothing. A story beat's "Maybe later" turns it down as the
+        /// Pull's "Not now" does (<c>declinedPulls</c>): it stays on the episode screen, answerable until it closes.
+        /// </summary>
         private void DeferAsk(object view, long generation, ComesToYou.Ask ask)
         {
             if (!AskCallbackCurrent(view, generation, ask)) return;
+            if (AskOpensTheSceneCard(ask)) declinedPulls.Add(ask.recordId);
             askSetAside.Add(ask.recordId);
             CountAskPresentation(ask);
             askNextAt = askClock + AskGapSeconds;
@@ -950,6 +988,15 @@ namespace Gamesim.Episode
                 if (!OpenHoHPitches()) Render();
                 return;
             }
+            // A story beat opens its scene card, as Hear does; the conversation goes with the gap any close starts.
+            if (AskOpensTheSceneCard(next))
+            {
+                askNextAt = askClock + AskGapSeconds;
+                ClearAskDialogue();
+                hud.DropFocusAsked();
+                if (!OpenSceneCard(next.recordId)) Render();
+                return;
+            }
             conversationNarration = null; lastSocialAction = null;
             conversationCategory = DealsCategoryCaption; invitedDealId = next.recordId;
             askDialogueRecordId = next.recordId; askDialogueSource = next.source; askDialogueWay = AskWay.Chained;
@@ -986,6 +1033,7 @@ namespace Gamesim.Episode
             if (next == null) { Render(); return; }
             askSetAside.Add(next.recordId);
             if (AskOpensThePitches(next)) { if (!OpenHoHPitches()) Render(); return; }
+            if (AskOpensTheSceneCard(next)) { if (!OpenSceneCard(next.recordId)) Render(); return; }
             askCard = next; askCardReply = null; askCardOutcome = null; askCardAnswered = false; askCardChained = true;
             askCardChainFor = null; askCardFirstRender = true;
             Render();
@@ -1059,11 +1107,12 @@ namespace Gamesim.Episode
         /// The ask as a card where the player stands, when its asker cannot come over. Like the scene card, the house's
         /// due time is flushed and the world paused under it, and the player's input and the camera's controls are off.
         /// It is a presentation, and the ask is set aside for the phase as it opens. False when the ask has gone by the
-        /// time the house's time is flushed.
+        /// time the house's time is flushed. A story beat's card is its scene card (<see cref="OpenStoryCard"/>).
         /// </summary>
         private bool OpenAskCard(ComesToYou.Ask ask)
         {
             if (ask == null || !AskComesAsACard(ask)) return false;
+            if (AskOpensTheSceneCard(ask)) return OpenStoryCard(ask);
             PauseNpcSocialForPanel();
             if (blockedRecovery) return false;
             // The flush may have installed the house's time: the ask must still be the one waiting.
@@ -1076,6 +1125,21 @@ namespace Gamesim.Episode
             if (player != null) player.SetInputEnabled(false);
             if (cameraRig != null) cameraRig.ControlsEnabled = false;
             Render();
+            return true;
+        }
+
+        /// <summary>
+        /// A story beat whose houseguest cannot come over: the beat opens as the scene card where the player stands, the card
+        /// "Hear them out" opens (<see cref="OpenSceneCard"/>), never the ask card, which hosts no story. Like the ask card it
+        /// is a presentation: the beat is set aside for the phase as it opens, and the next ask waits its gap, which runs once
+        /// the card has closed (the ask clock stands still under a panel). False when the card does not open.
+        /// </summary>
+        private bool OpenStoryCard(ComesToYou.Ask ask)
+        {
+            if (projected == null || !ask.IsCurrent(projected) || !OpenSceneCard(ask.recordId)) return false;
+            askSetAside.Add(ask.recordId);
+            CountAskPresentation(ask);
+            askNextAt = askClock + AskGapSeconds;
             return true;
         }
 
@@ -1227,6 +1291,12 @@ namespace Gamesim.Episode
         private static bool AskOpensThePitches(ComesToYou.Ask ask) => ask != null && ask.source == ComesToYou.Source.Pitch;
 
         /// <summary>
+        /// Whether an ask opens a story beat's scene card rather than a conversation (walk-ups name the houseguest): a story
+        /// row does, through <see cref="HearStory"/>, and is held to no conversation gate.
+        /// </summary>
+        private static bool AskOpensTheSceneCard(ComesToYou.Ask ask) => ask != null && ask.source == ComesToYou.Source.Story;
+
+        /// <summary>
         /// Whether an ask whose asker cannot come is put to the player as a card where they stand: every source but a pitch,
         /// which stays on the nomination screen ("Hear houseguest pitches") and is walked over no more this phase.
         /// </summary>
@@ -1235,7 +1305,7 @@ namespace Gamesim.Episode
         /// <summary>
         /// The bubble's two captions for an ask's source, each pair its own and none of the Pull's. The deal sources keep
         /// the invitation's; a reply card says "Hear what they want" and "Not this minute" (slice 4a); a pitch "Hear their
-        /// pitch" and "Let it wait" (slice 4p).
+        /// pitch" and "Let it wait" (slice 4p); a story beat "What's on your mind?" and "Maybe later".
         /// </summary>
         private static (string hear, string notNow) AskBubbleCaptions(ComesToYou.Source source)
         {
@@ -1245,6 +1315,8 @@ namespace Gamesim.Episode
                     return (HouseNpcInvitationBubble.ReplyHearCaption, HouseNpcInvitationBubble.ReplyNotNowCaption);
                 case ComesToYou.Source.Pitch:
                     return (HouseNpcInvitationBubble.PitchHearCaption, HouseNpcInvitationBubble.PitchNotNowCaption);
+                case ComesToYou.Source.Story:
+                    return (HouseNpcInvitationBubble.StoryHearCaption, HouseNpcInvitationBubble.StoryNotNowCaption);
                 default:
                     return (HouseNpcInvitationBubble.HearCaption, HouseNpcInvitationBubble.NotNowCaption);
             }

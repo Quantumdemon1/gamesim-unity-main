@@ -53,6 +53,7 @@ namespace Gamesim.Episode
                 conversationMenuSession = state.sessionId;
                 conversationCategory = conversationIntent == IntentAsk ? LearnCategoryCaption
                     : conversationIntent == IntentDeal ? DealsCategoryCaption
+                    : conversationIntent == IntentPlea ? GameCategoryCaption
                     : conversationIntent == IntentJustTalk && TalkScreenLines.Shown(state, npc.id) ? ConnectCategoryCaption : null;
                 // A free talk's tile opens the conversation on the talk's panel (EpisodeDirector.JustTalk.cs).
                 PrepareJustTalk(state, npc);
@@ -158,6 +159,8 @@ namespace Gamesim.Episode
             PrepareConversationNavigation(state, npc);
             conversationNavigationShowing = true;
             object token = conversationMenuToken;
+            // In the campaign, a conversation counts toward the next voter's way on (EpisodeDirector.CampaignScreen.cs).
+            NextVoterWayOn(state, npc, false);
             if (conversationCategory == null && !acceptedExchangeWasPresented
                 && !string.IsNullOrEmpty(conversationNarration))
             {
@@ -169,6 +172,7 @@ namespace Gamesim.Episode
                     if (ConversationNavigationCurrent(token, state, npc.id)) BackConversationNavigation(true);
                 });
                 if (cameraRig != null) cameraRig.ConversationWindowOffset = hud.ConversationWindowOffset;
+                NextVoterWayOn(state, npc, true);
                 hud.GuardConversationChoices(() => ConversationNavigationCurrent(token, state, npc.id));
                 return;
             }
@@ -273,6 +277,7 @@ namespace Gamesim.Episode
                     RoomActs(state, npc);
                     break;
             }
+            NextVoterWayOn(state, npc, toTopics);
             hud.GuardConversationChoices(() => ConversationNavigationCurrent(token, state, npc.id));
         }
 

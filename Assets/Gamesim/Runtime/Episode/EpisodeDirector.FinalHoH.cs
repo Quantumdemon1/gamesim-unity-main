@@ -28,10 +28,7 @@ namespace Gamesim.Episode
     public sealed partial class EpisodeDirector
     {
         /// <summary>"Part 1 of 3", or null outside the final Head of Household.</summary>
-        public static string FinalHoHPartLabel(EpisodePhase phase) =>
-            phase == EpisodePhase.FinalHoHPart1 ? "Part 1 of 3"
-            : phase == EpisodePhase.FinalHoHPart2 ? "Part 2 of 3"
-            : phase == EpisodePhase.FinalHoHPart3 ? "Part 3 of 3" : null;
+        public static string FinalHoHPartLabel(EpisodePhase phase) => PhaseWords.PartLabel(phase);
 
         /// <summary>Whether a phase is one of the final Head of Household's three parts.</summary>
         public static bool IsFinalHoHPart(EpisodePhase phase) =>

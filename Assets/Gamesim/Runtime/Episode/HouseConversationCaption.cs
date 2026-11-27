@@ -81,6 +81,13 @@ namespace Gamesim.Episode
         public float HoldSeconds => holdFor;
 
         /// <summary>
+        /// How many lines have come up: one more each time a line is newly up, or a different pair or
+        /// topic takes its place; a line shown again while it is up counts nothing. The director
+        /// murmurs a new line by it (AU-16).
+        /// </summary>
+        public int LinesShown => currentLine;
+
+        /// <summary>
         /// Whether the pair's bodies are drawn (ROOM-SCOPE-PLAN §3.2 e, RS4): the line is drawn over a
         /// pair the main view draws, or not at all. Withheld, its panel is down while the line itself,
         /// its reading time and what it says (<see cref="CurrentText"/>, which the Nearby card and the

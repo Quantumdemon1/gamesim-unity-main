@@ -24,6 +24,8 @@ namespace Gamesim.Presentation
         Music,
         Effects,
         Interface,
+        /// <summary>The houseguests' murmurs under their lines (AU-16, <see cref="Murmur"/>). Appended.</summary>
+        Voice,
     }
 
     /// <summary>
@@ -36,6 +38,10 @@ namespace Gamesim.Presentation
     ///
     /// <para>The music and the house's air have no row: they are beds, not news. The music plays
     /// under <see cref="SoundChannel.Music"/>; the room tone under <see cref="SoundChannel.Effects"/>.</para>
+    ///
+    /// <para>Nor do the houseguests' murmurs (AU-16): a murmur is made for its line rather than
+    /// recorded, and its picture is the line itself, on screen as it sounds. They play under
+    /// <see cref="SoundChannel.Voice"/>.</para>
     /// </summary>
     public static class SoundPictures
     {
@@ -187,8 +193,25 @@ namespace Gamesim.Presentation
         /// <summary>The preferences the three volumes are kept under, as percentages of the master.</summary>
         public const string MusicVolumeKey = "Gamesim.MusicVolume", EffectsVolumeKey = "Gamesim.EffectsVolume", InterfaceVolumeKey = "Gamesim.InterfaceVolume";
 
+        /// <summary>The preference the voices' volume is kept under (AU-16), as a percentage of the master.</summary>
+        public const string VoiceVolumeKey = "Gamesim.VoiceVolume";
+
         /// <summary>Each volume starts at the whole of the master, so a player who never touches them hears what they always heard.</summary>
         public const int DefaultVolume = 100;
+
+        /// <summary>The voices start at 70 percent (AU-16, the owner's ruling): a murmur sits under the line, never over the game.</summary>
+        public const int DefaultVoiceVolume = 70;
+
+        /// <summary>The channels' sliders in Settings, in their order under the master's: music, effects, interface, voice.</summary>
+        public static IReadOnlyList<SoundChannel> Channels { get; } = new[] { SoundChannel.Music, SoundChannel.Effects, SoundChannel.Interface, SoundChannel.Voice };
+
+        /// <summary>A channel's volume before the player has chosen one: the whole for the first three, <see cref="DefaultVoiceVolume"/> for the voices.</summary>
+        public static int DefaultVolumeOf(SoundChannel channel) => channel == SoundChannel.Voice ? DefaultVoiceVolume : DefaultVolume;
+
+        /// <summary>The preference a channel's volume is kept under.</summary>
+        public static string VolumeKeyOf(SoundChannel channel) =>
+            channel == SoundChannel.Music ? MusicVolumeKey : channel == SoundChannel.Effects ? EffectsVolumeKey
+            : channel == SoundChannel.Voice ? VoiceVolumeKey : InterfaceVolumeKey;
 
         /// <summary>A step of the volume controls, as the master's.</summary>
         public const int Step = 10;
@@ -196,10 +219,12 @@ namespace Gamesim.Presentation
         /// <summary>The name of a channel's slider in Settings: "Music volume" (its value reads "70%").</summary>
         public static string MeterCaption(SoundChannel channel) => ChannelName(channel) + " volume";
 
-        /// <summary>The channel's word in the log: "music", "effects", "interface".</summary>
-        public static string LogKey(SoundChannel channel) => channel == SoundChannel.Music ? "music-volume" : channel == SoundChannel.Effects ? "effects-volume" : "interface-volume";
+        /// <summary>The channel's word in the log: "music", "effects", "interface", "voice".</summary>
+        public static string LogKey(SoundChannel channel) => channel == SoundChannel.Music ? "music-volume" : channel == SoundChannel.Effects ? "effects-volume"
+            : channel == SoundChannel.Voice ? "voice-volume" : "interface-volume";
 
-        public static string ChannelName(SoundChannel channel) => channel == SoundChannel.Music ? "Music" : channel == SoundChannel.Effects ? "Effects" : "Interface";
+        public static string ChannelName(SoundChannel channel) => channel == SoundChannel.Music ? "Music" : channel == SoundChannel.Effects ? "Effects"
+            : channel == SoundChannel.Voice ? "Voice" : "Interface";
 
         /// <summary>A volume a step down or up, inside 0 to 100.</summary>
         public static int Stepped(int percent, bool up) => Math.Max(0, Math.Min(100, percent + (up ? Step : -Step)));

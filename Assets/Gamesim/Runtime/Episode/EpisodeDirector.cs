@@ -83,6 +83,8 @@ namespace Gamesim.Episode
         private int volumePercent = 35;
         /// <summary>The music's, the effects' and the interface's shares of the master, as percentages (A11).</summary>
         private int musicVolumePercent = SoundPictures.DefaultVolume, effectsVolumePercent = SoundPictures.DefaultVolume, interfaceVolumePercent = SoundPictures.DefaultVolume;
+        /// <summary>The voices' share of the master (AU-16), from 70 percent.</summary>
+        private int voiceVolumePercent = SoundPictures.DefaultVoiceVolume;
         private bool musicOn = true;
         private HouseNpc promptNpc;
         private string npcPrompt;
@@ -188,6 +190,7 @@ namespace Gamesim.Episode
             musicVolumePercent = SoundPictures.Clamp(preferences.GetInt(SoundPictures.MusicVolumeKey, SoundPictures.DefaultVolume));
             effectsVolumePercent = SoundPictures.Clamp(preferences.GetInt(SoundPictures.EffectsVolumeKey, SoundPictures.DefaultVolume));
             interfaceVolumePercent = SoundPictures.Clamp(preferences.GetInt(SoundPictures.InterfaceVolumeKey, SoundPictures.DefaultVolume));
+            voiceVolumePercent = SoundPictures.Clamp(preferences.GetInt(SoundPictures.VoiceVolumeKey, SoundPictures.DefaultVoiceVolume));
             volumePercent = Mathf.Clamp(preferences.GetInt("Gamesim.Volume", 35), 0, 100);
             musicOn = preferences.GetInt("Gamesim.Music", 1) == 1;
             ceremonyPace = preferences.GetInt("Gamesim.CeremonyPace", 0) == 1 ? CeremonyPace.Quick : CeremonyPace.Suspenseful;

@@ -509,7 +509,8 @@ namespace Gamesim.Episode
 
         /// <summary>A channel's share of the master, as a percentage (A11).</summary>
         public int ChannelVolumePercent(SoundChannel channel) =>
-            channel == SoundChannel.Music ? musicVolumePercent : channel == SoundChannel.Interface ? interfaceVolumePercent : effectsVolumePercent;
+            channel == SoundChannel.Music ? musicVolumePercent : channel == SoundChannel.Interface ? interfaceVolumePercent
+            : channel == SoundChannel.Voice ? voiceVolumePercent : effectsVolumePercent;
 
         /// <summary>Sets a channel's share of the master, 0 to 100, applies it and keeps it.</summary>
         public void SetChannelVolume(SoundChannel channel, int percent)
@@ -543,7 +544,7 @@ namespace Gamesim.Episode
         private void ApplyVolumesLive()
         {
             audioBed?.SetVolume(volumePercent / 100f);
-            audioBed?.SetChannelVolumes(musicVolumePercent / 100f, effectsVolumePercent / 100f, interfaceVolumePercent / 100f);
+            audioBed?.SetChannelVolumes(musicVolumePercent / 100f, effectsVolumePercent / 100f, interfaceVolumePercent / 100f, voiceVolumePercent / 100f);
         }
 
         private void SetChannelShare(SoundChannel channel, int percent)
@@ -551,6 +552,7 @@ namespace Gamesim.Episode
             percent = SoundPictures.Clamp(percent);
             if (channel == SoundChannel.Music) musicVolumePercent = percent;
             else if (channel == SoundChannel.Interface) interfaceVolumePercent = percent;
+            else if (channel == SoundChannel.Voice) voiceVolumePercent = percent;
             else effectsVolumePercent = percent;
         }
 
@@ -575,7 +577,7 @@ namespace Gamesim.Episode
             audioBed?.SetMuted(muted);
             audioBed?.SetVolume(volumePercent / 100f);
             audioBed?.SetReducedAudio(reducedAudio);
-            audioBed?.SetChannelVolumes(musicVolumePercent / 100f, effectsVolumePercent / 100f, interfaceVolumePercent / 100f);
+            audioBed?.SetChannelVolumes(musicVolumePercent / 100f, effectsVolumePercent / 100f, interfaceVolumePercent / 100f, voiceVolumePercent / 100f);
             ApplyMusic();
             cameraRig?.SetReducedMotion(reducedMotion);
             // Every surface that grows with the text, at the size chosen (A8): 1, 1.2 or 1.4.
@@ -608,6 +610,7 @@ namespace Gamesim.Episode
             store.SetInt(ConversationLinePace.Key, ConversationLinePace.Record(autoContinueLines));
             store.SetInt(SoundPictures.MusicVolumeKey, musicVolumePercent); store.SetInt(SoundPictures.EffectsVolumeKey, effectsVolumePercent);
             store.SetInt(SoundPictures.InterfaceVolumeKey, interfaceVolumePercent);
+            store.SetInt(SoundPictures.VoiceVolumeKey, voiceVolumePercent);
             store.Save();
             // And a line in the player log for each value that changed since the last one logged.
             LogSettingChanges();

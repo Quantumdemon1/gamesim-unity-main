@@ -198,11 +198,11 @@ namespace Gamesim.Episode
             UiTheme.AddBorder(rect, radius, UiTheme.Edge(UiTheme.Emphasis.Interactive));
             HudEmphasis.Promote(rect, UiTheme.Emphasis.Interactive);
             var button = Pressable(rect, action);
-            // A petal is a coloured glyph on a dark disc: brighten the disc a little on focus, never
-            // wash the glyph's colour toward white, which is what a 1.35 ramp did.
+            // A petal is a coloured glyph on a dark disc: brighten the disc a little under the pointer,
+            // never wash the glyph's colour toward white, which is what a 1.35 ramp did. Focus is the
+            // accent edge and the ring (Pressable leaves the disc as it is).
             var colours = button.colors;
             colours.highlightedColor = new Color(1.18f, 1.18f, 1.18f);
-            colours.selectedColor = colours.highlightedColor;
             button.colors = colours;
 
             // Glass: a lighter wash over the top half of the disc, as the mockup's discs catch the
@@ -276,6 +276,11 @@ namespace Gamesim.Episode
         /// Makes an existing rectangle a button: the HUD's tint ramp, its press animation and its
         /// hover foley. Shared by the panel's rows and by the dial's petals, which differ only in
         /// what they put inside the rectangle.
+        ///
+        /// <para>The tint is the pointer's. A control with an edge that lights (<see cref="HudEmphasis"/>,
+        /// promoted before this is called) shows the keyboard by its accent edge and ring and keeps its
+        /// own ground under focus, so focus and hover never look alike; one with no edge to light keeps
+        /// the tint as its focus, the only one it has.</para>
         /// </summary>
         private Button Pressable(RectTransform rect, Action action)
         {
@@ -283,7 +288,7 @@ namespace Gamesim.Episode
             var colours = button.colors;
             // A neutral ramp, because these multiply whatever the control already is.
             colours.highlightedColor = new Color(1.35f, 1.35f, 1.35f);
-            colours.selectedColor = colours.highlightedColor;
+            colours.selectedColor = rect.GetComponent<HudEmphasis>() != null ? colours.normalColor : colours.highlightedColor;
             colours.pressedColor = new Color(.85f, .85f, .85f);
             button.colors = colours;
             var press = PressLike(button, action);

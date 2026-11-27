@@ -359,10 +359,14 @@ namespace Gamesim.Tests.PlayMode
             public Func<bool> Opaque;
             public readonly List<bool> RestoredBehindOpaque = new List<bool>();
 
-            public FakeStage(int housemates, bool placeable = true)
+            /// <summary>Whether the house binds once placed. A stage that never binds is never <see cref="Ready"/>.</summary>
+            public readonly bool Bindable;
+
+            public FakeStage(int housemates, bool placeable = true, bool bindable = true)
             {
                 this.housemates = housemates;
                 Placeable = placeable;
+                Bindable = bindable;
             }
 
             /// <summary>How many times <paramref name="call"/> was made, whoever it was for.</summary>
@@ -370,7 +374,7 @@ namespace Gamesim.Tests.PlayMode
 
             public float BodyReadiness => 1f;
             public bool Placed { get; private set; }
-            public bool Ready => true;
+            public bool Ready => Bindable;
             public bool Failed => false;
 
             /// <summary>Home when nothing was ever placed, once put back, or once everybody has been sent home.</summary>
@@ -414,6 +418,14 @@ namespace Gamesim.Tests.PlayMode
             {
                 Calls.Add("HoldForIntroductions");
                 HeldWithACardUp.Add(CardUp != null && CardUp());
+            }
+
+            /// <summary>Let go as the real stage lets go: put back, the door down, and no longer placed.</summary>
+            public void Abandon()
+            {
+                Calls.Add("Abandon");
+                restored = true;
+                Placed = false;
             }
         }
 
@@ -931,6 +943,45 @@ namespace Gamesim.Tests.PlayMode
 
             sequence.Skip();
             yield return null;
+        }
+
+        /// <summary>
+        /// A house placed behind the front door that never binds is let go for good under the
+        /// title: the reveals play on portrait cards, and no beat after that - the walk-in, the
+        /// group card, the introductions - walks anybody home, holds them or puts them back again.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator Opening_AStageThatNeverBindsIsLetGoForGood()
+        {
+            var season = SequenceSeason();
+            var stage = new FakeStage(season.Active.Count(), bindable: false);
+            var plan = SequencePlan(new List<string>(), season);
+            plan.ReducedMotion = false;
+            // Headless runs skip the movement, and with it the stage; this one asks for both.
+            plan.MotionInBatchmode = true;
+            plan.Stage = stage;
+            plan.Introduce = SequenceIntroductions(season, new List<string>());
+            var sequence = Opening();
+            sequence.Play(new string[0], plan);
+
+            // The house is given three real seconds under the title to bind, hence the longer bounds:
+            // a batchmode frame can be a fraction of a millisecond.
+            yield return SequenceStep(sequence, () => sequence.CurrentGuestId == season.playerId, 15f, 1000000);
+            Assert.That(sequence.CurrentGuestId, Is.EqualTo(season.playerId));
+            CollectionAssert.AreEqual(new[] { "TryPlace", "Abandon" }, stage.Calls, "The house was placed, then let go when it never bound.");
+            Assert.That(stage.Placed, Is.False, "A stage let go is no longer placed.");
+            var ground = SequenceNode(sequence, "Stage");
+            Assert.That(ground, Is.Not.Null);
+            Assert.That(ground.Cast<Transform>().Any(child => child.name == "Portrait" && child.gameObject.activeInHierarchy), Is.True,
+                "The houseguest is revealed as a portrait on a card.");
+
+            yield return SequenceStep(sequence, () => sequence.IsMeeting, 20f);
+            Assert.That(sequence.IsMeeting, Is.True, "The introductions play after the walk-in.");
+            sequence.SkipIntroductions();
+            yield return SequenceWait(() => !sequence.IsPlaying, 2f, 2000);
+            Assert.That(sequence.IsPlaying, Is.False, "The opening finishes.");
+            CollectionAssert.AreEqual(new[] { "TryPlace", "Abandon" }, stage.Calls,
+                "Nothing after the fallback walks, holds or puts back anybody: " + string.Join(", ", stage.Calls));
         }
 
         /// <summary>

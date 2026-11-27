@@ -47,6 +47,9 @@ namespace Gamesim.Tests.PlayMode
         private const float HouseEntryArrivedSeconds = 2.6f;
 
 #if GAMESIM_UMA
+        /// <summary>The walk-in lead's two possible places behind the yard opening (EpisodeDirector.OpeningStage's Survey).</summary>
+        private static readonly Vector3[] WalkInMarksForTests = { new Vector3(.65f, 0f, 13.1f), new Vector3(.4f, 0f, 12.6f) };
+
         // UMA only: these frames are judged on the faces in them, and only UMA builds a face (2026-09-27).
         /// <summary>
         /// The staged opening, beat by beat, as it plays in the house: the front door built in the
@@ -228,6 +231,12 @@ namespace Gamesim.Tests.PlayMode
                 AssertRegionHasContent(frame, CaptureRectOf(entryCard), "The house-entry card");
                 AssertGroundIsDrawn(frame, entryHint.Find(OpeningSequence.GroundName), entryPill, "The Continue hint's ground on the house entry");
             });
+            // Under the card the player walks from where the house gathered to the walk-in mark, behind
+            // the yard opening; standing there when the card goes, they are who the push-in follows.
+            yield return WaitFor(() => player.Agent != null && !player.Agent.pathPending && player.Agent.velocity.sqrMagnitude < .01f
+                && WalkInMarksForTests.Any(spot => Flat(player.transform.position, spot) < .5f), 15f,
+                "Under the house-entry card the player walks to the walk-in mark and stops there.");
+            yield return RealSeconds(.3f);
             opening.Advance();
 
             // 07 to 09 - the walk-in's crane, on its own schedule: the push-in to the doorway, the rise
@@ -237,6 +246,25 @@ namespace Gamesim.Tests.PlayMode
             float walkInAt = Time.realtimeSinceStartup;
             var keys = EpisodeDirector.WalkInKeys;
             OpeningSequence.WalkInSchedule(keys, out float riseAt, out float craneAt, out float settledAt);
+            // The push-in, early, midway and late before the first photograph: it follows the player, and
+            // nothing in the house - a prop, a panel or a wall - stands between its eye and their head
+            // (bodies, the door set's glow and the shell drawn as one mesh left out, as WalkInEye reads the house).
+            var leadBody = player.GetComponentInChildren<CharacterPresentation>();
+            Assert.That(leadBody, Is.Not.Null, "The player has a body to follow.");
+            var houseSight = WalkInEye.SightBoxes(player.transform.position + Vector3.up * 1.5f, WalkInEye.SightRadius);
+            foreach (float sampleAt in new[] { .05f, .3f, .55f })
+            {
+                yield return WaitFor(() => opening.WalkInSeconds >= sampleAt || opening.CurrentBeat != OpeningBeat.WalkIn, 3f, "The walk-in's clock passes " + sampleAt + " s.");
+                string when = opening.WalkInSeconds.ToString("0.00") + " s into the walk-in";
+                Assert.That(opening.CurrentBeat, Is.EqualTo(OpeningBeat.WalkIn), "The walk-in is still playing " + when + ".");
+                Assert.That(opening.WalkInSeconds, Is.LessThan(riseAt), "The push-in has not yet given way to the rise " + when + ".");
+                Assert.That(cameraRig.FramesMovingSubject, Is.True, "The push-in follows the player " + when + ".");
+                var eye = cameraRig.ViewCamera.transform.position;
+                var head = leadBody.HeadBone != null ? leadBody.HeadBone.position : player.transform.position + Vector3.up * 1.5f;
+                var blocking = houseSight.Where(box => WalkInEye.Crosses(box, eye, head)).Select(box => box.center.ToString("F2") + " size " + box.size.ToString("F2")).ToList();
+                Assert.That(blocking, Is.Empty, "Nothing in the house stands between the eye at " + eye.ToString("F2") + " and the player's head at "
+                    + head.ToString("F2") + " " + when + ".");
+            }
             var moments = new[]
             {
                 (Name: "opening-staged-07-walkin-doorway", At: riseAt * 0.6f, Key: OpeningSequence.WalkInDoorway),

@@ -26,6 +26,8 @@ namespace Gamesim.Simulation
             TalkTableStarJanellePierzina.Rows, TalkTableStarCodyCalafiore.Rows, TalkTableStarDanielleReyes.Rows,
             TalkTableStarVanessaRousso.Rows, TalkTableStarTylerCrispen.Rows, TalkTableStarChelsieBaham.Rows,
             TalkTableStarRachelReilly.Rows, TalkTableStarXavierPrather.Rows, TalkTableStarJunSong.Rows,
+            // Slice S5 (talk rules 5): the class pools' week-event talks, every row written for level 5 (TalkRow.FromRules).
+            TalkTableEventsSpark.Rows, TalkTableEventsSteady.Rows, TalkTableEventsGuarded.Rows,
         };
 
         /// <summary>The All-Star templates' own romance tables by template id (slice S3): every All-Stars template has one.</summary>

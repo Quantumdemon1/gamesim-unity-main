@@ -65,9 +65,10 @@ namespace Gamesim.Simulation
                 : s.nominees.FirstOrDefault(id => s.Find(id) is ContestantState c && !c.isPlayer && c.status != ContestantStatus.Active);
 
         /// <summary>
-        /// ally-evicted: this week's evictee shared a pact with the housemate that still stands or that only departures ended (its
-        /// members still in the house are fewer than two), and the housemate's view of them had not soured past
-        /// <see cref="NpcAlliances.SourLine"/>. A pact that soured, or that took the housemate out, is not a loss to them.
+        /// ally-evicted: this week's evictee shared a pact with the housemate that still stands or that has fewer than two members
+        /// still in the house (the week's departures end such a pact), and the housemate's view of them has not soured past
+        /// <see cref="NpcAlliances.SourLine"/>. A pact records no reason it ended, so one that broke earlier over another member's
+        /// fallout counts too once fewer than two of it are left in the house, while that view holds.
         /// </summary>
         private static bool LostAnAlly(EpisodeState s, string npcId)
         {

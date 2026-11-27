@@ -148,6 +148,8 @@ namespace Gamesim.Episode
         /// <summary>Each frame: the stage kept moving, and forgotten once it has let the house go.</summary>
         private void TickCeremonyStage()
         {
+            // First, with or without a stage: the table's fill eases back after the stage has gone.
+            TickTableFill();
             if (ceremonyStage == null) return;
             ceremonyStage.Tick();
             if (!ceremonyStage.Active) ceremonyStage = null;
@@ -191,6 +193,9 @@ namespace Gamesim.Episode
         /// </summary>
         private void EndCeremonyStage()
         {
+            // At once, before anything can return early: a season replaced, a director disabled, a
+            // new commit or the arena put the table's fill back to the room's own colour now.
+            RestoreTableFill();
             if (ceremonyStage == null) return;
             // The exit it was keeping its seats for goes with it, at once - no hold on the door and
             // no dip: whatever ended the stage has the frame now. Not from a director being
@@ -204,6 +209,67 @@ namespace Gamesim.Episode
 
         /// <summary>Skips the summons: the card plays now, whoever is still walking sits down as they arrive. Public for tests.</summary>
         public void SkipCeremonySummons() => ceremonyStage?.SkipSummons();
+
+        // ------------------------------------------------------------ the table's own light
+
+        /// <summary>The scene's light a staged nomination turns: the nomination room's fill, by the name the house's lighting pass gives it.</summary>
+        public const string NominationFillName = "Nomination fill";
+
+        /// <summary>
+        /// The nomination room's fill while a nomination is staged (LIGHTING_AUDIT P1). The room's own
+        /// cold red lights every face at the table, so for the ceremony it turns to a warm, less
+        /// saturated colour that keeps skin reading as skin in every shot. Only the colour moves:
+        /// the intensity stays the room's own, and the table's materials are untouched.
+        /// </summary>
+        public static readonly Color NominationFillDuringCeremony = new Color(1f, 0.78f, 0.70f);
+
+        /// <summary>How long the fill takes to turn, either way: about the camera's own 1.2 s release, so the room changes with the move.</summary>
+        public const float NominationFillSeconds = 1f;
+
+        private Light tableFill;
+        private Color tableFillAuthored;
+        private float tableFillWarmth;
+
+        /// <summary>
+        /// Each frame: from the nomination's summons until the house is let go the table's fill eases
+        /// toward <see cref="NominationFillDuringCeremony"/>, and then back, ending on the colour the
+        /// scene gave it, exactly. The colour is read once, when the fill is taken, and every
+        /// return writes that value back, so a turn that was cut short never becomes the next
+        /// ceremony's starting point. Reduced motion switches it, though no stage plays then.
+        /// </summary>
+        private void TickTableFill()
+        {
+            bool wanted = ceremonyStage != null && ceremonyStage.Active && ceremonyStage.Kind == CeremonySting.NominationKind;
+            if (wanted && tableFill == null)
+            {
+                tableFill = FindTableFill();
+                if (tableFill == null) return;
+                tableFillAuthored = tableFill.color;
+                tableFillWarmth = 0f;
+            }
+            // Explicit: a fill destroyed with its scene compares equal to null.
+            if (tableFill == null) return;
+            tableFillWarmth = reducedMotion ? (wanted ? 1f : 0f)
+                : Mathf.MoveTowards(tableFillWarmth, wanted ? 1f : 0f, Time.unscaledDeltaTime / NominationFillSeconds);
+            if (!wanted && tableFillWarmth <= 0f) { RestoreTableFill(); return; }
+            tableFill.color = Color.Lerp(tableFillAuthored, NominationFillDuringCeremony, Mathf.SmoothStep(0f, 1f, tableFillWarmth));
+        }
+
+        /// <summary>The table's fill back to the scene's own colour now, and let go. Safe with nothing turned.</summary>
+        private void RestoreTableFill()
+        {
+            if (tableFill != null) tableFill.color = tableFillAuthored;
+            tableFill = null;
+            tableFillWarmth = 0f;
+        }
+
+        private Light FindTableFill()
+        {
+            foreach (var root in gameObject.scene.GetRootGameObjects())
+                foreach (var light in root.GetComponentsInChildren<Light>())
+                    if (light.name == NominationFillName) return light;
+            return null;
+        }
 
         /// <summary>Where a staged ceremony is.</summary>
         public enum CeremonyStageStep
@@ -225,10 +291,10 @@ namespace Gamesim.Episode
         /// <summary>How long the evicted's goodbye holds before they walk, unless a press moves it on.</summary>
         public const float GoodbyeSeconds = 4f;
 
-        /// <summary>The warm spot over the hot seats from the vote's card to the end of the goodbye: a child of the director, found by this name.</summary>
+        /// <summary>The warm spot over the hot seats from the vote's card, then on the evicted's face for the goodbye: a child of the director, found by this name.</summary>
         public const string EvictionKeyLightName = "Eviction key light";
 
-        /// <summary>Whether the staged eviction's key light is on over the hot seats. A read for tests.</summary>
+        /// <summary>Whether the staged eviction's key light is on: over the hot seats, then on the evicted's face. A read for tests.</summary>
         public bool EvictionKeyLightShowing => IsCeremonyStaged && ceremonyStage.KeyLightShowing;
 
         /// <summary>
@@ -339,6 +405,13 @@ namespace Gamesim.Episode
             private float farewellAtGoodbyeBy;
             /// <summary>The warm spot over the hot seats, from the vote's card to the end of the goodbye.</summary>
             private Light keyLight;
+            /// <summary>When the key light began to leave the red chairs for the evicted's face (NaN before the goodbye), and how it stood then.</summary>
+            private float keyToFaceAt = float.NaN;
+            private Vector3 keyFromPosition;
+            private Quaternion keyFromRotation;
+            private float keyFromIntensity, keyFromRange;
+            /// <summary>Whether the goodbye's first shot cut straight to another room, so the key goes with that cut rather than swinging after it.</summary>
+            private bool keyToFaceSnaps;
             private Light reactionFill;
             /// <summary>
             /// Whether the camera is still the stage's to hand back: from the summons until its
@@ -744,6 +817,7 @@ namespace Gamesim.Episode
                         // them, as a press on the walk is. The press that closed the card is not one.
                         if (now >= pressGuardUntil && CeremonyTakeover.SkipPressed()) { director.SkipWalkOut(); break; }
                         TickTheGoodbyeFarewell(now);
+                        KeyTheGoodbyeFace(now);
                         if (now >= goodbyeUntil) Release();
                         break;
                     case CeremonyStageStep.Release:
@@ -828,7 +902,8 @@ namespace Gamesim.Episode
             /// <summary>
             /// A warm key light over the red chairs for the vote and the goodbye (MOCKUP-PASS-PLAN
             /// M19): a soft spot from above the screen's side onto the hot seats' midpoint, on the
-            /// introduction's settings and warmer, from the card's start until the goodbye is over.
+            /// introduction's settings and warmer, from the card's start until the goodbye is over;
+            /// the goodbye takes it onto the evicted's face (KeyTheGoodbyeFace).
             /// Only on the gallery, where there is a midpoint to light.
             /// </summary>
             private void LightTheHotSeats()
@@ -1409,13 +1484,26 @@ namespace Gamesim.Episode
                         string room = director.WalkerRoomOf(body);
                         // The off-room cut must land before the next cue can replace it, even
                         // when this frame is shorter than the normal ceremony cut duration.
-                        Move(shot, rooms: RoomSet.Of(room), immediate: entryCut && !farewellAtGoodbye && room != Room);
+                        bool immediate = entryCut && !farewellAtGoodbye && room != Room;
+                        // The key goes with a cut that lands at once, rather than swinging across the house after it.
+                        if (entryCut) keyToFaceSnaps = immediate;
+                        Move(shot, rooms: RoomSet.Of(room), immediate: immediate);
+                    }
+                    // The key light leaves the red chairs for their face from where it stands now.
+                    if (keyLight != null)
+                    {
+                        keyToFaceAt = now;
+                        keyFromPosition = keyLight.transform.position;
+                        keyFromRotation = keyLight.transform.rotation;
+                        keyFromIntensity = keyLight.intensity;
+                        keyFromRange = keyLight.range;
                     }
                     FrameStanding(close, entryCut: true);
                     var closer = close;
                     closer.Distance = 2.4f;
                     closer.Seconds = 2f;
                     if (!farewellAtGoodbye || farewellPrimitive) Schedule(0.05f, () => FrameStanding(closer));
+                    KeyTheGoodbyeFace(now);
                 }
                 // Their line, worded for where they are: standing before the house, not at the door
                 // (UI-UX-PASS-PLAN W0). The walk out does not say it again.
@@ -1426,6 +1514,50 @@ namespace Gamesim.Episode
             }
 
             private const float GoodbyeFarewellWait = 1.5f;
+
+            /// <summary>How long the key takes from the red chairs to the evicted's face: short enough to read as the light finding them.</summary>
+            private const float KeyToFaceSeconds = 0.3f;
+            /// <summary>How far out from the head the key stands, flat, toward the lens: near enough to light the face and little of the room behind it.</summary>
+            private const float KeyFaceReach = 2.1f;
+            /// <summary>How far above the head the key stands: a little above the eyes, so the brow shades down, never up.</summary>
+            private const float KeyFaceRise = 0.45f;
+            /// <summary>How far the key turns from the lens, to the lens's right as the opening's introduction key does: one cheek lit, the other falling off.</summary>
+            private const float KeyFaceSide = -20f;
+            /// <summary>The key's strength on the face: 4.6 from about 2.15 m gives the face what 6 gave the chairs from about 2.55 m.</summary>
+            private const float KeyFaceIntensity = 4.6f;
+            /// <summary>How far the key reaches on the face: about as far again past the head, so the far wall keeps the room's own light.</summary>
+            private const float KeyFaceRange = 4.8f;
+
+            /// <summary>
+            /// The key light, from the goodbye until the release, on the evicted's face rather than the
+            /// chair they left: it swings over about 0.3 s from the red chairs to the lens's side of
+            /// their head (at once when the goodbye's first cut went straight to another room) and then
+            /// keeps to the lens's side through the close shot, the push in and the farewell pair, aimed
+            /// at their head the whole time. The lens is where the camera is going, so the key turns
+            /// with a cut rather than a frame after it. Same warm color; presentation only.
+            /// </summary>
+            private void KeyTheGoodbyeFace(float now)
+            {
+                if (keyLight == null || float.IsNaN(keyToFaceAt)) return;
+                var body = director.BodyFor(leavingId);
+                var rig = director.cameraRig;
+                if (body == null || rig == null) return;
+                var visual = Visual(leavingId);
+                var bone = visual != null ? visual.HeadBone : null;
+                var head = bone != null ? bone.position : body.position + Vector3.up * StandingFace;
+                var lens = rig.DesiredFocus + Quaternion.Euler(rig.Pitch, rig.Yaw, 0f) * Vector3.back * rig.DesiredDistance;
+                var toLens = lens - head;
+                toLens.y = 0f;
+                toLens = toLens.sqrMagnitude > 0.0001f ? toLens.normalized : body.forward;
+                var place = head + Quaternion.AngleAxis(KeyFaceSide, Vector3.up) * toLens * KeyFaceReach + Vector3.up * KeyFaceRise;
+                float t = keyToFaceSnaps || director.reducedMotion ? 1f : Mathf.SmoothStep(0f, 1f, Mathf.Clamp01((now - keyToFaceAt) / KeyToFaceSeconds));
+                var at = Vector3.Lerp(keyFromPosition, place, t);
+                var look = head - at;
+                var aim = look.sqrMagnitude > 0.0001f ? Quaternion.LookRotation(look) : keyLight.transform.rotation;
+                keyLight.transform.SetPositionAndRotation(at, t >= 1f ? aim : Quaternion.Slerp(keyFromRotation, aim, t));
+                keyLight.intensity = Mathf.Lerp(keyFromIntensity, KeyFaceIntensity, t);
+                keyLight.range = Mathf.Lerp(keyFromRange, KeyFaceRange, t);
+            }
 
             /// <summary>The goodbye over, from the director's side: a press that went straight to the shut door.</summary>
             public void EndTheGoodbye()

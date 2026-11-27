@@ -589,6 +589,10 @@ namespace Gamesim.Tests.EditMode
             if (!s.vetoPlayers.Contains(s.vetoHolderId)) s.vetoPlayers[s.vetoPlayers.Count - 1] = s.vetoHolderId;
             s.vetoResolved = true;
             EpisodeEngine.EnableStory(s);
+            // Held at story rules 11, Roles, by name (plan 32 A-ON): these cases are about an ally's straight answer and the
+            // pact's meeting (C6), and EnableStory now gives 12, where every vote answer comes in a voice and a manner
+            // (VoteAnswerTests has 12's).
+            s.story.rulesVersion = StoryRules.Roles;
             if (rules) EpisodeEngine.EnableCommitments(s);
             Valid(s);
             return s;

@@ -73,13 +73,16 @@ namespace Gamesim.Tests.EditMode
         /// a memory board a fresh season deals can be the trivia instead. A row names a competition's category, which the trivia
         /// shares with the board it replaces, and a season commits the same results under rules 5 and 6 (CompetitionRules6Tests),
         /// so only this number moves and no cell should.
+        /// story.rulesVersion=12 came with story rules 12's enrolment (plan 32 A-ON): every fresh season plays the house talks
+        /// back. All eight cases, run by name at the switch's head (00e83cd9), printed 29 of the 48 cells moved, recorded below
+        /// (see <see cref="Recorded"/>); the other 19 printed their digests byte for byte.
         /// </summary>
         internal const string Rules = "competitionRulesVersion=6,readRulesStartWeek=1,leverRulesStartWeek=1,weekRulesStartWeek=1,economyRulesVersion=1,"
             + "agencyRulesStartWeek=1,finaleRulesStartWeek=1,commitmentRulesStartWeek=1,unifiedCommitmentRulesVersion=2,unifiedHearingRulesVersion=1,"
             + "blocRulesStartWeek=1,socialBudgetRulesStartWeek=1,dealRulesStartWeek=1,eventRulesStartWeek=1,storyRulesStartWeek=1,haveNotRulesStartWeek=1,"
             + "strategyRulesStartWeek=1,allianceLeakRulesStartWeek=1,pactPlanRulesStartWeek=1,allWeekRulesStartWeek=1,dialogueRulesVersion=0,"
             + "alumniRulesVersion=0,tuningRulesVersion=1,"
-            + "npcSocial.rulesStartWeek=1,story.rulesStartWeek=1,story.rulesVersion=11,story.talkRules=3,story.mindRules=0";
+            + "npcSocial.rulesStartWeek=1,story.rulesStartWeek=1,story.rulesVersion=12,story.talkRules=3,story.mindRules=0";
 
         /// <summary>
         /// Each cell's digest: "policy/roster/size/npcN hash". Recorded with every shipped rule on: the war rooms played,
@@ -101,57 +104,62 @@ namespace Gamesim.Tests.EditMode
         /// pitch boards' costs, keep-the-block, the pawn talk and quiet tears - and the seasons go on from what they changed.
         /// None of the 48 moved with competition rules 5, the Ring Tower (recorded again on 2026-11-17): a season commits the
         /// same results under rules 4 and 5, and a row names a competition's category, which the tower shares with the game
-        /// it replaces.
+        /// it replaces. 29 of the 48 moved with story rules 12's enrolment (plan 32 A-ON) and were re-recorded at it: every
+        /// fresh season starts on Manners, where a houseguest answers a vote question in a voice and a manner with a candour of
+        /// its own and the reveal teaches tells, so the players who ask and read (random, social, reader, schemer, novice,
+        /// exploit and the oracles) play on from different answers; the passive, loyal, floating and competing players, who
+        /// never ask, kept every digest, as did three more cells (oracle-skilled 12 npc300, oracle-skilled 8 npc0 and schemer 8
+        /// npc300). No lab player listens in, so overhearing moves none of them.
         /// </summary>
         internal static readonly string[] Recorded =
         {
             "passive/Regular/8/npc0 793c75032876d011",
-            "random/Regular/8/npc0 196c3385ac1ed685",
-            "social/Regular/8/npc0 5b54e5cde0d875ae",
-            "reader/Regular/8/npc0 d5523fbc06d34ad1",
-            "schemer/Regular/8/npc0 e704160495084e89",
+            "random/Regular/8/npc0 36d770cd4a0727f0",
+            "social/Regular/8/npc0 79e9c9e98a3de1a4",
+            "reader/Regular/8/npc0 799d9ee467cab17c",
+            "schemer/Regular/8/npc0 a16d203557b638a9",
             "loyalist/Regular/8/npc0 0b21feda66ef8b6c",
             "floater/Regular/8/npc0 7b2e7372bd87d9e3",
             "beast/Regular/8/npc0 e1c554852da5324a",
-            "novice/Regular/8/npc0 47b204747a6088e6",
-            "exploit/Regular/8/npc0 4b4fb65bdbbbac0d",
-            "oracle-reader/Regular/8/npc0 f55ad73bce2a0317",
+            "novice/Regular/8/npc0 e924e50665376a9b",
+            "exploit/Regular/8/npc0 bf0d76c519098d18",
+            "oracle-reader/Regular/8/npc0 d1642dbe615d5b92",
             "oracle-skilled/Regular/8/npc0 c45a31d5b8b014d9",
             "passive/Regular/12/npc0 c2657b1559c01f73",
-            "random/Regular/12/npc0 6a37d4b1968b62d2",
-            "social/Regular/12/npc0 8899a21be03ce076",
-            "reader/Regular/12/npc0 b40129f82d7e4e64",
-            "schemer/Regular/12/npc0 45d6b8c3089765c3",
+            "random/Regular/12/npc0 3fed938bcd47ab65",
+            "social/Regular/12/npc0 bc719ff654dd2ac2",
+            "reader/Regular/12/npc0 fd1df52cbb287dbc",
+            "schemer/Regular/12/npc0 b0d78b72fd398071",
             "loyalist/Regular/12/npc0 1a0bd847f9ec563d",
             "floater/Regular/12/npc0 ef5049109a043fb0",
             "beast/Regular/12/npc0 c6e7db942219b6fa",
-            "novice/Regular/12/npc0 cdd4bcc6fefad6c5",
-            "exploit/Regular/12/npc0 bf864c335b708bd0",
-            "oracle-reader/Regular/12/npc0 e0567f9572f2f91f",
-            "oracle-skilled/Regular/12/npc0 ff88a7f5709be2c9",
+            "novice/Regular/12/npc0 680fea9c019dcbdd",
+            "exploit/Regular/12/npc0 34ca03b708ad5503",
+            "oracle-reader/Regular/12/npc0 dad73b9125dab7d2",
+            "oracle-skilled/Regular/12/npc0 903401aba25cc138",
             "passive/Regular/8/npc300 e19cca6ff3f8a36a",
-            "random/Regular/8/npc300 2f32a8f76503bb3b",
-            "social/Regular/8/npc300 9e11c0058279a2b7",
-            "reader/Regular/8/npc300 a9db58d8b542eb4c",
+            "random/Regular/8/npc300 473f7f14f2d78f09",
+            "social/Regular/8/npc300 43df9e78b6a98c3b",
+            "reader/Regular/8/npc300 fd4d90908e000dd9",
             "schemer/Regular/8/npc300 ed54dcc576ae8d67",
             "loyalist/Regular/8/npc300 7d380951159e24c4",
             "floater/Regular/8/npc300 51d80b025a2f5420",
             "beast/Regular/8/npc300 5e224d8686bf4e69",
-            "novice/Regular/8/npc300 f84b8a98178c95cb",
-            "exploit/Regular/8/npc300 e1eabf3bcf6a2335",
-            "oracle-reader/Regular/8/npc300 0268ec9466772d7c",
-            "oracle-skilled/Regular/8/npc300 cf6202418bcf33ca",
+            "novice/Regular/8/npc300 726ff7ab0aad8dac",
+            "exploit/Regular/8/npc300 83900f949c0b5d2f",
+            "oracle-reader/Regular/8/npc300 05b7a06bb4c68982",
+            "oracle-skilled/Regular/8/npc300 eb131018d1c99164",
             "passive/Regular/12/npc300 6c7700c16a1735be",
-            "random/Regular/12/npc300 9fc0c073deab758e",
-            "social/Regular/12/npc300 b4d0f47e7620464e",
-            "reader/Regular/12/npc300 5c245a18b2aeae65",
-            "schemer/Regular/12/npc300 9cddd1e338a962ea",
+            "random/Regular/12/npc300 7373950e527452b6",
+            "social/Regular/12/npc300 64e517fac9765aa5",
+            "reader/Regular/12/npc300 18a2c74aea96c4a7",
+            "schemer/Regular/12/npc300 5936687bdfc19aab",
             "loyalist/Regular/12/npc300 04d7434313779e51",
             "floater/Regular/12/npc300 67075c36ac942981",
             "beast/Regular/12/npc300 bd8fb61a7680ac4a",
-            "novice/Regular/12/npc300 3b0a9cd2d1f8b548",
-            "exploit/Regular/12/npc300 c3fd3a5a565c4dfa",
-            "oracle-reader/Regular/12/npc300 96f800b516274b20",
+            "novice/Regular/12/npc300 1b92bca6d1a280a6",
+            "exploit/Regular/12/npc300 73622d6b682b2c3f",
+            "oracle-reader/Regular/12/npc300 4e9cefe074ced072",
             "oracle-skilled/Regular/12/npc300 ae886154bfd997e3",
         };
 

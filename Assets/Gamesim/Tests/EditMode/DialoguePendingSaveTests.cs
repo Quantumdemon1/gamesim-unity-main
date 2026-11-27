@@ -59,8 +59,8 @@ namespace Gamesim.Tests.EditMode
                         campaign = s.Clone(); campaignImage = Json(campaign); voter = eligible;
                         Assert.That(campaign.unifiedCommitmentRulesVersion, Is.EqualTo(2));
                         Assert.That(campaign.allWeekRulesStartWeek, Is.EqualTo(1));
-                        // The shipped story rules: 11, Roles, since its enrolment (ROLE-MOMENTS-PLAN R7; it was 10, Blame, and 9, threads, before).
-                        Assert.That(campaign.story.rulesVersion, Is.EqualTo(11));
+                        // The shipped story rules: 12, Manners, since its enrolment (plan 32 A-ON; it was 11, Roles, from R7, 10, Blame, and 9, threads, before).
+                        Assert.That(campaign.story.rulesVersion, Is.EqualTo(12));
                         TestContext.Out.WriteLine("Pending-save public fixture: seed " + seed + ", revision " + s.revision + ".");
                         return;
                     }

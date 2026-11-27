@@ -22,7 +22,9 @@ namespace Gamesim.Simulation
         /// <summary>
         /// The answer's records (§G1, §G4, §F): <c>said:{week}:{voter}:{stance}:{manner}</c>, <c>tell:{voter}:{manner}</c> and
         /// <c>h2h:{week}:{kind}:{runnerUpId}</c> cooldown keys. A season below story rules 12 holds none; at 12 each names a
-        /// houseguest of the season, a known stance and manner (a tell's manner is a tell), and a competition's kind.
+        /// houseguest of the season, a known stance and manner (a tell's manner is a tell), and a competition's kind. The
+        /// <c>line:{week}:{voter}:{manner}:{index}</c> record of the line an answer took names a week of the season, a
+        /// houseguest of it, a known manner and one of the slot's lines.
         /// </summary>
         private static bool TryValidateHouseTalkManners(EpisodeState s, out string error)
         {
@@ -30,7 +32,8 @@ namespace Gamesim.Simulation
             var keys = s.story?.cooldowns;
             if (keys == null) return true;
             bool At(string key, string prefix) => key != null && key.StartsWith(prefix, StringComparison.Ordinal);
-            var records = keys.Where(c => At(c?.key, EpisodeEngine.SaidPrefix) || At(c?.key, EpisodeEngine.TellPrefix) || At(c?.key, Regard.HeadToHeadPrefix)).ToList();
+            var records = keys.Where(c => At(c?.key, EpisodeEngine.SaidPrefix) || At(c?.key, EpisodeEngine.TellPrefix) || At(c?.key, Regard.HeadToHeadPrefix)
+                                          || At(c?.key, EpisodeEngine.LinePrefix)).ToList();
             if (records.Count == 0) return true;
             if (!EpisodeEngine.StoryAt(s, StoryRules.Manners))
                 return Fail(out error, "A season below the house talk's manners has none of its records.");
@@ -45,6 +48,11 @@ namespace Gamesim.Simulation
                          && (parts[3] == Candour.Neutral) == (parts[4] == Manner.NonAnswer || parts[4] == Manner.Deflect);
                 else if (At(row.key, EpisodeEngine.TellPrefix))
                     ok = parts.Length == 3 && Seated(parts[1]) && Manner.IsTell(parts[2]);
+                else if (At(row.key, EpisodeEngine.LinePrefix))
+                {
+                    var line = HouseAnswers.ParseLine(row.key);
+                    ok = line != null && line.week >= 1 && line.week <= s.week && Seated(line.voterId);
+                }
                 else
                     ok = parts.Length == 4 && int.TryParse(parts[1], out int won) && won >= 1 && won <= s.week && (parts[2] == "hoh" || parts[2] == "veto")
                          && Seated(parts[3]) && parts[3] != s.playerId;

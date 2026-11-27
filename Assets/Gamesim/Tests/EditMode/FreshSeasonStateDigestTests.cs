@@ -40,6 +40,11 @@ namespace Gamesim.Tests.EditMode
     /// <para><b>From story rules 11's enrolment</b> (ROLE-MOMENTS-PLAN R7) every fresh season starts on Roles
     /// (<see cref="StoryRules.Roles"/>), the same plain int one higher: the role moments draw, mint and log nothing before
     /// the first week is played, so the same hold at threads takes the season back to the same record.</para>
+    ///
+    /// <para><b>From story rules 12's enrolment</b> (plan 32 A-ON) every fresh season starts on Manners
+    /// (<see cref="StoryRules.Manners"/>), one higher again: the house talk's answers, overhearing and their records draw,
+    /// mint and log nothing before the first week is played, so the same hold at threads takes the season back to the same
+    /// record, and no digest is re-recorded.</para>
     /// </summary>
     public sealed class FreshSeasonStateDigestTests
     {
@@ -106,10 +111,10 @@ namespace Gamesim.Tests.EditMode
             // B9: a fresh season's tuning is the shipped value, and nothing else of B9's is in its opening state.
             Assert.That(s.tuningRulesVersion, Is.EqualTo(applyFresh ? TuningRules.Shipped : TuningRules.Off), "B9: new seasons start on tuning 1.");
             s.tuningRulesVersion = TuningRules.Off;
-            // Story rules 11 (R7; 10 before it): a fresh season starts on Roles, and nothing else of either enrolment is in its opening state.
+            // Story rules 12 (A-ON; 11 and 10 before it): a fresh season starts on Manners, and nothing else of any enrolment is in its opening state.
             if (applyFresh)
             {
-                Assert.That(s.story.rulesVersion, Is.EqualTo(StoryRules.Roles), "Story rules 11: new seasons start on Roles.");
+                Assert.That(s.story.rulesVersion, Is.EqualTo(StoryRules.Manners), "Story rules 12: new seasons start on Manners.");
                 s.story.rulesVersion = StoryRules.Threads;
             }
             // Competition rules 5 (the ring tower, competition slice 4): a fresh season starts on rules 5, a plain int that draws,

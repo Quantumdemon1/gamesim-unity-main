@@ -168,11 +168,14 @@ namespace Gamesim.Tests.EditMode
             int notices = 0;
             for (int index = 0; index < 3; index++)
             {
-                var at11 = new BalanceLab.Cell { policy = BalancePolicies.Passive, size = 8, npcTicks = 300 };
-                var eleven = Play(at11, index, Walk.Attentive);
+                // Since A-ON the unnamed cell plays 12, every new season's rules, and 11 is the named cell (a cell names its
+                // level only when it is not Current, BalanceLab.CheckedStoryRules).
+                var shipped = new BalanceLab.Cell { policy = BalancePolicies.Passive, size = 8, npcTicks = 300 };
+                Assert.That(BalanceLab.Fresh(shipped, 1u).story.rulesVersion, Is.EqualTo(StoryRules.Manners), "The unnamed cell plays 12.");
+                var eleven = Play(shipped.AtStoryRules(StoryRules.Roles), index, Walk.Attentive);
                 Assert.That(eleven.error, Is.Null);
                 Assert.That(eleven.notices + eleven.listens, Is.Zero, "Rules 11 has no overhearing.");
-                var twelve = Play(at11.AtStoryRules(StoryRules.Manners), index, Walk.Attentive);
+                var twelve = Play(shipped, index, Walk.Attentive);
                 Assert.That(twelve.error, Is.Null);
                 Assert.That(twelve.finished, Is.True);
                 notices += twelve.notices;
@@ -198,11 +201,13 @@ namespace Gamesim.Tests.EditMode
                 foreach (int size in new[] { 8, 12 })
                     foreach (string policy in policies)
                     {
+                        // Since A-ON the unnamed cell plays 12 and 11 is the named cell, so the arms pair the seasons they paired
+                        // before the enrolment.
                         var cell = new BalanceLab.Cell { policy = policy, size = size, npcTicks = ticks };
                         var arms = new (string name, BalanceLab.Cell cell, Walk walk)[]
                         {
-                            ("11 none", cell, Walk.None), ("12 none", cell.AtStoryRules(StoryRules.Manners), Walk.None),
-                            ("12 casual", cell.AtStoryRules(StoryRules.Manners), Walk.Casual), ("12 attentive", cell.AtStoryRules(StoryRules.Manners), Walk.Attentive),
+                            ("11 none", cell.AtStoryRules(StoryRules.Roles), Walk.None), ("12 none", cell, Walk.None),
+                            ("12 casual", cell, Walk.Casual), ("12 attentive", cell, Walk.Attentive),
                         };
                         List<Run> control = null;
                         foreach (var arm in arms)

@@ -28,9 +28,11 @@ namespace Gamesim.Tests.EditMode
             Assert.That(StoryRules.Blame, Is.EqualTo(StoryRules.Roles - 1), "10 is the pariah fix, Blame, defined below Roles.");
             Assert.That(StoryRules.Latest, Is.GreaterThanOrEqualTo(StoryRules.Roles), "The bound is the last milestone this build defines; the house talk's levels move it past Roles, and HouseTalkRulesTests pins it exactly.");
             // Story rules 11 is enrolled (ROLE-MOMENTS-PLAN R7; Blame's was STORY-RULES-10-PLAN §8): a season the game starts plays Roles.
-            Assert.That(StoryRules.Current, Is.EqualTo(StoryRules.Roles), "A season the game starts moves only at an enrolment: R7's is made.");
+            // Every gate is a lower bound, so a later enrolment (A-ON's 12) keeps it; HouseTalkRulesTests pins Current exactly.
+            Assert.That(StoryRules.Current, Is.GreaterThanOrEqualTo(StoryRules.Roles), "A season the game starts moves only at an enrolment: R7's is made.");
             var shipped = Shipped();
-            Assert.That(shipped.story.rulesVersion, Is.EqualTo(StoryRules.Roles));
+            Assert.That(shipped.story.rulesVersion, Is.EqualTo(StoryRules.Current));
+            Assert.That(shipped.story.rulesVersion, Is.GreaterThanOrEqualTo(StoryRules.Roles));
             Assert.That(EpisodeEngine.RolesOn(shipped), Is.True, "A season the game starts today plays the role moments.");
             Assert.That(EpisodeEngine.RolesOn(null), Is.False);
         }

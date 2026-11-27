@@ -622,7 +622,8 @@
 # 11443 = 11442 + 1, 2026-11-27. The keyboard's control and the pointer's are two looks, and the focus ring reads on the glass (UiThemeContrastTests 1).
 # 11467 = 11466 (AU-16) + the focus ring stack's 1 (11443 - 11442): disjoint cases, so the floor is their sum, 2026-11-27.
 # 11472 = 11467 + 5, 2026-11-27. Every press answers (AU-10): a press that asked no sound of its own clicks once, one that did is left to it (PressAnswerTests 3), the HUD's presses answered and its greyed controls silent, and the front door's screens and the report ticking and answering with the house's sounds (MenuWayOutFoleyScanTests 2).
-Gamesim.EditModeTests 11472
+# 11473 = 11472 + 1, 2026-11-27. The phone layout's menu, cast and creator rows tick and answer their presses with their screen's sounds (MenuWayOutFoleyScanTests 1).
+Gamesim.EditModeTests 11473
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and
@@ -1808,4 +1809,5 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # 23547 = 23544 + 3, 2026-11-27. The same 3 trust sound cases the EditMode floor counts (CommitSoundTests 1, SoundPicturesTests 1, CueLoudnessTests 1), which run without Unity.
 # 23552 = 23547 + 5, 2026-11-27. The same 5 murmur and Voice volume cases the EditMode floor counts (MurmurTests 3, SoundPicturesTests 1, CueLoudnessTests 1), which run without Unity.
 # 23557 = 23552 + 5, 2026-11-27. The same 5 press sound cases the EditMode floor counts (PressAnswerTests 3, MenuWayOutFoleyScanTests 2), which run without Unity.
-Gamesim.SimulationTests 23557
+# 23558 = 23557 + 1, 2026-11-27. The same phone page press sound case the EditMode floor counts (MenuWayOutFoleyScanTests 1), which runs without Unity.
+Gamesim.SimulationTests 23558

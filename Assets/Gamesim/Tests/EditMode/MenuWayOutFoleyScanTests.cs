@@ -184,6 +184,35 @@ namespace Gamesim.Tests.EditMode
             Assert.That(problems, Is.Empty, string.Join("\n", problems) + "\n(controls/presses: " + string.Join(", ", counts) + ")");
         }
 
+        /// <summary>
+        /// The phone layout's pages (AU-10): the main menu, the cast screen and the creator draw their
+        /// rows on a PhoneMenuPage, which ran every press silent and gave no row a tick. Each row and
+        /// status line now ticks and answers its press with the sounds of the screen it is drawn on
+        /// (ControlSounds.Of finds the screen above the page), after the page's own guard.
+        /// </summary>
+        [Test]
+        public void ThePhonePages_TickAndAnswerEveryRow_WithTheirScreensSounds()
+        {
+            string page = Code(Read("Presentation/PhoneMenuPage.cs"));
+            var problems = new List<string>();
+            var made = Regex.Matches(page, @"var\s+button\s*=\s*\w+\.gameObject\.AddComponent<Button>\(\)\s*;").Cast<Match>().ToList();
+            foreach (var site in made)
+                if (!Regex.IsMatch(BlockFrom(page, site.Index), @"ControlSounds\.Tick\(\s*button\s*\)\s*;"))
+                    problems.Add("PhoneMenuPage: a control made at line " + LineOf(page, site.Index) + " has no hover tick.");
+            var presses = Regex.Matches(page, @"onClick\.AddListener\(").Cast<Match>().ToList();
+            foreach (var press in presses)
+                if (!Regex.IsMatch(page.Substring(press.Index + press.Length),
+                    @"^\s*\(\)\s*=>\s*\{\s*if\s*\(\s*CanAct\(\s*button\s*\)\s*\)\s*ControlSounds\.Press\(\s*button\s*,\s*\w+\s*\)\s*;\s*\}\s*\)"))
+                    problems.Add("PhoneMenuPage: a press at line " + LineOf(page, press.Index) + " is not answered after its guard (if (CanAct(button)) ControlSounds.Press(button, ...)).");
+            if (made.Count < 2 || presses.Count < 2)
+                problems.Add("PhoneMenuPage: the rows and the status line were not found (" + made.Count + "/" + presses.Count + "); the scan has lost its sites.");
+            // The pages hang under their screens, so a row finds the screen's sounds.
+            foreach (var (file, screen) in new[] { ("MainMenu.cs", "MainMenu"), ("CastSelect.Phone.cs", "CastSelect"), ("CharacterCreator.Identity.cs", "CharacterCreator") })
+                if (!Regex.IsMatch(Code(Read("Presentation/" + file)), @"PhoneMenuPage\.Create\(\s*transform\s*,"))
+                    problems.Add(file + " does not draw its phone page under the " + screen + " itself: its rows would not find the screen's sounds.");
+            Assert.That(problems, Is.Empty, string.Join("\n", problems));
+        }
+
         // ---------------------------------------------------------------- reading
 
         /// <summary>The body of the member that starts with <paramref name="signature"/>, braces matched, or null.</summary>

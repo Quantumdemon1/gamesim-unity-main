@@ -37,7 +37,8 @@ namespace Gamesim.Tests.EditMode
             state.Find(Maya).id = "imported-speaker";
             state.Find("imported-speaker").name = "Maya Hassan";
             var line = HouseDialogue.Greeting(state,"imported-speaker");
-            Assert.That(line, Does.StartWith("Let's take a minute and talk about our own game."));
+            // Not Maya's own words: the voice of the traits the record carries, as anyone outside the five speaks.
+            Opening(state.Find("imported-speaker"), line);
             Assert.That(line, Does.Not.Contain("clear about what we're promising"));
             Assert.That(HouseDialogue.Greeting(state,"maya"), Is.Empty);
         }
@@ -259,6 +260,116 @@ namespace Gamesim.Tests.EditMode
             Edge(Maya, state.playerId).score = 25;
             Assert.That(HouseDialogue.Response(state,Maya), Does.Contain("comfortable talking with you"),
                 "and it does move when the one feeling it voices moves.");
+        }
+
+        /// <summary>
+        /// Everyone outside the five web-game houseguests used to share one plain line in every slot, so a whole house
+        /// opened the week with the same sentence. In a full house of either roster each housemate now greets the player
+        /// in words nobody else in the house is using that week, in the voice of their vote answers (<see cref="Voice.Of"/>),
+        /// and not in last week's words. Reading the lines writes nothing, and the nominee's speech, which is saved, is
+        /// the one it always was.
+        /// </summary>
+        [TestCase(CastTemplates.Roster.Regular)]
+        [TestCase(CastTemplates.Roster.AllStars)]
+        public void AFullHouseGreetsThePlayerInTheirOwnVoicesAndNeverInOneAnothersWords(CastTemplates.Roster roster)
+        {
+            var house = SeasonBuilder.Create(new SeasonBuilder.Choice { Roster = roster, HouseSize = 12 }, 412u);
+            var npcs = house.contestants.Where(c => !c.isPlayer).ToList();
+            Assert.That(npcs, Has.Count.EqualTo(11));
+            Assert.That(house.phase, Is.EqualTo(EpisodePhase.Social));
+            Assert.That(house.week, Is.EqualTo(1));
+            string before = JsonConvert.SerializeObject(house);
+            foreach (var npc in npcs.Where(c => !Five.Contains(c.id)))
+                Assert.That(HouseDialogue.EvictionPlea(house, npc.id), Is.EqualTo(PlainPlea), npc.id + "'s saved speech is unchanged.");
+
+            List<string> lastWeek = null;
+            for (int week = 1; week <= 6; week++)
+            {
+                house.week = week;
+                var greetings = npcs.Select(c => HouseDialogue.Greeting(house, c.id)).ToList();
+                Assert.That(greetings, Is.Unique, "Week " + week + ": no two housemates greet the player in the same words.");
+                foreach (var npc in npcs.Where(c => !Five.Contains(c.id)))
+                    Opening(npc, greetings[npcs.IndexOf(npc)]);
+                if (lastWeek != null)
+                    for (int index = 0; index < npcs.Count; index++)
+                        Assert.That(greetings[index], Is.Not.EqualTo(lastWeek[index]), npcs[index].id + " in week " + week + ": not last week's words.");
+                lastWeek = greetings;
+            }
+            house.week = 1;
+            Assert.That(JsonConvert.SerializeObject(house), Is.EqualTo(before), "Reading the lines writes nothing.");
+        }
+
+        /// <summary>
+        /// The whole cast in one house, week one, free time: two housemates of different voices never open with the same
+        /// words, and housemates of one voice outside the five open with as many different lines as the voice has,
+        /// up to how many of them there are.
+        /// </summary>
+        [Test]
+        public void TheWholeCastNeverSharesAnOpeningAcrossVoicesAndSpreadsOneVoiceOverItsLines()
+        {
+            var house = SeasonBuilder.Create(new SeasonBuilder.Choice { Roster = CastTemplates.Roster.Regular, HouseSize = 12 }, 412u);
+            foreach (var template in CastTemplates.Everyone)
+                if (house.Find(template.Id) == null) house.contestants.Add(CastTemplates.ToContestant(template, false));
+            var npcs = house.contestants.Where(c => !c.isPlayer).ToList();
+            Assert.That(npcs, Has.Count.EqualTo(24));
+            var said = npcs.ToDictionary(c => c.id, c => HouseDialogue.Greeting(house, c.id));
+            foreach (var a in npcs)
+                foreach (var b in npcs)
+                    if (a.id != b.id && Voice.Of(a, false) != Voice.Of(b, false))
+                        Assert.That(said[a.id], Is.Not.EqualTo(said[b.id]), a.id + " and " + b.id);
+            foreach (var voice in npcs.Where(c => !Five.Contains(c.id)).GroupBy(c => Voice.Of(c, false)))
+            {
+                var openings = voice.Select(c => Opening(c, said[c.id])).ToList();
+                Assert.That(openings.Distinct().Count(), Is.EqualTo(Math.Min(voice.Count(), 3)), voice.Key + ": " + string.Join(" | ", openings));
+            }
+        }
+
+        /// <summary>
+        /// The bank behind the voices: three lines a slot in each of Blunt, Warm, Chatty and Guarded, and two more plain ones
+        /// for a slot of one line; no line in two places, so two voices never say the same words; short enough for the
+        /// conversation's line; and no word of a ceremony from whoever is deciding, who has time for the player.
+        /// </summary>
+        [Test]
+        public void TheVoicesBankHoldsThreeLinesASlotInEveryVoiceAndNoLineTwice()
+        {
+            Assert.That(HouseDialogue.VoicedSlots.Count, Is.EqualTo(23));
+            var all = new List<string>();
+            foreach (var slot in HouseDialogue.VoicedSlots)
+            {
+                foreach (var voice in new[] { Voice.Blunt, Voice.Warm, Voice.Chatty, Voice.Guarded })
+                    Assert.That(HouseDialogue.VoicedLines(slot, voice).Count, Is.EqualTo(3), slot + ", " + voice);
+                bool single = slot == "member-no" || slot == "cut-ties" || slot.StartsWith("window-", StringComparison.Ordinal);
+                Assert.That(HouseDialogue.VoicedLines(slot, Voice.Plain).Count, Is.EqualTo(single ? 2 : 0), slot + ", plain");
+                if (slot.StartsWith("window-", StringComparison.Ordinal))
+                    Assert.That(HouseDialogue.VoicedLines(slot).Where(line => line.Contains("ceremony") || line.Contains("after")), Is.Empty, slot);
+                all.AddRange(HouseDialogue.VoicedLines(slot));
+            }
+            Assert.That(all, Has.Count.EqualTo(23 * 12 + 5 * 2));
+            Assert.That(all, Is.Unique);
+            Assert.That(all.Where(line => line.Split(' ').Length > 16), Is.Empty, "At most sixteen words.");
+            Assert.That(all.Where(line => line.Contains("favour") || line.Contains("honour") || line.Contains("judgement")), Is.Empty, "American spelling.");
+        }
+
+        private static readonly string[] Five = { "maya-hassan", "taylor-kim", "jamie-roberts", "casey-wilson", "riley-johnson" };
+
+        private const string PlainPlea = "I'd like to stay, and I'd rather ask you honestly than work you for it. That's my speech.";
+
+        /// <summary>The plain voice's openings, written in place in HouseDialogue.cs.</summary>
+        private static readonly string[] PlainOpenings =
+        {
+            "Let's take a minute and talk about our own game.",
+            "Good to catch you. What's going on with you this week?",
+            "Let's talk. Where do you stand this week?",
+        };
+
+        /// <summary>The opening a housemate outside the five greeted with: one of their own voice's.</summary>
+        private static string Opening(ContestantState npc, string greeting)
+        {
+            string voice = Voice.Of(npc, false);
+            var own = voice == Voice.Plain ? PlainOpenings : HouseDialogue.VoicedLines("opening", voice).ToArray();
+            var opening = own.Where(line => greeting.StartsWith(line + " ", StringComparison.Ordinal)).ToList();
+            Assert.That(opening, Has.Count.EqualTo(1), npc.id + " (" + voice + ") opens in their own voice: " + greeting);
+            return opening[0];
         }
 
         private void TalkedWith(string owner, string subject) => state.memories.Add(new MemoryState

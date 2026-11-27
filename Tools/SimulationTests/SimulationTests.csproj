@@ -576,6 +576,8 @@
     <Compile Include="$(EditMode)TalkScreenStageLinesTests.cs" />
     <!-- Free talk slice 3, the screen: the romance choices, the Flirt reply's place, the witness, the scene and the pages at talk rules 3. -->
     <Compile Include="$(EditMode)TalkScreenRomanceLinesTests.cs" />
+    <!-- Talk polish TP-1: first names in every talk line, the saved standing line and stage row keyed to talk rules 4, and the grudge talk's opener. -->
+    <Compile Include="$(EditMode)FreeTalkNamesTests.cs" />
     <Compile Include="$(EditMode)NominationStepsTests.cs" />
     <Compile Include="$(EditMode)ThreatAssessmentTests.cs" />
     <Compile Include="$(EditMode)WebDiaryParityTests.cs" />

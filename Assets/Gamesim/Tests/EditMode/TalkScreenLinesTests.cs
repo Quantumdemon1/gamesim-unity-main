@@ -62,7 +62,7 @@ namespace Gamesim.Tests.EditMode
         {
             var s = Season();
             string npc = Housemate(s);
-            string name = s.Find(npc).name;
+            string name = CharacterNames.FirstName(s.Find(npc).name);
             var talk = new TalkRow
             {
                 Id = "screen.test", Pool = TalkPools.Steady, Kind = TalkKind.Rhythm,
@@ -78,7 +78,7 @@ namespace Gamesim.Tests.EditMode
             Assert.That(replies.Select(r => r.Words).ToArray(), Is.EqualTo(new[] { "Always, " + name + ".", "Not really." }));
             Assert.That(replies.Select(r => r.Tone).ToArray(), Is.EqualTo(new[] { TalkRules.Warm, TalkRules.Straight }));
             Assert.That(replies[0].ToneCaption, Is.EqualTo(TalkTone.Caption(TalkRules.Warm)));
-            Assert.That(TalkScreenLines.Opener(s, npc, talk), Is.EqualTo("(stirring a pot) \"Hungry, " + s.Find(s.playerId).name + "?\""));
+            Assert.That(TalkScreenLines.Opener(s, npc, talk), Is.EqualTo("(stirring a pot) \"Hungry, " + CharacterNames.FirstName(s.Find(s.playerId).name) + "?\""));
         }
 
         [Test]

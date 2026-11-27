@@ -37,7 +37,7 @@ namespace Gamesim.Simulation
             return stance;
         }
 
-        /// <summary>The {close}, {worry} and {safe} parts in a stance: the true names, or in the dishonest stance the decoys.</summary>
+        /// <summary>The {close}, {worry} and {safe} parts in a stance: the true names, or in the dishonest stance the decoys; each name as the saved line writes it (<see cref="TalkText.SavedName"/>).</summary>
         public static Dictionary<string, string> Parts(EpisodeState s, string npcId, string stance)
         {
             var others = s.Active.Where(o => o.id != npcId && !o.isPlayer).ToList();
@@ -54,8 +54,8 @@ namespace Gamesim.Simulation
             }
             return new Dictionary<string, string>
             {
-                ["close"] = close?.name ?? Nobody,
-                ["worry"] = worry?.name ?? Nobody,
+                ["close"] = TalkText.SavedName(s, close?.name) ?? Nobody,
+                ["worry"] = TalkText.SavedName(s, worry?.name) ?? Nobody,
                 ["safe"] = Safe(s, npcId, others),
             };
         }
@@ -80,7 +80,10 @@ namespace Gamesim.Simulation
             return backs == 0 ? SafeNobody : backs == 1 ? SafeOne : backs <= 3 ? SafeFew : SafeMany;
         }
 
-        /// <summary>The standing line a talk says in a stance, filled, at most the saved snapshot's 256 characters; null without lines.</summary>
+        /// <summary>
+        /// The standing line a talk says in a stance, filled as it is saved (<see cref="TalkText.SavedName"/>: full names below talk
+        /// rules 4, first names from it), at most the saved snapshot's 256 characters; null without lines.
+        /// </summary>
         public static string Line(EpisodeState s, string npcId, TalkRow talk, string stance)
         {
             var lines = talk?.Standing;
@@ -88,7 +91,7 @@ namespace Gamesim.Simulation
             string template = stance == Candour.Honest ? lines.Honest : stance == Candour.Dishonest ? lines.Dishonest : lines.Neutral;
             if (string.IsNullOrEmpty(template)) template = lines.Neutral;
             if (string.IsNullOrEmpty(template)) return null;
-            string line = TalkText.Fill(s, npcId, template, Parts(s, npcId, stance));
+            string line = TalkText.Fill(s, npcId, template, Parts(s, npcId, stance), name => TalkText.SavedName(s, name));
             return line.Length <= TalkRules.MostStandingLength ? line : line.Substring(0, TalkRules.MostStandingLength);
         }
     }

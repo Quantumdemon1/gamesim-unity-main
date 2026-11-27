@@ -67,6 +67,9 @@ namespace Gamesim.Simulation
         /// <summary>A standing talk's line, filled with this week's names, or null; and the candour it was said in.</summary>
         public string StandingLine, Stance;
 
+        /// <summary>The standing line as the talk screen shows it, in first names (<see cref="TalkText.FirstNames"/>), whatever the saved line holds; or null.</summary>
+        public string StandingSaid;
+
         /// <summary>The free warmth applied from the player to them: +1, 0 or -1 (their side moves 0.8 to 1.2 of it); the favour's +2 or -2 (talk rules 2).</summary>
         public int Warmth;
 
@@ -394,7 +397,7 @@ namespace Gamesim.Simulation
                 if (talk.Kind == TalkKind.Stage)
                 {
                     result.StageReached = talk.Stage;
-                    result.StageEvent = TalkFriendship.EventLine(talk.Stage, npc.name);
+                    result.StageEvent = TalkFriendship.EventLine(talk.Stage, TalkText.SavedName(s, npc.name));
                 }
                 // The third counted talk shows the chemistry for the first time (T1), as it stands after this talk.
                 if ((contact?.talks ?? 0) == TalkChemistry.ShownAfterTalks - 1)
@@ -415,6 +418,7 @@ namespace Gamesim.Simulation
                 string stance = landing < 0 ? Candour.Neutral : TalkStanding.Stance(s, npcId);
                 result.Stance = stance;
                 result.StandingLine = TalkStanding.Line(s, npcId, talk, stance);
+                result.StandingSaid = TalkText.FirstNames(s, result.StandingLine);
             }
             return result;
         }

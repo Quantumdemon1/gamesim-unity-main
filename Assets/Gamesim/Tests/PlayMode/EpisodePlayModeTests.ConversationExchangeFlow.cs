@@ -417,5 +417,122 @@ namespace Gamesim.Tests.PlayMode
             }
             finally { if (director != null) writer.SetValue(director, null); }
         }
+
+        // "Conversation lines" (UI plan D11): how long a spoken line stays before "Move on" takes it on, as the director reckons it.
+        private double ExchangeLineHold(string line) => Gamesim.Presentation.ConversationLinePace.Hold(line, director.CaptionTimeSetting);
+
+        // The exchange the director plays for an accepted command, read as the director reads it.
+        private static ConversationExchange ExchangeFlowPlayed(EpisodeState before, CommandResult result, EpisodeCommand command)
+        {
+            var committed = result.state;
+            var exchange = ConversationExchange.Create(before, committed, command,
+                committed.events.Where(item => item.sequence >= before.nextSequence
+                    && (result.beatsFromSequence <= 0 || item.sequence < result.beatsFromSequence)).ToList());
+            Assert.That(exchange, Is.Not.Null);
+            return exchange;
+        }
+
+        /// <summary>
+        /// With "Move on" each spoken line moves on by itself once its reading time is up - the player's question,
+        /// then the reply, which ends the exchange as Continue would - and never sooner; nothing is committed or
+        /// saved by it. Timed on the unscaled clock the lines keep (Time.captureDeltaTime does not drive it): the
+        /// clock starts in the frame that draws a line and is read in the frame that moves it on, so each lower
+        /// bound is exact; the upper waits are generous bounds only.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ConversationExchange_MoveOnTakesEachLineOnByItselfAfterItsReadingTime()
+        {
+            yield return InstallExchangeFlowHouse();
+            Assert.That(director.AutoContinueLines, Is.False, "Lines wait for a press until the player chooses otherwise.");
+            director.SetAutoContinueLines(true);
+            var before = director.Snapshot;
+            var command = ExchangeFlowCommand(before, EpisodeCommandKind.SmallTalk);
+            double shown = Time.unscaledTimeAsDouble;
+            var result = director.Submit(command);
+            Assert.That(result.accepted, Is.True, result.reason);
+            var committed = director.Snapshot;
+            var exchange = ExchangeFlowPlayed(before, result, command);
+            byte[] savedBytes = File.ReadAllBytes(director.SavePath);
+            double questionHold = ExchangeLineHold(exchange.PlayerLine), replyHold = ExchangeLineHold(exchange.NpcLine);
+            yield return null;
+            AssertExchangeFlowStep(before.playerId, exchange.PlayerLine);
+
+            while (director.ConversationExchangeSpeakerId == before.playerId && Time.unscaledTimeAsDouble < shown + questionHold + 10.0)
+                yield return null;
+            double replyShown = Time.unscaledTimeAsDouble;
+            Assert.That(director.ConversationExchangeSpeakerId, Is.EqualTo(exchangeFlowNpcId), "The question moves on to the reply by itself,");
+            Assert.That(replyShown - shown, Is.GreaterThanOrEqualTo(questionHold - 1e-6), "once it has been up for its reading time.");
+            yield return null;
+            AssertExchangeFlowStep(exchangeFlowNpcId, exchange.NpcLine);
+            AssertExchangeFlowUnchanged(committed, savedBytes);
+
+            while (director.IsConversationExchangePlaying && Time.unscaledTimeAsDouble < replyShown + replyHold + 10.0) yield return null;
+            Assert.That(director.IsConversationExchangePlaying, Is.False, "The reply moves on by itself too, which ends the exchange,");
+            Assert.That(Time.unscaledTimeAsDouble - replyShown, Is.GreaterThanOrEqualTo(replyHold - 1e-6), "after its own reading time.");
+            yield return null;
+            Assert.That(ActiveRect(EpisodeHud.ConversationExchangeLineName), Is.Null);
+            Assert.That(director.TalkingToId, Is.EqualTo(exchangeFlowNpcId), "The conversation stays open, as after Continue.");
+            AssertExchangeFlowUnchanged(committed, savedBytes);
+        }
+
+        /// <summary>
+        /// "Wait for me", the default: a line stays up well past its reading time until it is pressed on. With "Move
+        /// on", a press during a line's reading time still takes it on at once, by one line, and the reply then keeps
+        /// its own full reading time from the press - the question's clock does not take it on early - and nothing
+        /// moves after the exchange has ended.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ConversationExchange_WaitForMeHoldsEachLine_AndAPressUnderMoveOnActsOnceAtOnce()
+        {
+            yield return InstallExchangeFlowHouse();
+            Assert.That(director.AutoContinueLines, Is.False, "Wait for me is the default.");
+            var before = director.Snapshot;
+            var command = ExchangeFlowCommand(before, EpisodeCommandKind.SmallTalk);
+            var result = director.Submit(command);
+            Assert.That(result.accepted, Is.True, result.reason);
+            var committed = director.Snapshot;
+            var exchange = ExchangeFlowPlayed(before, result, command);
+            byte[] savedBytes = File.ReadAllBytes(director.SavePath);
+            yield return null;
+            double until = Time.unscaledTimeAsDouble + ExchangeLineHold(exchange.PlayerLine) + 0.5;
+            while (Time.unscaledTimeAsDouble < until) yield return null;
+            AssertExchangeFlowStep(before.playerId, exchange.PlayerLine);
+            ButtonWithCaption(EpisodeHud.ConversationContinueCaption).onClick.Invoke();
+            yield return null;
+            until = Time.unscaledTimeAsDouble + ExchangeLineHold(exchange.NpcLine) + 0.5;
+            while (Time.unscaledTimeAsDouble < until) yield return null;
+            AssertExchangeFlowStep(exchangeFlowNpcId, exchange.NpcLine);
+            AssertExchangeFlowUnchanged(committed, savedBytes);
+            ButtonWithCaption(EpisodeHud.ConversationSkipCaption).onClick.Invoke();
+            yield return null;
+            Assert.That(director.IsConversationExchangePlaying, Is.False);
+
+            director.SetAutoContinueLines(true);
+            var second = director.Snapshot;
+            var next = ExchangeFlowCommand(second, EpisodeCommandKind.SmallTalk);
+            var accepted = director.Submit(next);
+            Assert.That(accepted.accepted, Is.True, accepted.reason);
+            var latest = director.Snapshot;
+            var reply = ExchangeFlowPlayed(second, accepted, next);
+            byte[] latestBytes = File.ReadAllBytes(director.SavePath);
+            double replyHold = ExchangeLineHold(reply.NpcLine);
+            yield return null;
+            AssertExchangeFlowStep(second.playerId, reply.PlayerLine);
+            double pressed = Time.unscaledTimeAsDouble;
+            var press = ButtonWithCaption(EpisodeHud.ConversationContinueCaption).onClick;
+            press.Invoke();
+            press.Invoke(); // The question's retained control cannot also take the reply on.
+            Assert.That(director.IsConversationExchangePlaying, Is.True, "The press takes the question on at once, by one line:");
+            Assert.That(director.ConversationExchangeSpeakerId, Is.EqualTo(exchangeFlowNpcId), "the reply is up.");
+            while (director.IsConversationExchangePlaying && Time.unscaledTimeAsDouble < pressed + replyHold + 10.0) yield return null;
+            Assert.That(director.IsConversationExchangePlaying, Is.False, "The reply then moves on by itself,");
+            Assert.That(Time.unscaledTimeAsDouble - pressed, Is.GreaterThanOrEqualTo(replyHold - 1e-6),
+                "after its own reading time from the press, not on the question's clock.");
+            until = Time.unscaledTimeAsDouble + 1.0;
+            while (Time.unscaledTimeAsDouble < until) yield return null;
+            Assert.That(director.IsConversationExchangePlaying, Is.False, "Nothing moves after the exchange has ended.");
+            Assert.That(ActiveRect(EpisodeHud.ConversationExchangeLineName), Is.Null);
+            AssertExchangeFlowUnchanged(latest, latestBytes);
+        }
     }
 }

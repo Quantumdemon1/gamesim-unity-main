@@ -293,10 +293,11 @@ namespace Gamesim.Episode
             Transform week = null;
             if (parent != null)
                 for (int i = parent.childCount - 1; i >= 0 && week == null; i--)
-                    if (parent.GetChild(i).name == HouseVibeCardName || parent.GetChild(i).name == ObjectivesCardName) week = parent.GetChild(i);
+                    if (parent.GetChild(i).name == ThisWeekCardName || parent.GetChild(i).name == ObjectivesCardName) week = parent.GetChild(i);
             if (week == null) return;
             bool borrowed = (pullCard != null && pullCard.gameObject.activeSelf) || (nearbyCard != null && nearbyCard.gameObject.activeSelf);
-            week.gameObject.SetActive(!borrowed);
+            // The This Week card lends only its vibe while it holds the week's events (EpisodeHud.Chrome).
+            if (!LendTheVibe(week, borrowed)) week.gameObject.SetActive(!borrowed);
             MarkChromeChanged();
         }
     }

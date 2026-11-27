@@ -328,6 +328,76 @@ namespace Gamesim.Tests.PlayMode
         }
 
         /// <summary>
+        /// The menu review's change 7: under the live feed the right column is one This Week card,
+        /// the week's latest events over the house vibe, its two sections named as the two cards
+        /// were. A witnessed conversation's Nearby card takes the vibe's place and leaves the events
+        /// up, the card ending under them; and with the controls card open the card stands clear of
+        /// it on every review frame.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator Chrome_TheRightColumnIsTheLiveFeedAndOneThisWeekCard()
+        {
+            director.ClosePanels();
+            yield return null;
+            Canvas.ForceUpdateCanvases();
+            Assert.That(ActiveRect(EpisodeHud.NearbyCardName), Is.Null, "Nothing is being witnessed yet.");
+            var week = LastActive(EpisodeHud.ThisWeekCardName);
+            var events = LastActive(EpisodeHud.RecentEventsCardName);
+            var vibe = LastActive(EpisodeHud.HouseVibeCardName);
+            Assert.That(week, Is.Not.Null, "The column carries the This Week card,");
+            Assert.That(events, Is.Not.Null, "with the week's events");
+            Assert.That(vibe, Is.Not.Null, "and the house vibe.");
+            Assert.That(events.parent, Is.SameAs(week), "The events are a section of the one card,");
+            Assert.That(vibe.parent, Is.SameAs(week), "and so is the vibe.");
+            // Unity's own comparison: in the editor a missing component reads as a stand-in object, not null.
+            Assert.That(events.GetComponent<Image>() == null, Is.True, "A section draws no frame of its own.");
+            var feed = LastActive(EpisodeDirector.LiveFeedCardName);
+            Assert.That(feed, Is.Not.Null, "The live feed heads the column.");
+            Assert.That(ScreenRect(week).yMax, Is.LessThanOrEqualTo(ScreenRect(feed).yMin + 1f), "The card stands under the live feed.");
+            Assert.That(ScreenRect(vibe).yMax, Is.LessThan(ScreenRect(events).yMin), "The vibe is under the events, apart from them.");
+            Assert.That(ScreenRect(week).yMin, Is.EqualTo(ScreenRect(vibe).yMin).Within(1f), "The card ends where the vibe ends.");
+
+            var caption = SceneComponents<HouseConversationCaption>().First();
+            caption.Show("Maya Hassan", "Riley Johnson", "strategy", 1f);
+            yield return null; yield return null;
+            Canvas.ForceUpdateCanvases();
+            var nearby = ActiveRect(EpisodeHud.NearbyCardName);
+            Assert.That(nearby, Is.Not.Null, "A witnessed conversation brings up the Nearby card.");
+            week = LastActive(EpisodeHud.ThisWeekCardName);
+            events = LastActive(EpisodeHud.RecentEventsCardName);
+            Assert.That(ActiveRect(EpisodeHud.HouseVibeCardName), Is.Null, "It takes the vibe's place,");
+            Assert.That(week, Is.Not.Null, "and the card stays,");
+            Assert.That(events, Is.Not.Null, "with the week's events up.");
+            Assert.That(events.parent, Is.SameAs(week));
+            Assert.That(ScreenRect(week).yMin, Is.EqualTo(ScreenRect(events).yMin).Within(1f), "The card ends under its events,");
+            Assert.That(ScreenRect(nearby).yMax, Is.LessThan(ScreenRect(week).yMin), "and the Nearby card stands below it.");
+            caption.Hide();
+            yield return null;
+            Canvas.ForceUpdateCanvases();
+            Assert.That(ActiveRect(EpisodeHud.NearbyCardName), Is.Null, "It goes with the conversation,");
+            week = LastActive(EpisodeHud.ThisWeekCardName);
+            vibe = LastActive(EpisodeHud.HouseVibeCardName);
+            Assert.That(vibe, Is.Not.Null, "and the vibe comes back,");
+            Assert.That(ScreenRect(week).yMin, Is.EqualTo(ScreenRect(vibe).yMin).Within(1f), "the card ending under it again.");
+
+            ButtonWithCaption(ExpandControlsCaption).onClick.Invoke();
+            yield return null;
+            Assert.That(ShowsControl(CollapseControlsCaption), Is.True, "The controls card is open.");
+            yield return OnFrames("this-week-help", "The This Week card with the controls open", where =>
+            {
+                Canvas.ForceUpdateCanvases();
+                var card = LastActive(EpisodeHud.ThisWeekCardName);
+                var controls = LastActive("Exploration controls");
+                Assert.That(card, Is.Not.Null, where + ": the This Week card is up.");
+                Assert.That(controls, Is.Not.Null, where + ": the controls card is up.");
+                Assert.That(ScreenRect(card).Overlaps(ScreenRect(controls)), Is.False,
+                    where + ": the card " + ScreenRect(card) + " comes down onto the open controls card " + ScreenRect(controls) + ".");
+            });
+            ButtonWithCaption(CollapseControlsCaption).onClick.Invoke();
+            yield return null;
+        }
+
+        /// <summary>
         /// The playtest's week-2 conversation with the Head of Household (2026-09-27). Its plea rows
         /// carry a portrait, a trust reading and a tag, and in the fixed 340-unit column their
         /// captions were left 20 units or less: the words stood one letter a line in rows grown 860

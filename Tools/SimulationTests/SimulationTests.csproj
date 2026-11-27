@@ -651,6 +651,9 @@
     <Compile Include="$(EditMode)DecisionPickTests.cs" />
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/ObjectiveWords.cs" />
     <Compile Include="$(EditMode)ObjectiveWordsTests.cs" />
+    <!-- One phase-word table (UI-UX plan D15): the week chip's word and the status line's news line. -->
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/PhaseWords.cs" />
+    <Compile Include="$(EditMode)PhaseWordsTests.cs" />
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/CompetitionMiniGames.cs" />
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/MiniGameRun.cs" />
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/MiniGameRun.Dice.cs" />
@@ -755,6 +758,15 @@
     <Compile Include="$(EditMode)TextSizesTests.cs" />
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/CaptionTiming.cs" />
     <Compile Include="$(EditMode)CaptionTimingTests.cs" />
+    <!-- "Conversation lines: Move on" (UI plan D11): a spoken line moves on after its reading time, once; a press starts the next line's own clock. -->
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/ConversationLinePace.cs" />
+    <Compile Include="$(EditMode)ConversationLinePaceTests.cs" />
+    <!-- The house screen's This Week card (menu review change 7): the events and the vibe in one card, inside the room the right column folds around. -->
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/ThisWeekShape.cs" />
+    <Compile Include="$(EditMode)ThisWeekShapeTests.cs" />
+    <!-- The Episode button opens a decision of the player's own where they stand (UI-UX plan Q2): the four decisions, nothing else, and the director's wiring by its source. -->
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/WaitingDecision.cs" />
+    <Compile Include="$(EditMode)WaitingDecisionTests.cs" />
     <!-- Every sound has a picture, and the three volumes beside the master (A11). -->
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/SoundPictures.cs" />
     <Compile Include="$(EditMode)SoundPicturesTests.cs" />

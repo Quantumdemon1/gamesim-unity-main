@@ -182,6 +182,7 @@ namespace Gamesim.Episode
             textSize = TextSizes.FromRecord(preferences.HasKey(TextSizes.SizeKey) ? preferences.GetInt(TextSizes.SizeKey, 0) : (int?)null,
                 preferences.HasKey(TextSizes.LegacyKey) ? preferences.GetInt(TextSizes.LegacyKey, 0) : (int?)null);
             captionTime = CaptionTiming.FromRecord(preferences.GetInt(CaptionTiming.Key, 0));
+            autoContinueLines = ConversationLinePace.FromRecord(preferences.GetInt(ConversationLinePace.Key, 0));
             // The player's own keys and buttons (A5), on every copy of the actions from the start.
             HouseBindings.Load(preferences);
             musicVolumePercent = SoundPictures.Clamp(preferences.GetInt(SoundPictures.MusicVolumeKey, SoundPictures.DefaultVolume));
@@ -798,7 +799,7 @@ namespace Gamesim.Episode
 
         /// <summary>
         /// The status line for the one event a commit lets the player see: its words, or a phase
-        /// change in the words the week chip uses. The engine logs a phase by its enum's own name
+        /// change as news (PhaseWords.News). The engine logs a phase by its enum's own name
         /// ("Week 4 · FinalHoHPart2"), and the saved log keeps that text as it is; only the line
         /// on the screen is worded. Null when there is no event to report.
         /// </summary>
@@ -812,24 +813,12 @@ namespace Gamesim.Episode
         }
 
         /// <summary>
-        /// A phase as the status line announces it: "Week 4 · Final HoH, Part 2 of 3", "Week 4 · The
-        /// final decision", "Jury questioning". The finale's phases have no week of their own worth
-        /// naming; every other phase is the week chip's short word under its week.
+        /// A phase as the status line announces it, from the one table (UI-UX plan D15): "Nominations:
+        /// the Head of Household names two houseguests", "Final HoH, Part 2 of 3: the two who lost Part
+        /// 1 compete", "Jury questioning". The week is the week chip's, so the line no longer says it a
+        /// second time; <paramref name="week"/> stays for the callers that name it.
         /// </summary>
-        public static string PhaseLine(EpisodePhase phase, int week)
-        {
-            string part = FinalHoHPartLabel(phase);
-            if (part != null) return "Week " + week + " · Final HoH, " + part;
-            switch (phase)
-            {
-                case EpisodePhase.FinalEviction: return "Week " + week + " · The final decision";
-                case EpisodePhase.JuryQuestioning: return "Jury questioning";
-                case EpisodePhase.FinalSpeeches: return "Final speeches";
-                case EpisodePhase.Jury: return "The jury votes";
-                case EpisodePhase.Finished: return "The season is over";
-                default: return "Week " + week + " · " + EpisodeHud.PhaseShort(phase);
-            }
-        }
+        public static string PhaseLine(EpisodePhase phase, int week) => PhaseWords.News(phase);
 
         public CommandResult Submit(EpisodeCommand command)
         {

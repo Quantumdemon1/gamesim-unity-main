@@ -605,6 +605,7 @@ namespace Gamesim.Episode
             // The size as 0 to 2, and the boolean an earlier build reads beside it.
             store.SetInt(TextSizes.SizeKey, (int)textSize); store.SetInt(TextSizes.LegacyKey, TextSizes.LegacyRecord(textSize));
             store.SetInt(CaptionTiming.Key, (int)captionTime);
+            store.SetInt(ConversationLinePace.Key, ConversationLinePace.Record(autoContinueLines));
             store.SetInt(SoundPictures.MusicVolumeKey, musicVolumePercent); store.SetInt(SoundPictures.EffectsVolumeKey, effectsVolumePercent);
             store.SetInt(SoundPictures.InterfaceVolumeKey, interfaceVolumePercent);
             store.Save();

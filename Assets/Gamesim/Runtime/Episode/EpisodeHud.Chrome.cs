@@ -68,10 +68,20 @@ namespace Gamesim.Episode
         // gutter. It lives in the left one now, so the column has its own margin back.
         private const float RightColumnInset = 24f;
         private const float RightColumnTop = 80f;
-        private const float RightColumnGap = 12f;
+        private const float RightColumnGap = ThisWeekShape.ColumnGap;
 
-        /// <summary>The recent-events card, named so a test can find it the way the others are found.</summary>
+        /// <summary>
+        /// The recent events, named so a test can find them the way the others are found: the This
+        /// Week card's first section, or the endgame's own card over the objectives.
+        /// </summary>
         public const string RecentEventsCardName = "Recent events";
+
+        /// <summary>
+        /// The right column's one card under the live feed (the menu review's change 7): the week's
+        /// latest events over the house vibe. Its two sections keep the names the two cards had,
+        /// <see cref="RecentEventsCardName"/> and <see cref="HouseVibeCardName"/>.
+        /// </summary>
+        public const string ThisWeekCardName = "This Week card";
 
         /// <summary>How many events the column shows; each takes the two lines its row holds (<see cref="FitExcerpt"/>).</summary>
         // Three, not four. The right column is 104 + 226 live feed + 12 + this card + 12 + the
@@ -82,8 +92,8 @@ namespace Gamesim.Episode
         private const int EndgameEventRows = 2;
         private const float RecentEventRowHeight = 58f;
 
-        /// <summary>The Recent Events card's height for this many rows: its heading alone at none.</summary>
-        private static float RecentEventsHeight(int slots) => 42f + slots * RecentEventRowHeight + 2f;
+        /// <summary>The Recent Events card's height for this many rows, and the This Week card's events section's: its heading alone at none.</summary>
+        private static float RecentEventsHeight(int slots) => ThisWeekShape.EventsHeight(slots);
 
         /// <summary>The relationships card's height for this many rows.</summary>
         private static float RelationshipsHeight(int rows) => 44f + rows * RelationshipRowHeight + 6f;
@@ -175,9 +185,14 @@ namespace Gamesim.Episode
             }
         }
 
-        /// <summary>The card under Recent Events: the week's vibe, or the endgame's objectives at three and at two.</summary>
+        /// <summary>
+        /// What the column reckons under the recent events: the endgame's objectives at three and at
+        /// two, or else the room the Nearby card and the Pull may take there. The This Week card's
+        /// vibe is shorter than that room (ThisWeekShape), and a card that borrows its place is no
+        /// taller (TextSizeFit), so the column folds as it did when the vibe was a card of its own.
+        /// </summary>
         private static float WeekCardHeight(EpisodeState state) =>
-            state == null ? 0f : IsFinalThree(state) || IsFinalTwo(state) ? EndgameCardHeight(state) : VibeCardHeight;
+            state == null ? 0f : IsFinalThree(state) || IsFinalTwo(state) ? EndgameCardHeight(state) : TextSizeFit.WeekCardRoom;
 
         /// <summary>An event's line on the Recent Events card, so a test can find it.</summary>
         public const string RecentEventLineName = "Event line";
@@ -472,29 +487,8 @@ namespace Gamesim.Episode
             return ObjectiveWords.For(state);
         }
 
-        /// <summary>A phase in the one or two words the week chip has room for.</summary>
-        public static string PhaseShort(EpisodePhase phase)
-        {
-            switch (phase)
-            {
-                case EpisodePhase.Social: return "Free time";
-                case EpisodePhase.HoH: return "HoH comp";
-                case EpisodePhase.Nomination: return "Nominations";
-                case EpisodePhase.VetoSelection: return "Veto draw";
-                case EpisodePhase.Veto: return "Veto comp";
-                case EpisodePhase.VetoMeeting: return "Veto meeting";
-                case EpisodePhase.Campaign: return "Campaign";
-                case EpisodePhase.Eviction: return "Eviction";
-                case EpisodePhase.FinalHoHPart1:
-                case EpisodePhase.FinalHoHPart2:
-                case EpisodePhase.FinalHoHPart3: return "Final HoH";
-                case EpisodePhase.FinalEviction: return "Final eviction";
-                case EpisodePhase.Jury:
-                case EpisodePhase.JuryQuestioning:
-                case EpisodePhase.FinalSpeeches: return "Jury";
-                default: return "Finale";
-            }
-        }
+        /// <summary>A phase in the one or two words the week chip has room for (the one table, PhaseWords).</summary>
+        public static string PhaseShort(EpisodePhase phase) => PhaseWords.Short(phase);
 
         /// <summary>
         /// The week and where in it the house is, where the mockups put the day and the clock. The
@@ -651,6 +645,8 @@ namespace Gamesim.Episode
                     director.HasDiaryRoom && !recovery && state.Find(state.playerId)?.status == ContestantStatus.Active;
                 RailButton(next, CompetitionTravelCaption, UiTheme.Icon("trophy"), 1, () => director.GoToPlayDestination(true),
                     EpisodeEngine.IsCompetition(state.phase)).interactable = !recovery;
+                // The caption stays; with a decision of the player's own waiting, the press opens the
+                // screen where they stand rather than walking them there (EpisodeDirector.OpenWaitingDecision).
                 var episode = RailButton(next, EpisodeTravelCaption, UiTheme.Icon("camera"), 2, () => director.GoToPlayDestination(false),
                     !EpisodeEngine.IsCompetition(state.phase));
                 episode.interactable = !recovery;
@@ -876,61 +872,119 @@ namespace Gamesim.Episode
         }
 
 
-        /// <summary>The vibe card's name, so a test can find it without guessing.</summary>
+        /// <summary>The house vibe, named so a test can find it without guessing: the This Week card's second section.</summary>
         public const string HouseVibeCardName = "House vibe";
-        private const float VibeRowHeight = 36f;
-        private const float VibeCardHeight = 44f + 3f * VibeRowHeight + 24f;
 
         /// <summary>
-        /// What the house has been doing this week, as counts rather than a mood - in the mockups'
-        /// Social Goals card: a tile per row holding the row's glyph, the word, a thin bar under it
-        /// and the count at the end.
+        /// The right column's one card under the live feed (the menu review's change 7, backlog item
+        /// 32): the week's latest events and, under a rule, the house vibe. Recent Events and the
+        /// vibe card were two cards answering the same question. The events fold as Recent Events
+        /// did, to <paramref name="shown"/> rows while the controls card needs the room
+        /// (<see cref="FoldColumn"/>), and 'View all' keeps their corner. With no
+        /// <paramref name="entries"/> the card holds the vibe alone: under the relationships card,
+        /// while somebody is in focus.
+        ///
+        /// <para>The two sections keep the two cards' names, so a lookup by name still finds each,
+        /// and the card ends where the vibe ends. The Nearby card and the Pull borrow the vibe's
+        /// place as they borrowed the vibe card's (<see cref="LendTheVibe"/>). The shape is
+        /// <see cref="ThisWeekShape"/>'s, which the Unity-free suite checks.</para>
+        /// </summary>
+        private float ThisWeekCard(Transform parent, float top, EpisodeState state, System.Collections.Generic.List<EpisodeEvent> entries, int shown)
+        {
+            if (state == null) return 0f;
+            bool events = entries != null;
+            float width = RightColumnWidth, height = ThisWeekShape.Height(events, shown);
+            var card = Chrome(ThisWeekCardName, parent);
+            Anchor(card, new Vector2(1, 1), new Vector2(1, 1), new Vector2(-RightColumnInset, -top),
+                new Vector2(width, height));
+            CardHeading(card, "This Week");
+            if (events)
+            {
+                var recent = CardSection(card, RecentEventsCardName, 0f, ThisWeekShape.EventsHeight(shown));
+                ViewAllEventsLink(recent);
+                EventRows(recent, state, entries, shown);
+            }
+            var vibe = CardSection(card, HouseVibeCardName, ThisWeekShape.VibeTop(events, shown), ThisWeekShape.VibeHeight);
+            VibeRows(vibe, state, events);
+            return height;
+        }
+
+        /// <summary>A named part of a card: the card's width, from <paramref name="y"/> down, drawing nothing of its own.</summary>
+        private static RectTransform CardSection(RectTransform card, string name, float y, float height)
+        {
+            var section = new GameObject(name, typeof(RectTransform)).GetComponent<RectTransform>();
+            section.SetParent(card, false);
+            Anchor(section, new Vector2(0, 1), new Vector2(0, 1), new Vector2(0f, -y), new Vector2(card.sizeDelta.x, height));
+            return section;
+        }
+
+        /// <summary>
+        /// What the house has been doing this week, as counts rather than a mood: a slim row each,
+        /// the row's glyph, its words, a thin bar and the count, and the line under them.
         ///
         /// <para>The mockups' card lists goals, and the simulation has none; inventing some would
         /// put a promise on screen the game does not keep. These three rows are what the player's
         /// own week has actually held, and every row carries the count as well as the bar, because
-        /// a length is not something a screen reader can announce.</para>
+        /// a length is not something a screen reader can announce. One line a row rather than the
+        /// old card's tiles: under the events, the vibe is the second thing the card says.</para>
         /// </summary>
-        private float HouseVibeCard(Transform parent, float top, EpisodeState state)
+        private void VibeRows(RectTransform section, EpisodeState state, bool rule)
         {
-            if (state == null) return 0f;
             var reading = HouseVibe.Of(state);
-            float width = RightColumnWidth, height = VibeCardHeight;
-            var card = Chrome(HouseVibeCardName, parent);
-            Anchor(card, new Vector2(1, 1), new Vector2(1, 1), new Vector2(-RightColumnInset, -top),
-                new Vector2(width, height));
-            CardHeading(card, "This Week");
-
+            float width = section.sizeDelta.x;
+            var hairline = new Color(UiTheme.Outline.r, UiTheme.Outline.g, UiTheme.Outline.b, .45f);
+            if (rule)
+            {
+                var line = Panel("Week rule", section, hairline, 0);
+                Anchor(line, new Vector2(0, 1), new Vector2(0, 1), new Vector2(12f, -1f), new Vector2(width - 24f, 1f));
+                line.GetComponent<Image>().raycastTarget = false;
+            }
+            const float words = 36f, track = 48f, count = 28f;
+            float trackX = width - 12f - count - 4f - track;
             int index = 0;
             foreach (var row in reading.Rows())
             {
-                float y = -(42f + index * VibeRowHeight);
-                var tile = Panel("Vibe tile", card, UiTheme.SurfaceRaised, 7);
-                Anchor(tile, new Vector2(0, 1), new Vector2(0, 1), new Vector2(12f, y), new Vector2(28f, 28f));
-                tile.GetComponent<Image>().raycastTarget = false;
-                HudPrimitives.Glyph("Vibe mark", card, row.Icon, row.Tint, new Vector2(18f, y - 6f), 16f);
-
-                float textX = 50f, trackWidth = width - textX - 44f;
-                FixedText(card, row.Word, 13, Paper, new Vector2(textX, y - 1f), new Vector2(trackWidth, 18f));
-                var track = Panel("Vibe track", card, new Color(UiTheme.Outline.r, UiTheme.Outline.g, UiTheme.Outline.b, .55f), 2);
-                Anchor(track, new Vector2(0, 1), new Vector2(0, 1), new Vector2(textX, y - 21f), new Vector2(trackWidth, 4f));
-                track.GetComponent<Image>().raycastTarget = false;
+                float y = -(ThisWeekShape.VibeRowTop + index * ThisWeekShape.VibeRowHeight);
+                HudPrimitives.Glyph("Vibe mark", section, row.Icon, row.Tint, new Vector2(15f, y - 2f), 14f);
+                FixedText(section, row.Word, ThisWeekShape.VibeWordFont, Paper, new Vector2(words, y),
+                    new Vector2(trackX - words - 4f, ThisWeekShape.VibeWordBox));
+                var bed = Panel("Vibe track", section, new Color(UiTheme.Outline.r, UiTheme.Outline.g, UiTheme.Outline.b, .55f), 2);
+                Anchor(bed, new Vector2(0, 1), new Vector2(0, 1), new Vector2(trackX, y - 7f), new Vector2(track, 4f));
+                bed.GetComponent<Image>().raycastTarget = false;
                 float fraction = reading.Fraction(row.Count);
                 if (fraction > 0f)
                 {
-                    var bar = Panel("Vibe fill", card, row.Tint, 2);
-                    Anchor(bar, new Vector2(0, 1), new Vector2(0, 1), new Vector2(textX, y - 21f), new Vector2(trackWidth * fraction, 4f));
+                    var bar = Panel("Vibe fill", section, row.Tint, 2);
+                    Anchor(bar, new Vector2(0, 1), new Vector2(0, 1), new Vector2(trackX, y - 7f), new Vector2(track * fraction, 4f));
                     bar.GetComponent<Image>().raycastTarget = false;
                 }
-                var count = FixedText(card, row.Count.ToString(), 13, UiTheme.Muted,
-                    new Vector2(width - 40f, y - 5f), new Vector2(28f, 20f));
-                count.alignment = TextAlignmentOptions.Right;
+                var number = FixedText(section, row.Count.ToString(), ThisWeekShape.VibeWordFont, UiTheme.Muted,
+                    new Vector2(width - 12f - count, y), new Vector2(count, ThisWeekShape.VibeWordBox));
+                number.alignment = TextAlignmentOptions.Right;
                 index++;
             }
+            FixedText(section, HouseVibe.Tension(reading), ThisWeekShape.TensionFont, UiTheme.Muted,
+                new Vector2(14f, -ThisWeekShape.TensionTop), new Vector2(width - 28f, ThisWeekShape.TensionBox));
+        }
 
-            FixedText(card, HouseVibe.Tension(reading), 11, UiTheme.Muted,
-                new Vector2(14f, -(44f + 3f * VibeRowHeight)), new Vector2(width - 28f, 18f));
-            return height;
+        /// <summary>
+        /// Lends the This Week card's vibe to the Nearby card or the Pull, or takes it back: the vibe
+        /// goes, the events stay up, and the card ends under them, so the card that borrows stands
+        /// where the vibe was (<see cref="ThisWeekShape.BorrowerTop"/>). False for every other card,
+        /// and for a This Week card holding the vibe alone (somebody in focus): those stand down
+        /// whole, as the vibe card did.
+        /// </summary>
+        private static bool LendTheVibe(Transform week, bool lent)
+        {
+            if (week == null || week.name != ThisWeekCardName) return false;
+            var events = week.Find(RecentEventsCardName) as RectTransform;
+            var vibe = week.Find(HouseVibeCardName) as RectTransform;
+            if (events == null || vibe == null) return false;
+            vibe.gameObject.SetActive(!lent);
+            var card = (RectTransform)week;
+            float foot = lent ? events.sizeDelta.y : vibe.sizeDelta.y - vibe.anchoredPosition.y;
+            card.sizeDelta = new Vector2(card.sizeDelta.x, foot);
+            return true;
         }
 
         /// <summary>The endgame card's name and its jury strip's, so a test can find them without guessing.</summary>
@@ -1262,6 +1316,7 @@ namespace Gamesim.Episode
             if(Compact)return;
             float top = RightColumnTop;
             float weekHeight = WeekCardHeight(state);
+            bool endgame = IsFinalThree(state) || IsFinalTwo(state), weekBuilt = false;
             string focus = director.TalkingToId ?? director.FollowedId;
             if (!string.IsNullOrEmpty(focus) && state.Find(focus) != null && focus != state.playerId)
             {
@@ -1281,13 +1336,23 @@ namespace Gamesim.Episode
                 var fold = FoldColumn(false, slots, 0, top, feed, weekHeight, helpExpanded);
                 columnFold = new ColumnFold(false, slots, 0, fold.Shown, fold.FeedShed, top, feed, weekHeight);
                 if (feed > 0f && !fold.FeedShed) top += LiveFeedCard(canvas.transform, top) + RightColumnGap;
-                top += RecentEventsCard(canvas.transform, state, top, entries, fold.Shown) + RightColumnGap;
+                // At three and at two Recent Events keeps a card of its own over the objectives
+                // (ENDGAME-PLAN F1). Every other week the events are the This Week card's first
+                // section, and what borrows the vibe's place stands a gap under them.
+                if (endgame) top += RecentEventsCard(canvas.transform, state, top, entries, fold.Shown) + RightColumnGap;
+                else
+                {
+                    ThisWeekCard(canvas.transform, top, state, entries, fold.Shown);
+                    weekBuilt = true;
+                    top += ThisWeekShape.BorrowerTop(fold.Shown);
+                }
             }
             else if (director.LiveFeedTexture != null) top += LiveFeedCard(canvas.transform, top) + RightColumnGap;
-            // The endgame's objectives and the jury's faces take the vibe card's place at three and
-            // at two (ENDGAME-PLAN F1); the finished season keeps the week it just had.
-            if (IsFinalThree(state) || IsFinalTwo(state)) EndgameCard(canvas.transform, top, state);
-            else HouseVibeCard(canvas.transform, top, state);
+            // The endgame's objectives and the jury's faces take the vibe's place at three and at
+            // two (ENDGAME-PLAN F1); the finished season keeps the week it just had. With somebody
+            // in focus the This Week card holds the vibe alone, under the relationships card.
+            if (endgame) EndgameCard(canvas.transform, top, state);
+            else if (!weekBuilt) ThisWeekCard(canvas.transform, top, state, null, 0);
             // Built whether or not listening in is on offer this moment: the director's Nearby tick
             // decides when it shows. Built only by a render that found it on offer, it did not exist
             // until the next render - and the first render comes before the house is ready.
@@ -1596,13 +1661,24 @@ namespace Gamesim.Episode
                 new Vector2(width, height));
             CardHeading(card, "Recent Events");
             ViewAllEventsLink(card);
+            EventRows(card, state, entries, shown);
+            return height;
+        }
 
+        /// <summary>
+        /// The events' rows under a heading: the endgame's Recent Events card's, or the This Week
+        /// card's first section's. Newest first, <paramref name="shown"/> of them, or the empty
+        /// card's one line.
+        /// </summary>
+        private void EventRows(RectTransform card, EpisodeState state, System.Collections.Generic.List<EpisodeEvent> entries, int shown)
+        {
+            float width = RightColumnWidth;
             if (entries.Count == 0)
             {
                 if (shown > 0)
                     FixedText(card, "Nothing has happened yet.", 13, UiTheme.Muted, new Vector2(14f, -44f),
                         new Vector2(width - 28f, 22f));
-                return height;
+                return;
             }
 
             if (shown < entries.Count) entries = entries.Take(shown).ToList();
@@ -1630,7 +1706,6 @@ namespace Gamesim.Episode
                     rule.GetComponent<Image>().raycastTarget = false;
                 }
             }
-            return height;
         }
 
         /// <summary>The Recent Events card's corner link. Not "See all": that is the relationships card's.</summary>

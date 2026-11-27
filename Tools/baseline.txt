@@ -580,6 +580,11 @@
 # disjoint cases, so the floor is their sum (the trivia landing of 23 November 2026). Counted from the two sides.
 # 11340 = 11339 + 1, 2026-11-23. One phone input-hint case checks the touch wording.
 # 11351 = 11340 + 11, 2026-11-25. Codex's commitment story (StoryMechanicsTests): new or existing agreement, pending offer, refusal, cooldown and older saves.
+# 11355 = 11351 + 4, 2026-11-26. PhaseWordsTests (all also in the dotnet subset): the one phase-word table and the status line's news lines.
+# 11359 = 11355 + 4, 2026-11-26. ConversationLinePaceTests (all also in the dotnet subset): the clock of "Conversation lines: Move on" (UI plan D11).
+# 11360 = 11359 + 1, 2026-11-26. MenuSettingRowsTests (also in the dotnet subset): the Conversation lines row, its default and its key.
+# 11363 = 11360 + 3, 2026-11-26. ThisWeekShapeTests (all also in the dotnet subset): the house screen's This Week card inside the room the right column folds around (menu review change 7).
+# 11366 = 11363 + 3, 2026-11-26. WaitingDecisionTests (all also in the dotnet subset): the Episode button opens a decision of the player's own where they stand (UI-UX plan Q2).
 # 11356 = 11351 + 5, 2026-11-26. A talk from the campaign board opens on what you came for: CampaignTalkTests 5 (all also in the dotnet subset).
 # 11360 = 11356 + 4, 2026-11-26. A campaign conversation's "Next voter" way on: CampaignTalkTests 4 more (all also in the dotnet subset).
 # 11355 = 11351 + 4, 2026-11-26. Every housemate in their own voice (HD-1): HouseDialogueTests, 4 new cases.
@@ -603,7 +608,9 @@
 # disjoint cases, so the floor is their sum (the presentation wave of 26 November 2026). Counted from the two sides.
 # 11418 = 11360 (the campaign talk stack's head a252ff62) + the earlier stacks' 58 (11409 - 11351 on this branch):
 # disjoint cases, so the floor is their sum (the presentation wave of 26 November 2026). Counted from the two sides.
-Gamesim.EditModeTests 11418
+# 11433 = 11366 (the house screen stack's head a29a1584) + the earlier stacks' 67 (11418 - 11351 on this branch):
+# disjoint cases, so the floor is their sum (the presentation wave of 26 November 2026). Counted from the two sides.
+Gamesim.EditModeTests 11433
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and
@@ -929,6 +936,9 @@ Gamesim.EditModeTests 11418
 # 1705 = 1704 + the waiting-nominee ceremony test, 2026-11-23.
 # 1721 = 1704 + 16 landscape phone cases + 1 waiting-nominee case.
 # 1726 = 1721 + 5, 2026-11-25. Codex's sound settings (Audio 2), caption timing (CaptionTime 1) and the goodbye on short arrivals (StagedExit 2).
+# 1728 = 1726 + 2, 2026-11-26. Conversation lines (UI plan D11): ConversationExchangeFlow 2, lines moving on by themselves and a press under Move on.
+# 1729 = 1728 + 1, 2026-11-26. The This Week card (menu review change 7): Chrome 1, the live feed and one card, the Nearby card in the vibe's place, clear of the open controls.
+# 1730 = 1729 + 1, 2026-11-26. The Episode button (UI-UX plan Q2): EpisodeButton 1, the player's nominations open where they stand, a houseguest's still travel.
 # 1728 = 1726 + 2, 2026-11-26. A talk from the campaign board opens on the vote question or the plea (ConversationIntent 2).
 # 1729 = 1728 + 1, 2026-11-26. A campaign conversation's "Next voter" way on, built and pressed (CampaignNextVoter 1).
 # 1727 = 1726 + 1, 2026-11-26. A front door whose house never binds is let go for good (EpisodePlayModeTests.Opening 1).
@@ -948,7 +958,9 @@ Gamesim.EditModeTests 11418
 # cases, so the floor is their sum (the presentation wave of 26 November 2026). Counted from the two sides.
 # 1740 = 1729 (the campaign talk stack's head a252ff62) + the earlier stacks' 11 (1737 - 1726 on this branch):
 # disjoint cases, so the floor is their sum (the presentation wave of 26 November 2026). Counted from the two sides.
-Gamesim.PlayModeTests 1740
+# 1744 = 1730 (the house screen stack's head a29a1584) + the earlier stacks' 14 (1740 - 1726 on this branch): disjoint
+# cases, so the floor is their sum (the presentation wave of 26 November 2026). Counted from the two sides.
+Gamesim.PlayModeTests 1744
 # The UMA build of the same assembly, read by a plan built without -WithoutUma. 1281 = the 1241 above + the
 # 40 tests that compile only under GAMESIM_UMA, as run at r1 (2026-10-16): in EpisodePlayModeTests,
 # GroundedFarewell 11, Creator 9, HouseLife 8, Emotes 3, OpeningCaptures 2, and one each in CreatorEntry,
@@ -1198,6 +1210,9 @@ Gamesim.PlayModeTests 1740
 # 1750 = 1749 + the waiting-nominee ceremony test, 2026-11-23.
 # 1766 = 1749 + 16 landscape phone cases + 1 waiting-nominee case.
 # 1772 = 1766 + 6, 2026-11-25. The same 5, and the floor walk that settles into standing (Travel 1, UMA build only).
+# 1774 = 1772 + 2, 2026-11-26. The same 2 ConversationExchangeFlow cases run with UMA enabled.
+# 1775 = 1774 + 1, 2026-11-26. The same Chrome case for the This Week card run with UMA enabled.
+# 1776 = 1775 + 1, 2026-11-26. The same EpisodeButton case run with UMA enabled.
 # 1774 = 1772 + 2, 2026-11-26. The same 2 ConversationIntent cases: a talk from the campaign board opens on the vote question or the plea.
 # 1775 = 1774 + 1, 2026-11-26. The same CampaignNextVoter case: a campaign conversation's "Next voter" way on.
 # 1773 = 1772 + 1, 2026-11-26. The same front-door case (EpisodePlayModeTests.Opening 1).
@@ -1217,7 +1232,9 @@ Gamesim.PlayModeTests 1740
 # cases, so the floor is their sum (the presentation wave of 26 November 2026). Counted from the two sides.
 # 1787 = 1775 (the campaign talk stack's head a252ff62) + the earlier stacks' 12 (1784 - 1772 on this branch):
 # disjoint cases, so the floor is their sum (the presentation wave of 26 November 2026). Counted from the two sides.
-Gamesim.PlayModeTests.UmaBuild 1787
+# 1791 = 1776 (the house screen stack's head a29a1584) + the earlier stacks' 15 (1787 - 1772 on this branch): disjoint
+# cases, so the floor is their sum (the presentation wave of 26 November 2026). Counted from the two sides.
+Gamesim.PlayModeTests.UmaBuild 1791
 # The UMA bodies: runs only where the GAMESIM_UMA define is set (the working tree and the D: copy).
 # 82 = the 89 run on 2026-10-15, less the 7 farewell probes moved to Gamesim.Uma.DiagnosticsPlayModeTests;
 # 85 = 82 + the 3 farewell readiness decision tests (UmaFarewellReadinessDecisionPlayModeTests, 2026-10-16);
@@ -1720,6 +1737,11 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # 23438 = 23431 (the new main with dialogue rules 4) + the trivia switch-on's 7 (23373 - 23366 on this branch):
 # disjoint cases, so the floor is their sum (the trivia landing of 23 November 2026). Counted from the two sides.
 # 23448 = 23438 + 10, 2026-11-25. The commitment story's new cases that run without Unity (its two save-file checks run in Unity only).
+# 23452 = 23448 + 4, 2026-11-26. The same 4 PhaseWordsTests cases the EditMode floor counts.
+# 23456 = 23452 + 4, 2026-11-26. The same 4 ConversationLinePaceTests cases the EditMode floor counts.
+# 23457 = 23456 + 1, 2026-11-26. The same MenuSettingRowsTests case the EditMode floor counts.
+# 23460 = 23457 + 3, 2026-11-26. The same 3 ThisWeekShapeTests cases the EditMode floor counts.
+# 23463 = 23460 + 3, 2026-11-26. The same 3 WaitingDecisionTests cases the EditMode floor counts.
 # 23453 = 23448 + 5, 2026-11-26. The same 5 CampaignTalkTests cases the EditMode floor counts.
 # 23457 = 23453 + 4, 2026-11-26. The same 4 CampaignTalkTests cases the EditMode floor counts ("Next voter").
 # 23452 = 23448 + 4, 2026-11-26. Every housemate in their own voice (HD-1): the same 4 HouseDialogueTests cases.
@@ -1740,4 +1762,6 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # disjoint cases, so the floor is their sum (the presentation wave of 26 November 2026). Counted from the two sides.
 # 23504 = 23457 (the campaign talk stack's head a252ff62) + the earlier stacks' 47 (23495 - 23448 on this branch):
 # disjoint cases, so the floor is their sum (the presentation wave of 26 November 2026). Counted from the two sides.
-Gamesim.SimulationTests 23504
+# 23519 = 23463 (the house screen stack's head a29a1584) + the earlier stacks' 56 (23504 - 23448 on this branch):
+# disjoint cases, so the floor is their sum (the presentation wave of 26 November 2026). Counted from the two sides.
+Gamesim.SimulationTests 23519

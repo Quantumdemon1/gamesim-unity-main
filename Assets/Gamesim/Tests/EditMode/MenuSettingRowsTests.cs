@@ -104,6 +104,29 @@ namespace Gamesim.Tests.EditMode
                 Assert.That(kept, Does.Contain("\"" + key + "\""), key + " is still read and written.");
         }
 
+        [Test]
+        public void TheConversationLinesRow_WaitsByDefault_AndIsKeptUnderItsOwnKey()
+        {
+            // UI plan D11, lead ruling L15: a row of Accessibility, after the caption time, that waits for a press unless the player chose otherwise.
+            Assert.That(SettingRowWords.ConversationLinesRow, Is.EqualTo("Conversation lines"));
+            Assert.That(SettingRowWords.ConversationLinesValues, Is.EqualTo(new[] { "Wait for me", "Move on" }), "Waiting for a press first: the default.");
+            var rows = SettingRowWords.Rows.ToList();
+            Assert.That(rows.IndexOf(SettingRowWords.ConversationLinesRow), Is.EqualTo(rows.IndexOf(SettingRowWords.CaptionTimeRow) + 1),
+                "Drawn under the caption time, the other row about reading time.");
+            Assert.That(ConversationLinePace.Key, Is.EqualTo("Gamesim.AutoContinueLines"));
+            Assert.That(ConversationLinePace.FromRecord(0) || ConversationLinePace.FromRecord(-1) || ConversationLinePace.FromRecord(2), Is.False,
+                "No record, or any record but 1, waits for a press.");
+            Assert.That(ConversationLinePace.FromRecord(ConversationLinePace.Record(true)), Is.True);
+            Assert.That(ConversationLinePace.Record(false), Is.EqualTo(0));
+            // Read as the house starts, written with every other setting, and drawn from the field both use.
+            string start = Code(Read("Episode/EpisodeDirector.cs"));
+            Assert.That(start, Does.Contain("autoContinueLines = ConversationLinePace.FromRecord(preferences.GetInt(ConversationLinePace.Key, 0));"));
+            Assert.That(Body(Code(Read("Episode/EpisodeDirector.Season.cs")), "ApplyPreferences"),
+                Does.Contain("store.SetInt(ConversationLinePace.Key, ConversationLinePace.Record(autoContinueLines));"));
+            Assert.That(Body(Code(Read("Episode/EpisodeDirector.SettingsPrefs.cs")), "AccessibilitySection"),
+                Does.Contain("hud.SettingChoice(SettingRowWords.ConversationLinesRow, SettingRowWords.ConversationLinesValues, autoContinueLines ? 1 : 0,"));
+        }
+
         // ---------------------------------------------------------------- held in the source
 
         /// <summary>Each preference section's drawing, by the methods that draw it.</summary>

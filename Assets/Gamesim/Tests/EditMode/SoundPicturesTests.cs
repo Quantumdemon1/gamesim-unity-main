@@ -164,14 +164,38 @@ namespace Gamesim.Tests.EditMode
         [Test]
         public void TheVolumeSliders_AreNamedForTheirChannel_BesideTheSoundRows()
         {
-            var names = new[] { SoundChannel.Music, SoundChannel.Effects, SoundChannel.Interface }.Select(SoundPictures.MeterCaption).ToList();
-            Assert.That(names, Is.EqualTo(new[] { "Music volume", "Effects volume", "Interface volume" }));
+            var names = new[] { SoundChannel.Music, SoundChannel.Effects, SoundChannel.Interface, SoundChannel.Voice }.Select(SoundPictures.MeterCaption).ToList();
+            Assert.That(names, Is.EqualTo(new[] { "Music volume", "Effects volume", "Interface volume", "Voice volume" }));
             // Menu slice 4: each a slider row of its own, its value its percentage; no step buttons beside it,
             // and no name shared with the master's slider or the sound switches.
             foreach (var other in new[] { SettingRowWords.MasterVolumeRow, SettingRowWords.AllSoundRow, SettingRowWords.MusicRow, SettingRowWords.ReducedSoundRow })
                 Assert.That(names, Has.No.Member(other));
-            Assert.That(new[] { SoundPictures.MusicVolumeKey, SoundPictures.EffectsVolumeKey, SoundPictures.InterfaceVolumeKey },
-                Is.EqualTo(new[] { "Gamesim.MusicVolume", "Gamesim.EffectsVolume", "Gamesim.InterfaceVolume" }));
+            Assert.That(new[] { SoundPictures.MusicVolumeKey, SoundPictures.EffectsVolumeKey, SoundPictures.InterfaceVolumeKey, SoundPictures.VoiceVolumeKey },
+                Is.EqualTo(new[] { "Gamesim.MusicVolume", "Gamesim.EffectsVolume", "Gamesim.InterfaceVolume", "Gamesim.VoiceVolume" }));
+        }
+
+        /// <summary>
+        /// The houseguests' murmurs (AU-16) have a volume of their own, the fourth slider under the
+        /// master's: "Voice volume", kept under its own key, starting at 70 percent where the other
+        /// three start at the whole. The channel is appended, so the three before it keep their
+        /// numbers; and no cue of the table plays under it - a murmur's picture is its line.
+        /// </summary>
+        [Test]
+        public void TheVoiceVolume_StartsAt70_UnderItsOwnKey_AfterTheOtherThree()
+        {
+            Assert.That(SoundPictures.Channels, Is.EqualTo(new[] { SoundChannel.Music, SoundChannel.Effects, SoundChannel.Interface, SoundChannel.Voice }),
+                "Settings shows the four sliders in this order, under the master's.");
+            Assert.That(new[] { (int)SoundChannel.Music, (int)SoundChannel.Effects, (int)SoundChannel.Interface, (int)SoundChannel.Voice },
+                Is.EqualTo(new[] { 0, 1, 2, 3 }), "Appended: no channel's number moves.");
+            Assert.That(SoundPictures.DefaultVolumeOf(SoundChannel.Voice), Is.EqualTo(70), "The voices start at 70 percent.");
+            Assert.That(SoundPictures.DefaultVoiceVolume, Is.EqualTo(70));
+            foreach (var channel in new[] { SoundChannel.Music, SoundChannel.Effects, SoundChannel.Interface })
+                Assert.That(SoundPictures.DefaultVolumeOf(channel), Is.EqualTo(SoundPictures.DefaultVolume), channel + " still starts at the whole.");
+            Assert.That(SoundPictures.Channels.Select(SoundPictures.VolumeKeyOf),
+                Is.EqualTo(new[] { "Gamesim.MusicVolume", "Gamesim.EffectsVolume", "Gamesim.InterfaceVolume", "Gamesim.VoiceVolume" }));
+            Assert.That(SoundPictures.Channels.Select(SoundPictures.LogKey),
+                Is.EqualTo(new[] { "music-volume", "effects-volume", "interface-volume", "voice-volume" }), "Each its own word in the player log.");
+            Assert.That(SoundPictures.Rows.Where(row => row.Channel == SoundChannel.Voice), Is.Empty, "No cue plays under the voices' volume.");
         }
     }
 }

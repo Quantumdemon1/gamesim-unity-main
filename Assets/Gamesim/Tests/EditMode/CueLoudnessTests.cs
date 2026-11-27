@@ -112,6 +112,36 @@ namespace Gamesim.Tests.EditMode
         }
 
         /// <summary>
+        /// The houseguests' murmurs (AU-16) come under every line of every conversation, so at the whole
+        /// of the Voice volume a murmur sits at least 3 dB under the conversation's trust sounds, the
+        /// news that closes the same conversation, and over the hover's tick, the quietest sound the
+        /// house makes, so it is heard; a witnessed caption's murmur plays at least 5 dB under a
+        /// conversation's own. A murmur is made, not recorded: measured here from its render, as a
+        /// recording is, its loudest 400 ms (the whole of a shorter one).
+        /// </summary>
+        [Test]
+        public void AHouseguestsMurmurSitsUnderTheTrustSounds_AndOverTheHoversTick()
+        {
+            var loudness = SoundPictures.Rows.ToDictionary(row => row.Cue, row => LoudestDecibels(Recording(row.Cue)) + row.GainDb);
+            double trust = Math.Min(loudness["RelationshipUp"], loudness["RelationshipDown"]);
+            int measured = 0;
+            foreach (var speaker in new[] { new[] { "player", "they/them" }, new[] { "maya-hassan", "she/her" }, new[] { "riley-johnson", "he/him" } })
+                foreach (var line in new[] { "I think we should keep this between us until the vote on Thursday, okay?", "How's the day treating you?", "Okay." })
+                {
+                    var plan = Murmur.For(speaker[0], speaker[1], line, false);
+                    double murmur = LoudestDecibels(Murmur.Render(plan, 22050), 22050);
+                    Assert.That(murmur, Is.LessThanOrEqualTo(trust - 3.0),
+                        plan + " plays at " + murmur.ToString("0.00") + " dB against the trust sounds' " + trust.ToString("0.00") + ".");
+                    Assert.That(murmur, Is.GreaterThan(loudness["Hover"]),
+                        plan + " plays at " + murmur.ToString("0.00") + " dB against the hover's " + loudness["Hover"].ToString("0.00") + ".");
+                    double witnessed = murmur + Murmur.For(speaker[0], speaker[1], line, true).GainDb;
+                    Assert.That(witnessed, Is.LessThanOrEqualTo(murmur - 5.0), plan + ": a witnessed caption's murmur is plainly quieter.");
+                    measured++;
+                }
+            Assert.That(measured, Is.EqualTo(9));
+        }
+
+        /// <summary>
         /// A competition's loop takes over from the season's bed at the bed's own gain
         /// (<see cref="MusicFade.CompetitionPeak"/>), so its recording is what sets how loud it is: about
         /// as loud as the bed, measured whole, up to 3 dB over it for its drive and never more than a
@@ -238,6 +268,22 @@ namespace Gamesim.Tests.EditMode
             }
             Assert.Fail(path + " has no data chunk.");
             return 0.0;
+        }
+
+        /// <summary>Samples' loudest 400 milliseconds at <paramref name="rate"/> (the whole of a shorter run), in decibels of full scale: the recordings' measure.</summary>
+        private static double LoudestDecibels(float[] samples, int rate)
+        {
+            Assert.That(samples.Length, Is.GreaterThan(0));
+            int window = Math.Min(samples.Length, (int)(0.4 * rate));
+            double running = 0.0;
+            for (int at = 0; at < window; at++) running += (double)samples[at] * samples[at];
+            double loudest = running;
+            for (int at = window; at < samples.Length; at++)
+            {
+                running += (double)samples[at] * samples[at] - (double)samples[at - window] * samples[at - window];
+                if (running > loudest) loudest = running;
+            }
+            return 10.0 * Math.Log10(loudest / window);
         }
 
         private static string GamesimRoot()

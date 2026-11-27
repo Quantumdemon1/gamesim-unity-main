@@ -80,6 +80,8 @@ namespace Gamesim.Simulation
 
             private void ResolveRules3(EpisodeState state)
             {
+                // Dialogue rules 5's HoH consultation has its own half (EpisodeEngine.Dialogue.Rules5.cs).
+                if (HoHConsultCommand) { ResolveHoHConsult(state); return; }
                 // Dialogue rules 4's veto question has its own half (EpisodeEngine.Dialogue.Rules4.cs).
                 if (VetoQuestionCommand)
                 {

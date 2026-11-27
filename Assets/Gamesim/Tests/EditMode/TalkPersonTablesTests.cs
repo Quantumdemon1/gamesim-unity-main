@@ -140,7 +140,7 @@ namespace Gamesim.Tests.EditMode
             var house = FreeTalkFixture.Npcs(engine.Snapshot).Select(c => c.id).ToList();
             var own = house.ToDictionary(id => id, id => 0);
             var seen = new HashSet<string>();
-            var kinds = new HashSet<TalkKind>();
+            int later = 0;
             var bad = new List<string>();
             int lastKey = -1;
             for (int step = 0; step < 4000; step++)
@@ -162,7 +162,7 @@ namespace Gamesim.Tests.EditMode
                             if (offer.Talk.Owner != StoryPeople.TemplateOf(npc).Id) bad.Add(where + ": another regular's own talk");
                             if (!offer.Repeat && !seen.Add(npc.id + "|" + offer.Talk.Id)) bad.Add(where + ": said twice");
                             own[npc.id]++;
-                            kinds.Add(offer.Talk.Kind);
+                            if (!offer.Talk.When.First) later++;
                         }
                         var reply = offer.Talk.Replies?.FirstOrDefault(r => r != null && r.Choice == TalkChoice.None && TalkRules.IsTone(r.Tone) && r.Tone != TalkRules.Flirt);
                         if (reply == null) continue;
@@ -177,7 +177,7 @@ namespace Gamesim.Tests.EditMode
             foreach (string id in house)
                 Assert.That(own[id], Is.GreaterThanOrEqualTo(1), id + ": their own first talk on move-in night, at the least.");
             Assert.That(own.Values.Sum(), Is.GreaterThanOrEqualTo(4 * house.Count), "The house's own talks over three weeks.");
-            Assert.That(kinds.Contains(TalkKind.Layer) && kinds.Contains(TalkKind.Rhythm), Is.True, "Own layer frames and house life were both said.");
+            Assert.That(later, Is.GreaterThanOrEqualTo(2 * house.Count), "Their own talks after the first: frames, where they stand, the week's events or house life.");
         }
     }
 }

@@ -151,6 +151,19 @@ namespace Gamesim.Presentation
         public float Openness => openness;
 
         /// <summary>
+        /// The leaves give and begin to swing open (AU-06): after the rattle, at once under reduced
+        /// motion, and never for a door that turns back before it shut (<see cref="DoorLeafSounds"/>).
+        /// Raised in the frame they leave the frame; the director plays the door's clunk.
+        /// </summary>
+        public event System.Action LeavesSwinging;
+
+        /// <summary>
+        /// The leaves land shut: as a closing swing reaches the frame, or at once under reduced motion,
+        /// and never for a door that did not leave it. The director plays the door's thud.
+        /// </summary>
+        public event System.Action LeavesShut;
+
+        /// <summary>
         /// Whether the whole horizontal route fits between the moving leaves. The actor's radius
         /// expands each leaf's rectangle, so a clear centre line also clears the body. The complete
         /// route is checked before a walk starts; clearance never depends on how many frames the
@@ -247,6 +260,7 @@ namespace Gamesim.Presentation
         /// </summary>
         public void Open(bool reducedMotion, bool flash)
         {
+            float before = openness;
             reduced = reducedMotion;
             calm = !flash;
             if (!open)
@@ -264,11 +278,13 @@ namespace Gamesim.Presentation
             ApplyPose(0f, 0f);
             ApplyLight();
             HideSparkles();
+            Heard(before);
         }
 
         /// <summary>Closes the doors and lets the light die away; at once under <paramref name="reducedMotion"/>.</summary>
         public void Close(bool reducedMotion)
         {
+            float before = openness;
             reduced = reducedMotion;
             open = false;
             lit = false;
@@ -280,6 +296,17 @@ namespace Gamesim.Presentation
             lightLevel = 0f;
             ApplyPose(0f, 0f);
             ApplyLight();
+            Heard(before);
+        }
+
+        /// <summary>Says the leaves moved from <paramref name="before"/> to where they stand now, when the step left the frame or landed in it.</summary>
+        private void Heard(float before)
+        {
+            switch (DoorLeafSounds.Between(before, openness))
+            {
+                case DoorLeafSound.Swing: LeavesSwinging?.Invoke(); break;
+                case DoorLeafSound.Shut: LeavesShut?.Invoke(); break;
+            }
         }
 
         /// <summary>
@@ -318,8 +345,10 @@ namespace Gamesim.Presentation
             if (open) sinceOpen += dt;
             if (jittering && (reduced || sinceOpen >= JitterSeconds)) jittering = false;
             float target = open && !jittering ? 1f : 0f;
+            float before = openness;
             openness = reduced ? target : Approach(openness, target, open ? OpenRate : CloseRate, dt);
             ApplyPose(jittering ? Jitter() : 0f, jittering ? Jitter() : 0f);
+            Heard(before);
         }
 
         private void TickBurst(float dt)

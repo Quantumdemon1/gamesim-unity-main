@@ -3,13 +3,19 @@ using System.Collections.Generic;
 
 namespace Gamesim.Presentation
 {
-    /// <summary>What a sound is for: news the player is told, or the interface answering a hand.</summary>
+    /// <summary>What a sound is for: news the player is told, the interface answering a hand, or a motion the player sees.</summary>
     public enum SoundKind
     {
         /// <summary>Something happened in the game - a nomination, a ballot, a hit. It must never be the only way the player learns it.</summary>
         Information,
         /// <summary>The interface answering a press, a hover, a panel, a step of the tour: it repeats what the screen already shows.</summary>
         Interface,
+        /// <summary>
+        /// A motion the player sees in the house - the front door's leaves giving and landing shut. It
+        /// is the sound of what is on screen, so it carries no news of its own, and it plays under the
+        /// effects' volume as the house's air does.
+        /// </summary>
+        World,
     }
 
     /// <summary>The volume a sound is played under, beside the master (PLAN A, A11).</summary>
@@ -44,7 +50,8 @@ namespace Gamesim.Presentation
             /// <summary>
             /// The cue's place in the mix, in decibels against its recording: 0 for the game's news,
             /// which plays as recorded, and below it for the interface's answers, so a menu never
-            /// sounds as big as a nomination. Every recording peaks at the same level, which put the
+            /// sounds as big as a nomination; a motion the player sees (<see cref="SoundKind.World"/>)
+            /// sits below the news too. Every recording peaks at the same level, which put the
             /// panels' swish level with the eviction and the hover's tick over the ballot's.
             /// </summary>
             public float GainDb { get; }
@@ -87,7 +94,19 @@ namespace Gamesim.Presentation
             new Row("PanelClose", SoundKind.Interface, SoundChannel.Interface, "The panel leaving.", gainDb: -11f),
             new Row("Hover", SoundKind.Interface, SoundChannel.Interface, "The control under the pointer lights.", gainDb: -12f, spacing: HoverSpacing),
             new Row("TutorialStep", SoundKind.Interface, SoundChannel.Interface, "The tour's next step: its title and its words.", gainDb: -9f),
+            // The front door (AU-06): the opening's entrances and the evicted's walk out. Sounds of a
+            // motion on screen, under the news; appended, as the cues are.
+            new Row("DoorOpen", SoundKind.World, SoundChannel.Effects,
+                "The front door's leaves give after their rattle and swing open, and the light beyond comes up.", gainDb: DoorGainDb),
+            new Row("DoorShut", SoundKind.World, SoundChannel.Effects,
+                "The front door's leaves land shut, and the light beyond dies away.", gainDb: DoorGainDb),
         };
+
+        /// <summary>
+        /// The front door's place in the mix, in decibels: under the news, so a door is never as big
+        /// as the eviction it follows, and over the interface's answers, because it is the house.
+        /// </summary>
+        public const float DoorGainDb = -5f;
 
         /// <summary>
         /// The least time between two hover ticks, in seconds: a pointer swept down a list enters a

@@ -775,6 +775,9 @@
     <!-- The sound a commit makes, by its cue's name: the final eviction sounds like an eviction. -->
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/CommitSound.cs" />
     <Compile Include="$(EditMode)CommitSoundTests.cs" />
+    <!-- The front door heard (AU-06): its clunk as the leaves leave the frame, its thud as they land in it. -->
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/DoorLeafSounds.cs" />
+    <Compile Include="$(EditMode)DoorLeafSoundsTests.cs" />
     <!-- The prepared block speech a pad gives without typing (A6): every approach's line is a valid speech carrying it. -->
     <Compile Include="$(EditMode)PreparedSpeechTests.cs" />
     <!-- The standalone profile's performance verdict and arithmetic, and the verification-only stress house. -->

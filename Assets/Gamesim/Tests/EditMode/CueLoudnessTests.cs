@@ -38,6 +38,23 @@ namespace Gamesim.Tests.EditMode
         }
 
         /// <summary>
+        /// The front door (AU-06) is the house, not news: its clunk and its thud, as played, sit at
+        /// least 3 dB under the quietest headline, so a door never sounds as big as the eviction it
+        /// follows; and the thud is the bigger of the two, as a landing is.
+        /// </summary>
+        [Test]
+        public void TheFrontDoorSitsUnderTheQuietestHeadline_AndItsThudOverItsClunk()
+        {
+            var loudness = SoundPictures.Rows.ToDictionary(row => row.Cue, row => LoudestDecibels(Recording(row.Cue)) + row.GainDb);
+            double quietestHeadline = Headlines.Min(cue => loudness[cue]);
+            foreach (var row in SoundPictures.Rows.Where(row => row.Kind == SoundKind.World))
+                Assert.That(loudness[row.Cue], Is.LessThanOrEqualTo(quietestHeadline - 3.0),
+                    row.Cue + " plays at " + loudness[row.Cue].ToString("0.00") + " dB against the quietest headline's "
+                    + quietestHeadline.ToString("0.00") + ": at least 3 dB under it.");
+            Assert.That(loudness["DoorShut"], Is.GreaterThan(loudness["DoorOpen"]), "The door lands harder than it gives.");
+        }
+
+        /// <summary>
         /// A competition's loop takes over from the season's bed at the bed's own gain
         /// (<see cref="MusicFade.CompetitionPeak"/>), so its recording is what sets how loud it is: about
         /// as loud as the bed, measured whole, up to 3 dB over it for its drive and never more than a

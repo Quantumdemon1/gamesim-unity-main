@@ -109,6 +109,44 @@ def cues():
     glide = np.sin(2.0 * np.pi * np.cumsum(500.0 + 200.0 * t / dur) / s.SR)
     shape = np.minimum(1.0, t / 0.002) * np.exp(-t * np.log(150.0) / dur) * np.clip((dur - t) / 0.003, 0.0, 1.0)
     yield "TutorialStep", stereo(s.lowpass(glide * shape * 0.4, 3000.0), rev=0.0)
+    # The front door (AU-06), appended: the clunk as its leaves give after the rattle, and the thud
+    # as they land shut. Heavy and wooden, in a room's air, and short, so the next houseguest's
+    # entrance is never under the last one's door.
+    yield "DoorOpen", stereo(door_open(), rev=0.18, size=0.5)
+    yield "DoorShut", stereo(door_shut(), rev=0.28, size=0.7)
+
+
+def latch(gain=0.3):
+    """The latch: a bright tick of filtered noise and a short metal ping over it."""
+    n = s.seconds(0.06)
+    tick = s.highpass(s.osc("noise", 11.0, n), 2800.0) * s.adsr(n, 0.0005, 0.008, 0.0, 0.006)
+    ping = s.note("sine", 2350.0, 0.06, env=(0.0005, 0.03, 0.0, 0.02), gain=0.25)
+    return (tick * 0.6 + ping) * gain
+
+
+def door_open():
+    """The latch gives with a wooden knock, then the leaves swing: a low, breathy sweep of air and wood."""
+    track = s.Track(0.95)
+    track.add(latch(0.12), 0.0, pan=0.1)
+    track.add(hit(220.0, 95.0, 0.16, noise=0.35, gain=0.9), 0.004)
+    n = s.seconds(0.65)
+    t = np.arange(n) / s.SR
+    air = s.lowpass(s.highpass(s.osc("noise", 5.0, n), 180.0), 900.0)
+    swell = np.sin(np.pi * np.clip(t / 0.65, 0.0, 1.0)) ** 1.5
+    track.add(air * swell * 0.3, 0.08, pan=-0.15)
+    # The wood's own groan under the air: a low tone rising a little as the leaves gather speed.
+    groan = np.sin(2.0 * np.pi * np.cumsum(95.0 + 35.0 * t / 0.65) / s.SR) * swell * 0.2
+    track.add(s.lowpass(groan, 600.0), 0.08)
+    return track
+
+
+def door_shut():
+    """The leaves land: a heavy low thump with the latch catching a breath after it."""
+    track = s.Track(0.9)
+    track.add(hit(150.0, 46.0, 0.55, noise=0.45, gain=1.0), 0.0)
+    track.add(s.note("sine", s.hz("A1"), 0.4, env=(0.004, 0.15, 0.3, 0.2), gain=0.35), 0.0)
+    track.add(latch(0.12), 0.035, pan=0.12)
+    return track
 
 
 if __name__ == "__main__":

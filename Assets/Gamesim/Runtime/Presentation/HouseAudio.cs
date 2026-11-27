@@ -15,7 +15,10 @@ namespace Gamesim.Presentation
             PanelOpen, PanelClose, Hover,
             // The tour moving on a step: the reference build's tutorialStep, a glide from 500 to
             // 700 Hz over a tenth of a second (useGameSFX.ts). Appended, so no cue's value moves.
-            TutorialStep
+            TutorialStep,
+            // The front door (AU-06): its leaves giving after the rattle, and landing shut. The
+            // director plays them as the door set says its leaves moved (OpeningDoorSet). Appended.
+            DoorOpen, DoorShut
         }
 
         /// <summary>The last cue asked for, muted or not - what a test listens to.</summary>
@@ -1006,6 +1009,8 @@ namespace Gamesim.Presentation
             new Composition(Cue.PanelClose, "Panel closes", 0.24f, new Tone(760, 0.1f, 0, 0.08f), new Tone(460, 0.12f, 0.09f, 0.08f)),
             new Composition(Cue.Hover, "Hover", 0.09f, new Tone(1800, 0.07f, 0, 0.05f)),
             new Composition(Cue.TutorialStep, "Tutorial step", 0.1f, new Tone(500, 0.1f, 0, 0.15f, 700)),
+            new Composition(Cue.DoorOpen, "Door opens", 0.6f, new Tone(160, 0.12f, 0, 0.14f, 90), new Tone(220, 0.45f, 0.1f, 0.05f, 300)),
+            new Composition(Cue.DoorShut, "Door shuts", 0.55f, new Tone(120, 0.4f, 0, 0.16f, 45), new Tone(1800, 0.05f, 0.03f, 0.04f)),
         };
 
         /// <summary>How many of the cues' clips are loaded, or loading, rather than waiting for their first sounding: every cue once the house has started.</summary>

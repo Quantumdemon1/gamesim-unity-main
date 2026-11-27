@@ -415,6 +415,15 @@ namespace Gamesim.Tests.PlayMode
             bool goodbyeKeyOn = false;
             string walkKeyOff = null;
             int walkKeyReads = 0, walkKeyReadsFromTheLens = 0;
+            // The door heard (AU-06): its clunk and its thud asked for, each in its frame.
+            var audio = director.GetComponent<HouseAudio>();
+            int clunks = 0, thuds = 0, thudFrame = -1, shutFrame = -1;
+            void HearTheDoor(HouseAudio.Cue cue)
+            {
+                if (cue == HouseAudio.Cue.DoorOpen) clunks++;
+                if (cue == HouseAudio.Cue.DoorShut) { thuds++; thudFrame = Time.frameCount; }
+            }
+            audio.CueAsked += HearTheDoor;
             float by = Time.realtimeSinceStartup + EpisodeDirector.WalkOutSeconds + 2f;
             while (director.WalkingOutId != null && Time.realtimeSinceStartup < by)
             {
@@ -434,6 +443,7 @@ namespace Gamesim.Tests.PlayMode
                     {
                         shut = true;
                         shutAt = Time.unscaledTime;
+                        shutFrame = Time.frameCount;
                         inTheHouseWhenShut = body.gameObject.activeInHierarchy;
                     }
                 }
@@ -451,6 +461,7 @@ namespace Gamesim.Tests.PlayMode
                 heldThrough &= Hud.IsHeldForReveal;
                 yield return null;
             }
+            audio.CueAsked -= HearTheDoor;
             Assert.That(director.WalkingOutId, Is.Null, "The walk out ends");
             Assert.That(director.IsTravelDipShowing, Is.True, "behind a dip.");
             float held = Time.unscaledTime - shutAt;
@@ -460,6 +471,9 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(shut, Is.True, "and shut again behind them");
             Assert.That(inTheHouseWhenShut, Is.True, "while their body was still in the house:");
             Assert.That(held, Is.GreaterThanOrEqualTo(EpisodeDirector.DoorHoldSeconds - 0.05f), "the shot held on the shut door before they went.");
+            Assert.That(clunks, Is.EqualTo(1), "The door was heard giving once,");
+            Assert.That(thuds, Is.EqualTo(1), "and landing shut once,");
+            Assert.That(thudFrame, Is.EqualTo(shutFrame), "in the frame its leaves read shut, where the hold on the shut door starts.");
             Assert.That(heldThrough, Is.True, "The chrome was aside for the whole walk.");
             Assert.That(backing, Is.InRange(0f, 0.8f), "The light beyond the open door is a lit room, no brighter than 0.8, not a white sheet.");
             Assert.That(goodbyeKeyOn, Is.False, "The goodbye's key light stayed off for the walk;");

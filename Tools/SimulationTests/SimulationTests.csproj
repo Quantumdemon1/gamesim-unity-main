@@ -244,6 +244,8 @@
     <Compile Include="$(EditMode)FreeTalkS3SeasonSoak.cs" />
     <!-- Free talk slice 5's groundwork (switched off at talk rules 5): the event gate, the event talks, every earlier level as main. -->
     <Compile Include="$(EditMode)FreeTalkEventTests.cs" />
+    <!-- Free talk slice 5's person tables (switched off at talk rules 5): each regular's own talks, offered ahead of the pool's. -->
+    <Compile Include="$(EditMode)TalkPersonTablesTests.cs" />
     <Compile Include="$(EditMode)PooledSchema30ShapeTests.cs" />
     <Compile Include="$(EditMode)OldSaveTrace.cs" />
     <Compile Include="$(EditMode)CurrentOldSaveTrace.cs" />

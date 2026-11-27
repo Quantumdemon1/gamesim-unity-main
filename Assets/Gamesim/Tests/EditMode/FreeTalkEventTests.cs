@@ -128,7 +128,7 @@ namespace Gamesim.Tests.EditMode
                     // No token: an event line never names a housemate, who in a house of both rosters could be an All-Star.
                     if ((line ?? "").IndexOf('{') >= 0) bad.Add(row.Id + ": a token in " + line);
                 }
-            Assert.That(read, Is.EqualTo(42 * 13), "Every line of every event talk was read: the opening and three replies of four lines.");
+            Assert.That(read, Is.EqualTo((42 + 72) * 13), "Every line of every event talk was read, the pools' 42 and the regulars' own 72: the opening and three replies of four lines.");
             Assert.That(bad, Is.Empty);
         }
 
@@ -180,7 +180,9 @@ namespace Gamesim.Tests.EditMode
                     Assert.That(offer.Available, Is.True, row.Id + ": " + offer.Reason);
                     Assert.That(offer.Talk.Kind, Is.EqualTo(TalkKind.Event), row.Id + ": the event's talk is on offer, ahead of " + before.Talk.Id);
                     Assert.That(offer.Talk.When.Event, Is.EqualTo(kind), row.Id);
-                    Assert.That(offer.Talk.Pool, Is.EqualTo(pool), row.Id);
+                    // From their pool, or (slice 5's person tables) from their own table, which goes ahead of the pool's.
+                    if (offer.Talk.Owner != null) Assert.That(offer.Talk.Owner, Is.EqualTo(StoryPeople.TemplateOf(s.Find(npc)).Id), row.Id);
+                    else Assert.That(offer.Talk.Pool, Is.EqualTo(pool), row.Id);
                     Assert.That(FreeTalk.PriorityOf(offer.Talk), Is.EqualTo(100), "Spec 3.13: an event talk's priority.");
                     // The same house below talk rules 5: the talk on offer is the one before the event, as main offers it.
                     foreach (int level in new[] { TalkRules.Romance, TalkRules.Couples })

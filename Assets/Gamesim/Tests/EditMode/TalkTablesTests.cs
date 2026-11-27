@@ -49,15 +49,23 @@ namespace Gamesim.Tests.EditMode
         static IEnumerable<string> TokensIn(string line) =>
             Regex.Matches(line ?? "", @"\{([^}]*)\}").Cast<Match>().Select(m => m.Groups[1].Value);
 
+        /// <summary>What a row's id starts with: its pool, or for a regular's own talk (slice 5) their short name ("taylor-kim": "taylor").</summary>
+        internal static string Head(TalkRow row) => row.Pool ?? (row.Owner == null ? null : row.Owner.Split('-')[0]);
+
+        /// <summary>A regular's own talk (slice 5's person tables): no pool, a Regular Season template's, written for talk rules 5.</summary>
+        static bool IsPersonRow(TalkRow row) =>
+            row.Pool == null && row.FromRules == TalkRules.ComesToTalk
+            && CastTemplates.In(CastTemplates.Roster.Regular).Any(t => t.Id == row.Owner);
+
         // ------------------------------------------------------------------ the registry
 
         [Test]
         public void TheRegistryJoinsEveryTableAndEveryPoolHasEachKind()
         {
-            Assert.That(TalkTables.Tables.Count, Is.EqualTo(16 + 15 + 3), "Four pools, three kinds each, each pool's stage talks (slice 2), the three pools' and twelve All-Stars' romance talks (slice 3), and the three class pools' event talks (slice 5).");
+            Assert.That(TalkTables.Tables.Count, Is.EqualTo(16 + 15 + 3 + 12), "Four pools, three kinds each, each pool's stage talks (slice 2), the three pools' and twelve All-Stars' romance talks (slice 3), the three class pools' event talks and the twelve regulars' own talks (slice 5).");
             Assert.That(TalkTables.All.Count, Is.EqualTo(TalkTables.Tables.Sum(t => t.Length)));
-            Assert.That(Rows.Count(), Is.EqualTo(276 + 48 + 42), "The converter read 276 talks from the source and wrote 276 rows; slice 2 adds 48 stage talks, slice 5 42 event talks.");
-            Assert.That(TalkTables.All.Count, Is.EqualTo(276 + 48 + 3 * 48 + 12 * 19 + 42), "Slice 3 adds 48 romance talks per class pool and 19 per All-Star.");
+            Assert.That(Rows.Count(), Is.EqualTo(276 + 48 + 42 + 12 * 30), "The converter read 276 talks from the source and wrote 276 rows; slice 2 adds 48 stage talks, slice 5 42 event talks and 30 of each regular's own.");
+            Assert.That(TalkTables.All.Count, Is.EqualTo(276 + 48 + 3 * 48 + 12 * 19 + 42 + 12 * 30), "Slice 3 adds 48 romance talks per class pool and 19 per All-Star.");
             foreach (string pool in TalkPools.All)
                 foreach (TalkKind kind in new[] { TalkKind.Layer, TalkKind.Rhythm, TalkKind.Standing })
                     Assert.That(Rows.Count(r => r.Pool == pool && r.Kind == kind), Is.GreaterThan(0), pool + " " + kind);
@@ -70,7 +78,7 @@ namespace Gamesim.Tests.EditMode
             foreach (var row in Rows)
             {
                 if (string.IsNullOrEmpty(row.Id) || row.Id.Length > 64 || row.Id.Contains(":")) bad.Add("bad id: " + row.Id);
-                else if (!row.Id.StartsWith(row.Pool + ".")) bad.Add(row.Id + ": does not start with its pool " + row.Pool);
+                else if (!row.Id.StartsWith(Head(row) + ".")) bad.Add(row.Id + ": does not start with its pool or person " + Head(row));
             }
             foreach (var dup in Rows.GroupBy(r => r.Id).Where(g => g.Count() > 1)) bad.Add("duplicate id " + dup.Key);
             Assert.That(bad, Is.Empty);
@@ -161,7 +169,7 @@ namespace Gamesim.Tests.EditMode
             {
                 var g = row.When;
                 if (g == null) { bad.Add(row.Id + ": no gate object"); continue; }
-                if (!TalkPools.IsKnown(row.Pool) || row.Owner != null) bad.Add(row.Id + ": a pool talk with pool " + row.Pool + " and owner " + row.Owner);
+                if ((!TalkPools.IsKnown(row.Pool) || row.Owner != null) && !IsPersonRow(row)) bad.Add(row.Id + ": a pool talk with pool " + row.Pool + " and owner " + row.Owner);
                 if (g.Window != null && !TalkWindows.IsKnown(g.Window)) bad.Add(row.Id + ": unknown window " + g.Window);
                 if (g.Layer < 0 || g.Layer > 4) bad.Add(row.Id + ": layer gate " + g.Layer);
                 if (g.Week < 0 || g.Week > 20) bad.Add(row.Id + ": week gate " + g.Week);

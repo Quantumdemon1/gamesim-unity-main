@@ -25,7 +25,7 @@ namespace Gamesim.Presentation
     /// that a season object exists in memory.</para>
     /// </summary>
     [DisallowMultipleComponent]
-    public sealed class MainMenu : MonoBehaviour
+    public sealed class MainMenu : MonoBehaviour, ISoundedScreen
     {
         private const float Width = 560f;
 
@@ -43,6 +43,9 @@ namespace Gamesim.Presentation
         private CanvasScaler scaler;
 
         public bool IsShowing => group != null && group.alpha > 0f;
+
+        /// <summary>The house's control sounds, handed over by the director (AU-10): a hover tick, and a click for a press that asked no sound of its own.</summary>
+        public ControlSounds Sounds { get; set; }
 
         /// <summary>
         /// Whether the last <see cref="Show"/> offered Continue: whether there was a season on disk
@@ -482,7 +485,8 @@ namespace Gamesim.Presentation
             colours.selectedColor = colours.highlightedColor;
             colours.pressedColor = new Color(.85f, .85f, .85f);
             button.colors = colours;
-            if (action != null) button.onClick.AddListener(() => action());
+            ControlSounds.Tick(button);
+            if (action != null) button.onClick.AddListener(() => ControlSounds.Press(button, action));
             cursor += ButtonHeight + ButtonGap;
         }
 

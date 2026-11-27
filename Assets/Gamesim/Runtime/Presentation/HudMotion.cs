@@ -16,7 +16,11 @@ namespace Gamesim.Presentation
         /// <summary>Called when the pointer arrives over the control: the HUD plays the hover foley.</summary>
         public System.Action Hovered;
 
-        public void OnPointerEnter(PointerEventData eventData) => Hovered?.Invoke();
+        // Not over a greyed-out control (AU-10): a tick there offered a press that would do nothing.
+        public void OnPointerEnter(PointerEventData eventData)
+        {
+            if (ControlSounds.CanPress(gameObject)) Hovered?.Invoke();
+        }
 
         public void OnPointerDown(PointerEventData eventData)
         {

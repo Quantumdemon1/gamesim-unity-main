@@ -311,8 +311,17 @@ namespace Gamesim.Episode
                 // A retained UnityEvent can outlive its control, or be invoked directly while
                 // disabled. Match real button eligibility before calling the bounded UI action.
                 if (button == null || !button.IsActive() || !button.IsInteractable()) return;
-                action?.Invoke();
+                // Every press answers (AU-10): one that asked for no sound of its own clicks, and one
+                // that opened a panel or committed is left to that sound.
+                PressAnswer.Run(action, CuesAskedSoFar, () => Foley(HouseAudio.Cue.Button));
             };
+        }
+
+        /// <summary>How many cues the house has asked for so far: a press that moved it made its own sound (AU-10).</summary>
+        private int CuesAskedSoFar()
+        {
+            if (foley == null && director != null) foley = director.GetComponent<HouseAudio>();
+            return foley != null ? foley.CuesAsked : 0;
         }
 
         // A way out the shared helper draws on the HUD's own canvas is dressed as every HUD button is

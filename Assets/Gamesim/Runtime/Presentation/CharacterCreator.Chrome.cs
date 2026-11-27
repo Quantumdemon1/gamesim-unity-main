@@ -36,9 +36,16 @@ namespace Gamesim.Presentation
     /// an arrow, a plus - the caption is the control's name and a text that is never drawn, the
     /// same accessible-name pattern an icon button uses anywhere.</para>
     /// </summary>
-    public sealed partial class CharacterCreator
+    public sealed partial class CharacterCreator : IWayOutHost, ISoundedScreen
     {
         private const float Margin = 36f, HeaderBottom = 232f, FooterHeight = 104f, Gap = 20f;
+
+        /// <summary>The house's control sounds, handed over by the director (AU-10): a hover tick, and a click for a press that asked no sound of its own.</summary>
+        public ControlSounds Sounds { get; set; }
+
+        // The creator's way back and the library's Close are plain buttons, sounded as its others are (AU-10).
+        Button IWayOutHost.AddControl(GameObject box) => box.AddComponent<Button>();
+        Action IWayOutHost.Dress(Button control, Action action) => ControlSounds.Dress(control, action);
         private Vector2 frame = new Vector2(1920f, 1080f);
         private bool frameChanged;
 
@@ -467,7 +474,7 @@ namespace Gamesim.Presentation
             }
             var button = box.gameObject.AddComponent<Button>();
             button.targetGraphic = image;
-            button.onClick.AddListener(() => click?.Invoke());
+            button.onClick.AddListener(() => ControlSounds.Press(button, click));
             Seen(button, 10);
             return button;
         }
@@ -506,7 +513,7 @@ namespace Gamesim.Presentation
             }
             var button = box.gameObject.AddComponent<Button>();
             button.targetGraphic = image;
-            button.onClick.AddListener(() => click?.Invoke());
+            button.onClick.AddListener(() => ControlSounds.Press(button, click));
             Seen(button, circle ? Mathf.RoundToInt(r.height * .5f) : 8);
             return button;
         }
@@ -532,6 +539,8 @@ namespace Gamesim.Presentation
             ring.rectTransform.offsetMax = new Vector2(CreatorFocusOutset, CreatorFocusOutset);
             ring.enabled = false;
             button.gameObject.AddComponent<CreatorFocus>().Ring = ring;
+            // And heard: the pointer over it ticks while it can be pressed (AU-10).
+            ControlSounds.Tick(button);
         }
 
         /// <summary>
@@ -687,7 +696,7 @@ namespace Gamesim.Presentation
             }
             var button = card.gameObject.AddComponent<Button>();
             button.targetGraphic = image;
-            button.onClick.AddListener(() => click?.Invoke());
+            button.onClick.AddListener(() => ControlSounds.Press(button, click));
             Seen(button, 10);
             return button;
         }

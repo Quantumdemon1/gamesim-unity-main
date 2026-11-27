@@ -170,7 +170,7 @@ namespace Gamesim.Presentation
                 else Glyph(tile, CategoryIcon(category), on ? UiTheme.Glow : UiTheme.Accent, glyphBox);
                 var button = tile.gameObject.AddComponent<Button>();
                 button.targetGraphic = image;
-                button.onClick.AddListener(() => { appearanceCategory = pick; Rebuild(); });
+                button.onClick.AddListener(() => ControlSounds.Press(button, () => { appearanceCategory = pick; Rebuild(); }));
                 Seen(button, 10);
                 y += pitch;
             }

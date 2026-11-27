@@ -238,6 +238,13 @@ namespace Gamesim.Episode
             castSelect.ConfigureCreator(characterCreator);
             characterCreator.ConfigureSettings(OpenSettingsFromCreator);
             mainMenu = MainMenu.Attach(gameObject);
+            // The front door's screens and the season report sound as the HUD does (AU-10): a hover
+            // tick, and the button's click for a press that asked no sound of its own.
+            var controlSounds = new ControlSounds(cue => { if (audioBed != null) audioBed.PlayCue(cue); }, () => audioBed != null ? audioBed.CuesAsked : 0);
+            mainMenu.Sounds = controlSounds;
+            castSelect.Sounds = controlSounds;
+            characterCreator.Sounds = controlSounds;
+            seasonReport.Sounds = controlSounds;
             // The front door is a screen too: while any of these is up, it owns the keyboard.
             hud.RegisterOverlay(castSelect.GetComponent<CanvasGroup>());
             hud.RegisterOverlay(characterCreator.GetComponent<CanvasGroup>());

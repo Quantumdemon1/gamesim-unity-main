@@ -47,7 +47,7 @@ namespace Gamesim.Presentation
     /// a pad's right stick scroll the season itself.</para>
     /// </summary>
     [DisallowMultipleComponent]
-    public sealed partial class SeasonReport : MonoBehaviour, IWayOutHost
+    public sealed partial class SeasonReport : MonoBehaviour, IWayOutHost, ISoundedScreen
     {
         private const float Pad = 28f;
 
@@ -829,9 +829,12 @@ namespace Gamesim.Presentation
         private Button CloseCorner(RectTransform sheet) => WayOut.AddClose(sheet, Close, TextScale, CloseKeyHint);
 
         // The Close is a report control as its footer way was (SeasonReportControl): a lean of the right
-        // stick that scrolls the report takes no step off it. Nothing else is added to it.
+        // stick that scrolls the report takes no step off it. It sounds as the report's other controls do (AU-10).
         Button IWayOutHost.AddControl(GameObject box) => box.AddComponent<SeasonReportControl>();
-        Action IWayOutHost.Dress(Button control, Action action) => action;
+        Action IWayOutHost.Dress(Button control, Action action) => ControlSounds.Dress(control, action);
+
+        /// <summary>The house's control sounds, handed over by the director (AU-10): a hover tick, and a click for a press that asked no sound of its own.</summary>
+        public ControlSounds Sounds { get; set; }
 
         /// <summary>The room the top right corner keeps for the Close, out of the header's width (which starts 20 in from the card and Pad in from that).</summary>
         private float CloseCornerRoom() =>
@@ -963,7 +966,8 @@ namespace Gamesim.Presentation
             colours.highlightedColor = new Color(1.18f, 1.18f, 1.18f);
             colours.selectedColor = colours.highlightedColor;
             button.colors = colours;
-            button.onClick.AddListener(() => action());
+            ControlSounds.Tick(button);
+            button.onClick.AddListener(() => ControlSounds.Press(button, action));
         }
 
         /// <summary>A tab: a control named by its caption that scrolls the season to its part.</summary>
@@ -987,7 +991,8 @@ namespace Gamesim.Presentation
             colours.highlightedColor = new Color(1.18f, 1.18f, 1.18f);
             colours.selectedColor = colours.highlightedColor;
             button.colors = colours;
-            button.onClick.AddListener(() => press());
+            ControlSounds.Tick(button);
+            button.onClick.AddListener(() => ControlSounds.Press(button, press));
             tabs.Add((packed ? art : ground, label));
         }
 
@@ -1393,7 +1398,8 @@ namespace Gamesim.Presentation
 
             var button = pill.gameObject.AddComponent<SeasonReportControl>();
             button.targetGraphic = target;
-            button.onClick.AddListener(() => action());
+            ControlSounds.Tick(button);
+            button.onClick.AddListener(() => ControlSounds.Press(button, action));
             return button;
         }
 

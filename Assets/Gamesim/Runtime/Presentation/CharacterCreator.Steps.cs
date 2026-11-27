@@ -258,7 +258,7 @@ namespace Gamesim.Presentation
             var button = box.gameObject.AddComponent<Button>();
             button.targetGraphic = image;
             var target = problem;
-            button.onClick.AddListener(() => GoToProblem(target));
+            button.onClick.AddListener(() => ControlSounds.Press(button, () => GoToProblem(target)));
             Seen(button, 10);
         }
 

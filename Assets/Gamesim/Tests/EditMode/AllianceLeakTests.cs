@@ -888,6 +888,9 @@ namespace Gamesim.Tests.EditMode
         {
             var s = ContentCatalog.Create(4301);
             EpisodeEngine.EnableStory(s); EpisodeEngine.EnableCommitments(s); EpisodeEngine.EnableAllianceLeaks(s);
+            // Held at story rules 11, Roles, by name (plan 32 A-ON): the case is the paid listen-in's own, and EnableStory now
+            // gives 12, where the paid listen-in is refused ("Walk over and listen in.") and the free Listen is OverhearTests'.
+            s.story.rulesVersion = StoryRules.Roles;
             var n = Others(s);
             var pact = new AllianceState { id = "alliance-npc-" + s.nextSequence++, name = "The Overheard Pact", active = true,
                 members = new List<string> { n[0].id, n[1].id } };

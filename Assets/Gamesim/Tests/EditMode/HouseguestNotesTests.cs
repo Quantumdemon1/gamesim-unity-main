@@ -27,6 +27,9 @@ namespace Gamesim.Tests.EditMode
         public void EveryKindOfRecordBecomesALineNewestFirst()
         {
             var s = Season();
+            // Held at story rules 11, Roles, by name (plan 32 A-ON): the case pins each record's line as 11 words it, and
+            // EnableStory now gives 12, where a vote claim is worded as the answer was given (S1's notebook cases have 12's).
+            s.story.rulesVersion = StoryRules.Roles;
             var a = Npc(s, 0); var b = Npc(s, 1); var c = Npc(s, 2);
             string first = a.name.Split(' ')[0];
             s.promises.Add(new PromiseState { id = "p1", fromId = a.id, toId = s.playerId, kind = PromiseKind.Safety, status = PromiseStatus.Broken, week = 2 });

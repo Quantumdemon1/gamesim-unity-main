@@ -73,6 +73,20 @@ namespace Gamesim.Tests.EditMode
         }
 
         /// <summary>
+        /// A staged competition (AU-13) sounds under the news as the front door does (the motions on
+        /// screen, above); and a console's click sits at least 3 dB under the show's horn and its
+        /// verdicts, so a field clicking in never outweighs the reveal it waits for.
+        /// </summary>
+        [Test]
+        public void AStagedShowsClickSitsUnderItsHornAndItsVerdicts()
+        {
+            var loudness = SoundPictures.Rows.ToDictionary(row => row.Cue, row => LoudestDecibels(Recording(row.Cue)) + row.GainDb);
+            foreach (var cue in new[] { "ShowHorn", "ShowRight", "ShowWrong" })
+                Assert.That(loudness["ShowLockIn"], Is.LessThanOrEqualTo(loudness[cue] - 3.0),
+                    "The click plays at " + loudness["ShowLockIn"].ToString("0.00") + " dB against " + cue + "'s " + loudness[cue].ToString("0.00") + ".");
+        }
+
+        /// <summary>
         /// A competition's loop takes over from the season's bed at the bed's own gain
         /// (<see cref="MusicFade.CompetitionPeak"/>), so its recording is what sets how loud it is: about
         /// as loud as the bed, measured whole, up to 3 dB over it for its drive and never more than a

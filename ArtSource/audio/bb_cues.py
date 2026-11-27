@@ -125,12 +125,63 @@ def cues():
     # each is recorded under the ballot's tick - a count comes every second and must not shout.
     yield "CountTick", level(stereo(count_tick(), rev=0.06, size=0.3), COUNT_TICK_DB)
     yield "FalseStart", level(stereo(false_start(), rev=0.08, size=0.3), FALSE_START_DB)
+    # A staged competition watched in the yard (AU-13), appended: the start horn, a console locking an
+    # answer in, and the reveal's right and wrong. Sounds of the apparatus on screen; their rows set
+    # them under the news; the buzzer, all body, is recorded under the others' level.
+    yield "ShowHorn", stereo(show_horn(), rev=0.25, size=0.8)
+    yield "ShowLockIn", stereo(show_lock_in(), rev=0.08, size=0.3)
+    yield "ShowRight", stereo(show_right(), rev=0.2, size=0.6)
+    yield "ShowWrong", level(stereo(show_wrong(), rev=0.15, size=0.5), SHOW_WRONG_DB)
+
+
+def show_horn():
+    """The start horn and time called: a brassy fifth on two detuned saws with an octave under it,
+    a quick swell and a held note - a game show's horn, not a fanfare."""
+    track = s.Track(0.9)
+    env = (0.025, 0.08, 0.85, 0.18)
+    for index, name in enumerate(["Bb3", "F4"]):
+        f = s.hz(name)
+        horn = (s.note("saw", f, 0.7, env=env, cutoff=1700.0, gain=0.3)
+                + s.note("saw", f, 0.7, env=env, detune=9.0, cutoff=1700.0, gain=0.22))
+        track.add(horn, 0.0, pan=-0.12 + 0.24 * index)
+    track.add(s.note("saw", s.hz("Bb2"), 0.7, env=env, cutoff=600.0, gain=0.28), 0.0)
+    return track
+
+
+def show_lock_in():
+    """A console locking an answer in: a firm click and the catch a moment after it."""
+    track = s.Track(0.12)
+    n = s.seconds(0.02)
+    for at, cut, gain in ((0.0, 2200.0, 0.5), (0.035, 3200.0, 0.32)):
+        tick = s.highpass(s.osc("noise", 17.0 + at * 100.0, n), cut) * s.adsr(n, 0.0004, 0.006, 0.0, 0.008)
+        track.add(tick * gain, at)
+    track.add(s.note("sine", 1480.0, 0.06, env=(0.0005, 0.02, 0.0, 0.03), gain=0.22), 0.035)
+    return track
+
+
+def show_right():
+    """A right answer lit: two bright struck bars up a fourth, quick and clean."""
+    track = s.Track(0.7)
+    track.add(bell(s.hz("A5"), 0.35, gain=0.4), 0.0, pan=-0.1)
+    track.add(bell(s.hz("D6"), 0.5, gain=0.4), 0.11, pan=0.1)
+    return track
+
+
+def show_wrong():
+    """A wrong answer lit: the buzzer, a low square beating against itself, cut off short."""
+    track = s.Track(0.55)
+    env = (0.006, 0.05, 0.8, 0.06)
+    track.add(s.note("square", 118.0, 0.45, env=env, cutoff=900.0, gain=0.3)
+              + s.note("square", 123.0, 0.45, env=env, cutoff=900.0, gain=0.24), 0.0)
+    return track
 
 
 # The recorded level of the count's tick and the early press, in decibels under the -1.5 dB peak every
 # cue is normalized to: they are news and play as recorded, so their place in the mix is set here.
 COUNT_TICK_DB = -2.0
 FALSE_START_DB = -7.5
+# The staged show's buzzer: a held square is far denser than a horn or a bar at the same peak.
+SHOW_WRONG_DB = -6.0
 
 
 def level(stereo_data, db):

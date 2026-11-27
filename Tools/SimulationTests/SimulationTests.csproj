@@ -781,6 +781,9 @@
     <!-- A competition's last seconds tick as the clock's digits come to each whole second (AU-08). -->
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/CountTicks.cs" />
     <Compile Include="$(EditMode)CountTicksTests.cs" />
+    <!-- A staged competition heard (AU-13): the sounds each beat of a podium, table, tower or course show asks for. -->
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/CompetitionShowSounds.cs" />
+    <Compile Include="$(EditMode)CompetitionShowSoundsTests.cs" />
     <!-- The prepared block speech a pad gives without typing (A6): every approach's line is a valid speech carrying it. -->
     <Compile Include="$(EditMode)PreparedSpeechTests.cs" />
     <!-- The standalone profile's performance verdict and arithmetic, and the verification-only stress house. -->

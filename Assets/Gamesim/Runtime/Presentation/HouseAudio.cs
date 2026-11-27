@@ -25,7 +25,11 @@ namespace Gamesim.Presentation
             // A competition's count (AU-08): each step of the 3-2-1 before GO and each of the attempt's
             // last five seconds, and an early press on the reaction board. The game's news on the
             // effects' volume, where the pointer's tick used to stand in for them. Appended.
-            CountTick, FalseStart
+            CountTick, FalseStart,
+            // A staged competition watched in the yard (AU-13): the start horn (and time called), a
+            // console locking an answer in (and a finish), and a podium reveal's right and wrong.
+            // The director plays them from the show's beats (CompetitionShowSounds). Appended.
+            ShowHorn, ShowLockIn, ShowRight, ShowWrong
         }
 
         /// <summary>The last cue asked for, muted or not - what a test listens to.</summary>
@@ -1023,6 +1027,10 @@ namespace Gamesim.Presentation
             // The reference build's compProgress: a 1000 Hz sine for 50 ms (useGameSFX.ts).
             new Composition(Cue.CountTick, "Count tick", 0.1f, new Tone(1000, 0.05f, 0, 0.15f)),
             new Composition(Cue.FalseStart, "False start", 0.24f, new Tone(196, 0.1f, 0, 0.13f), new Tone(196, 0.12f, 0.12f, 0.13f, 175)),
+            new Composition(Cue.ShowHorn, "Show horn", 0.7f, new Tone(233.08f, 0.65f, 0, 0.12f), new Tone(349.23f, 0.65f, 0, 0.1f)),
+            new Composition(Cue.ShowLockIn, "Show lock in", 0.1f, new Tone(1480, 0.06f, 0, 0.1f)),
+            new Composition(Cue.ShowRight, "Show right", 0.5f, new Tone(880, 0.3f, 0, 0.12f), new Tone(1174.66f, 0.38f, 0.11f, 0.12f)),
+            new Composition(Cue.ShowWrong, "Show wrong", 0.45f, new Tone(118, 0.45f, 0, 0.14f), new Tone(123, 0.45f, 0, 0.12f)),
         };
 
         /// <summary>How many of the cues' clips are loaded, or loading, rather than waiting for their first sounding: every cue once the house has started.</summary>

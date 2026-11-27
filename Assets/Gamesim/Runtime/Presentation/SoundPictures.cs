@@ -109,7 +109,27 @@ namespace Gamesim.Presentation
                 "Before GO, the count's big digit steps down and the clock's line counts with it (STARTS IN, or MEMORIZE while the cards are shown); in the last five seconds, the clock's digits reach the next whole second."),
             new Row("FalseStart", SoundKind.Information, SoundChannel.Effects,
                 "A press before the target is up: the reaction board's line counts one more early and says to wait for a target."),
+            // A staged competition in the yard (AU-13): the apparatus the field works, heard as it is
+            // seen; the standings card that follows carries the news, with its own fanfare.
+            new Row("ShowHorn", SoundKind.World, SoundChannel.Effects,
+                "The course's pads light as the field slaps them to start, the table's trays and consoles start working, or the last place's keys go out as time is called.", gainDb: ShowGainDb),
+            new Row("ShowLockIn", SoundKind.World, SoundChannel.Effects,
+                "A podium console's keys light pale as its competitor presses to lock in, or a finisher's tray, console or pad shows them done.", gainDb: ShowClickGainDb),
+            new Row("ShowRight", SoundKind.World, SoundChannel.Effects,
+                "A podium reveal the player comes through, or the last, which leaves the winner alone: the consoles still in light mint, and those out light red and walk aside.", gainDb: ShowGainDb),
+            new Row("ShowWrong", SoundKind.World, SoundChannel.Effects,
+                "A podium reveal that puts the player out - or, once they are out or watching, any but the last: the consoles of those out light red and they walk aside.", gainDb: ShowGainDb),
         };
+
+        /// <summary>
+        /// A staged competition's horn and its reveal's right and wrong in the mix (AU-13), in
+        /// decibels: under the news and the front door, as the apparatus of a show the card's
+        /// fanfare will crown.
+        /// </summary>
+        public const float ShowGainDb = -6f;
+
+        /// <summary>A console's click in the mix (AU-13): set down less than the horn, as a click has little body; as played it still sits under the horn.</summary>
+        public const float ShowClickGainDb = -2f;
 
         /// <summary>
         /// The front door's place in the mix, in decibels: under the news, so a door is never as big

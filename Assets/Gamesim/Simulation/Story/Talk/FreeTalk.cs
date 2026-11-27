@@ -234,12 +234,16 @@ namespace Gamesim.Simulation
                 && Holds(s, npc, contact, t)).ToList();
             bool standingLeft = rows.Any(t => t.Kind == TalkKind.Standing && !spent.Contains(t.Id));
             TalkRow best = null; bool bestRepeat = false; int bestPriority = int.MinValue; double bestCoin = 2;
+            // From talk rules 5 (spec 3.13, "the person file, else the class pool"): at the same priority, a regular's own unspent
+            // talk goes ahead of their pool's. Below level 5 no own talk holds, so every offer there is decided as before.
+            bool five = TalkRules.At(s, TalkRules.ComesToTalk); bool bestOwn = false;
             void Consider(TalkRow t, bool repeat)
             {
                 int priority = PriorityOf(t);
                 double coin = StoryRandom.Unit(s, repeat ? "talk:v1:r:" + npcId + ":" + key + ":" + t.Id : "talk:v1:q:" + npcId + ":" + t.Id);
-                if (priority < bestPriority || priority == bestPriority && coin >= bestCoin) return;
-                best = t; bestRepeat = repeat; bestPriority = priority; bestCoin = coin;
+                bool own = five && !repeat && t.Owner != null && !TalkRomance.IsRomanceKind(t.Kind);
+                if (priority < bestPriority || priority == bestPriority && (own == bestOwn ? coin >= bestCoin : !own)) return;
+                best = t; bestRepeat = repeat; bestOwn = own; bestPriority = priority; bestCoin = coin;
             }
             foreach (var t in rows)
             {

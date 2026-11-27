@@ -580,9 +580,19 @@
 # disjoint cases, so the floor is their sum (the trivia landing of 23 November 2026). Counted from the two sides.
 # 11340 = 11339 + 1, 2026-11-23. One phone input-hint case checks the touch wording.
 # 11351 = 11340 + 11, 2026-11-25. Codex's commitment story (StoryMechanicsTests): new or existing agreement, pending offer, refusal, cooldown and older saves.
+# 11357 = 11351 + 6, 2026-11-26. The room beds' crossfade, the director's hold on a doorway and the beds' loudness (RoomToneBlendTests 6).
+# 11359 = 11357 + 2, 2026-11-26. The final eviction sounds like an eviction, and every ceremony a commit appends has a sound (CommitSoundTests 2).
+# 11362 = 11359 + 3, 2026-11-26. The interface's cues sit under the news and a hover sweep ticks once in 60 ms (CueLoudnessTests 1, SoundPicturesTests 2).
+# 11365 = 11362 + 3, 2026-11-26. The game menu and the big moments duck the music, and the menu the rooms' beds (MusicFadeTests 3).
+# 11369 = 11365 + 4, 2026-11-26. The player's activities are heard: their loops, their one voice and the dance's duck (ActivitySoundsTests 4).
+# 11374 = 11369 + 5, 2026-11-26. The player's footsteps: their stride, the rooms' grounds and takes, and the strides read off the body's own takes (HouseStepsTests 5).
+# 11377 = 11374 + 3, 2026-11-26. A competition's own music: its fades, its loudness against the season's bed and the music rule (MusicFadeTests 1, CueLoudnessTests 1, OpeningPresentationTests 1).
+# 11380 = 11377 + 3, 2026-11-26. The main menu's title loop: its fades and its gain, its loudness and length against the theme, and the music rule (MusicFadeTests 1, CueLoudnessTests 1, OpeningPresentationTests 1).
 # 11361 = 11351 + 10, 2026-11-26. SB1's lamp shadow tiers: LampShadowTierTests 9 (also in the dotnet subset) and HouseRoomScopeTests 1.
 # 11365 = 11361 + 4, 2026-11-26. LT6's conversation key light: ConversationKeyLightTests 4 (also in the dotnet subset).
-Gamesim.EditModeTests 11365
+# 11394 = 11380 (the sound stack's head 00cdf6ce) + the lighting stacks' 14 (11365 - 11351 on this branch): disjoint
+# cases, so the floor is their sum (the presentation wave of 26 November 2026). Counted from the two sides.
+Gamesim.EditModeTests 11394
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and
@@ -908,7 +918,14 @@ Gamesim.EditModeTests 11365
 # 1705 = 1704 + the waiting-nominee ceremony test, 2026-11-23.
 # 1721 = 1704 + 16 landscape phone cases + 1 waiting-nominee case.
 # 1726 = 1721 + 5, 2026-11-25. Codex's sound settings (Audio 2), caption timing (CaptionTime 1) and the goodbye on short arrivals (StagedExit 2).
-Gamesim.PlayModeTests 1726
+# 1727 = 1726 + the staged show's fanfare with its card (EpisodePlayModeTests.CompetitionShow 1), 2026-11-26.
+# 1728 = 1727 + every cue decoded at the start and a quick second hover not heard (EpisodePlayModeTests.Audio 1), 2026-11-26.
+# 1729 = 1728 + the game menu ducks the music and its Settings frame does not (EpisodePlayModeTests.Music 1), 2026-11-26.
+# 1730 = 1729 + cooking is heard until the player gets up (EpisodePlayModeTests.HouseActivities 1), 2026-11-26.
+# 1731 = 1730 + a walk across the kitchen is heard on tile every stride, and not under Reduce sound (EpisodePlayModeTests.Footsteps 1), 2026-11-26.
+# 1732 = 1731 + a competition plays its own loop and the season's bed carries on where it paused (EpisodePlayModeTests.Music 1), 2026-11-26.
+# 1733 = 1732 + the main menu plays its title loop, cast select is silent and the intro's theme still starts from silence (EpisodePlayModeTests.Music 1), 2026-11-26.
+Gamesim.PlayModeTests 1733
 # The UMA build of the same assembly, read by a plan built without -WithoutUma. 1281 = the 1241 above + the
 # 40 tests that compile only under GAMESIM_UMA, as run at r1 (2026-10-16): in EpisodePlayModeTests,
 # GroundedFarewell 11, Creator 9, HouseLife 8, Emotes 3, OpeningCaptures 2, and one each in CreatorEntry,
@@ -1158,7 +1175,14 @@ Gamesim.PlayModeTests 1726
 # 1750 = 1749 + the waiting-nominee ceremony test, 2026-11-23.
 # 1766 = 1749 + 16 landscape phone cases + 1 waiting-nominee case.
 # 1772 = 1766 + 6, 2026-11-25. The same 5, and the floor walk that settles into standing (Travel 1, UMA build only).
-Gamesim.PlayModeTests.UmaBuild 1772
+# 1773 = 1772 + the same staged show's fanfare case (EpisodePlayModeTests.CompetitionShow 1), 2026-11-26.
+# 1774 = 1773 + the same cue-decoding and hover case (EpisodePlayModeTests.Audio 1), 2026-11-26.
+# 1775 = 1774 + the same game menu duck case (EpisodePlayModeTests.Music 1), 2026-11-26.
+# 1777 = 1775 + the same cooking case and the dance's beat over the music stepped back (EpisodePlayModeTests.HouseActivities 2, the dance UMA build only), 2026-11-26.
+# 1778 = 1777 + the same footsteps case (EpisodePlayModeTests.Footsteps 1), 2026-11-26.
+# 1779 = 1778 + the same competition music case (EpisodePlayModeTests.Music 1), 2026-11-26.
+# 1780 = 1779 + the same title loop case (EpisodePlayModeTests.Music 1), 2026-11-26.
+Gamesim.PlayModeTests.UmaBuild 1780
 # The UMA bodies: runs only where the GAMESIM_UMA define is set (the working tree and the D: copy).
 # 82 = the 89 run on 2026-10-15, less the 7 farewell probes moved to Gamesim.Uma.DiagnosticsPlayModeTests;
 # 85 = 82 + the 3 farewell readiness decision tests (UmaFarewellReadinessDecisionPlayModeTests, 2026-10-16);
@@ -1661,6 +1685,16 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # 23438 = 23431 (the new main with dialogue rules 4) + the trivia switch-on's 7 (23373 - 23366 on this branch):
 # disjoint cases, so the floor is their sum (the trivia landing of 23 November 2026). Counted from the two sides.
 # 23448 = 23438 + 10, 2026-11-25. The commitment story's new cases that run without Unity (its two save-file checks run in Unity only).
+# 23454 = 23448 + 6, 2026-11-26. The same 6 RoomToneBlendTests cases, which run without Unity.
+# 23455 = 23454 + 1, 2026-11-26. CommitSoundTests' final-eviction case, which runs without Unity (its table over the ceremony strip's kinds runs in Unity only).
+# 23458 = 23455 + 3, 2026-11-26. The same 3 cases the EditMode floor counts (CueLoudnessTests 1, SoundPicturesTests 2), which run without Unity.
+# 23461 = 23458 + 3, 2026-11-26. The same 3 MusicFadeTests cases the EditMode floor counts, which run without Unity.
+# 23465 = 23461 + 4, 2026-11-26. The same 4 ActivitySoundsTests cases the EditMode floor counts, which run without Unity.
+# 23469 = 23465 + 4, 2026-11-26. 4 of the 5 HouseStepsTests cases the EditMode floor counts, which run without Unity (the strides read off the body's own takes run in Unity only).
+# 23471 = 23469 + 2, 2026-11-26. 2 of the 3 competition music cases the EditMode floor counts (MusicFadeTests 1, CueLoudnessTests 1), which run without Unity (the music rule runs in Unity only).
+# 23473 = 23471 + 2, 2026-11-26. 2 of the 3 title loop cases the EditMode floor counts (MusicFadeTests 1, CueLoudnessTests 1), which run without Unity (the music rule runs in Unity only).
 # 23457 = 23448 + 9, 2026-11-26. SB1's lamp shadow tiers: the same 9 LampShadowTierTests cases the EditMode floor counts.
 # 23461 = 23457 + 4, 2026-11-26. LT6's conversation key light: the same 4 ConversationKeyLightTests cases the EditMode floor counts.
-Gamesim.SimulationTests 23461
+# 23486 = 23473 (the sound stack's head 00cdf6ce) + the lighting stacks' 13 (23461 - 23448 on this branch): disjoint
+# cases, so the floor is their sum (the presentation wave of 26 November 2026). Counted from the two sides.
+Gamesim.SimulationTests 23486

@@ -940,6 +940,9 @@ namespace Gamesim.Episode
                     .Where(entry => entry.audienceIds.Count == 0 || entry.audienceIds.Contains(result.state.playerId))
                     .Select(entry => entry.kind));
                 bool revealed = false, vetoStaged = false;
+                // A staged competition's fanfare waits for the card that names the winner (below), not
+                // the commit that starts the show: the show narrates for seconds before the card.
+                bool winCueWithCard = false;
                 // The ceremony is not always the last thing a commit writes — an eviction is followed
                 // by the events that open the next week, which is why keying off the final line
                 // meant the eviction card never played at all. Search everything this command
@@ -971,6 +974,9 @@ namespace Gamesim.Episode
                         if (competitionCard != null)
                             competitionCard.Play(title, category, committedState.week, standings, reducedMotion, explanation, attemptLine, mark);
                         React(winnerId, CharacterPresentation.Reaction.Cheered);
+                        // Once, with the card, whichever way the show reached it: played out, a press, or
+                        // the arena handing it the card on its first tick.
+                        if (winCueWithCard && audioBed != null) audioBed.PlayCue(HouseAudio.Cue.CompetitionWin);
                     };
                     // An endurance competition decided without the ranked game is staged in the yard
                     // first, from these committed standings (EpisodeDirector.CompetitionShow.cs); the
@@ -978,7 +984,13 @@ namespace Gamesim.Episode
                     // the screen over it, and never for the ranked game's own commit.
                     bool companions = CommittedEvents(committedState, knownSequence).Any(entry =>
                         entry.kind == CeremonyTakeover.VetoSelectionKind || CeremonySting.IsCeremony(entry.kind) || StoryFallout.IsFallout(entry.kind));
-                    if (companions || !TryBeginCompetitionShow(exchangeBefore, committedState, wasPhase, category, playResult)) playResult();
+                    winCueWithCard = !companions && commitCue == HouseAudio.Cue.CompetitionWin;
+                    if (companions || !TryBeginCompetitionShow(exchangeBefore, committedState, wasPhase, category, playResult))
+                    {
+                        // Not staged: the card plays now and the commit makes its sound below, as it always has.
+                        winCueWithCard = false;
+                        playResult();
+                    }
                 }
 
                 // The veto field. Previously the one phase the episode passed through in silence.
@@ -1106,7 +1118,7 @@ namespace Gamesim.Episode
                     }
                 }
                 if (revealed) HoldHudForReveal();
-                if ((!revealed || vetoStaged) && command.kind != EpisodeCommandKind.MarkOpeningBeat && command.kind != EpisodeCommandKind.Introduce)
+                if ((!revealed || vetoStaged) && !winCueWithCard && command.kind != EpisodeCommandKind.MarkOpeningBeat && command.kind != EpisodeCommandKind.Introduce)
                     audioBed.PlayCue(commitCue);
             }
             BeginConversationExchange(exchangeBefore, result, command);

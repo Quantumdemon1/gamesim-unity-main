@@ -610,6 +610,15 @@
     -->
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/MusicFade.cs" />
     <Compile Include="$(EditMode)MusicFadeTests.cs" />
+    <!-- The house's two bed voices and the director's hold on a doorway, on the same fade arithmetic; the tests read the room beds' WAVs. -->
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/RoomToneBlend.cs" />
+    <Compile Include="$(EditMode)RoomToneBlendTests.cs" />
+    <!-- The player's activities' loops and their one voice, on the same fade arithmetic; the tests read the loops' WAVs. -->
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/ActivitySounds.cs" />
+    <Compile Include="$(EditMode)ActivitySoundsTests.cs" />
+    <!-- The player's footsteps: the stride a speed implies, each room's ground and the takes in turn; the tests read the steps' WAVs. -->
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/HouseSteps.cs" />
+    <Compile Include="$(EditMode)HouseStepsTests.cs" />
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/WardrobeSlots.cs" />
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/CharacterOutfits.cs" />
     <Compile Include="$(EditMode)WardrobeSlotsTests.cs" />
@@ -744,6 +753,11 @@
     <!-- Every sound has a picture, and the three volumes beside the master (A11). -->
     <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/SoundPictures.cs" />
     <Compile Include="$(EditMode)SoundPicturesTests.cs" />
+    <!-- The cues' mix, read from the recordings: every interface answer under the news. -->
+    <Compile Include="$(EditMode)CueLoudnessTests.cs" />
+    <!-- The sound a commit makes, by its cue's name: the final eviction sounds like an eviction. -->
+    <Compile Include="$(RootDir)Assets/Gamesim/Runtime/Presentation/CommitSound.cs" />
+    <Compile Include="$(EditMode)CommitSoundTests.cs" />
     <!-- The prepared block speech a pad gives without typing (A6): every approach's line is a valid speech carrying it. -->
     <Compile Include="$(EditMode)PreparedSpeechTests.cs" />
     <!-- The standalone profile's performance verdict and arithmetic, and the verification-only stress house. -->

@@ -54,10 +54,10 @@ namespace Gamesim.Tests.EditMode
         [Test]
         public void TheRegistryJoinsEveryTableAndEveryPoolHasEachKind()
         {
-            Assert.That(TalkTables.Tables.Count, Is.EqualTo(16 + 15), "Four pools, three kinds each, each pool's stage talks (slice 2), and the three pools' and twelve All-Stars' romance talks (slice 3).");
+            Assert.That(TalkTables.Tables.Count, Is.EqualTo(16 + 15 + 3), "Four pools, three kinds each, each pool's stage talks (slice 2), the three pools' and twelve All-Stars' romance talks (slice 3), and the three class pools' event talks (slice 5).");
             Assert.That(TalkTables.All.Count, Is.EqualTo(TalkTables.Tables.Sum(t => t.Length)));
-            Assert.That(Rows.Count(), Is.EqualTo(276 + 48), "The converter read 276 talks from the source and wrote 276 rows; slice 2 adds 48 stage talks.");
-            Assert.That(TalkTables.All.Count, Is.EqualTo(276 + 48 + 3 * 48 + 12 * 19), "Slice 3 adds 48 romance talks per class pool and 19 per All-Star.");
+            Assert.That(Rows.Count(), Is.EqualTo(276 + 48 + 42), "The converter read 276 talks from the source and wrote 276 rows; slice 2 adds 48 stage talks, slice 5 42 event talks.");
+            Assert.That(TalkTables.All.Count, Is.EqualTo(276 + 48 + 3 * 48 + 12 * 19 + 42), "Slice 3 adds 48 romance talks per class pool and 19 per All-Star.");
             foreach (string pool in TalkPools.All)
                 foreach (TalkKind kind in new[] { TalkKind.Layer, TalkKind.Rhythm, TalkKind.Standing })
                     Assert.That(Rows.Count(r => r.Pool == pool && r.Kind == kind), Is.GreaterThan(0), pool + " " + kind);
@@ -168,6 +168,9 @@ namespace Gamesim.Tests.EditMode
                 if (g.First && (g.Layer != 0 || g.Week != 0 || g.Window != null)) bad.Add(row.Id + ": a first talk with other gates");
                 if (!g.First && g.Layer == 0 && row.Kind != TalkKind.Stage) bad.Add(row.Id + ": neither first nor a layer gate");
                 if (row.Priority < 0 || row.Priority > 100) bad.Add(row.Id + ": priority " + row.Priority);
+                // Slice 5: an event gate only on an event talk, and a row's own level only 0 (every level) or talk rules 5.
+                if (g.Event != null && row.Kind != TalkKind.Event) bad.Add(row.Id + ": an event gate on a " + row.Kind + " talk");
+                if (row.FromRules != 0 && row.FromRules != TalkRules.ComesToTalk) bad.Add(row.Id + ": written for talk level " + row.FromRules);
                 switch (row.Kind)
                 {
                     case TalkKind.Layer:
@@ -186,6 +189,11 @@ namespace Gamesim.Tests.EditMode
                     case TalkKind.Stage:
                         // Slice 2: the stage itself is the gate (TalkStageTablesTests checks the rest).
                         if (row.Layer != 0 || g.First || g.Layer != 0 || row.Reveals || row.Usual || row.Standing != null) bad.Add(row.Id + ": a stage talk is layer 0 and gated by its stage");
+                        break;
+                    case TalkKind.Event:
+                        // Slice 5: said after a first talk, about a known event, at talk rules 5 only (FreeTalkEventTests checks the rest).
+                        if (row.Layer != 0 || g.First || g.Layer != 1 || row.Reveals || row.Usual || row.Standing != null) bad.Add(row.Id + ": an event talk is layer 0, gated at layer 1, and reveals nothing");
+                        if (!TalkEvents.IsKnown(g.Event) || row.FromRules != TalkRules.ComesToTalk) bad.Add(row.Id + ": an event talk names a known event and is written for talk rules 5");
                         break;
                     default:
                         bad.Add(row.Id + ": kind " + row.Kind + " is not in slice 1");
@@ -282,7 +290,7 @@ namespace Gamesim.Tests.EditMode
             "single",
         };
 
-        static readonly Regex DenyWords = new Regex(@"\b(?:" + string.Join("|", Deny.Select(Regex.Escape)) + @")\b|\bex-", RegexOptions.IgnoreCase);
+        internal static readonly Regex DenyWords = new Regex(@"\b(?:" + string.Join("|", Deny.Select(Regex.Escape)) + @")\b|\bex-", RegexOptions.IgnoreCase);
 
         [TestCase("I miss my wife.")] [TestCase("My Ex-partner")] [TestCase("Church on Sunday")] [TestCase("a little sick")] [TestCase("Let's date.")]
         public void TheDenyListCatchesAPrivateFact(string line) => Assert.That(DenyWords.IsMatch(line), Is.True);

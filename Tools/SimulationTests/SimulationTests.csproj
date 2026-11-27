@@ -242,6 +242,8 @@
     <!-- Free talk slice 3's second fixes: a new couple once a partner has left the house, and every choice the screen offers in a level-3 week accepted. -->
     <Compile Include="$(EditMode)FreeTalkNewCoupleTests.cs" />
     <Compile Include="$(EditMode)FreeTalkS3SeasonSoak.cs" />
+    <!-- Free talk slice 5's groundwork (switched off at talk rules 5): the event gate, the event talks, every earlier level as main. -->
+    <Compile Include="$(EditMode)FreeTalkEventTests.cs" />
     <Compile Include="$(EditMode)PooledSchema30ShapeTests.cs" />
     <Compile Include="$(EditMode)OldSaveTrace.cs" />
     <Compile Include="$(EditMode)CurrentOldSaveTrace.cs" />

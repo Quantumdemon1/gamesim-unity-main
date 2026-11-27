@@ -35,5 +35,14 @@ namespace Gamesim.Presentation
             if (kinds.Any(StoryLog.IsFallout)) return "Nomination";
             return "Button";
         }
+
+        /// <summary>
+        /// Whether the commit makes its sound <paramref name="cueName"/> itself (AU-07): when no card of
+        /// its own reveals the beat, as it always did - and, when a staged veto meeting does, only for a
+        /// sound that is not the veto's. A staged meeting only summons the house at its commit; the
+        /// veto sounds with the page that shows the decision, a skipped page included.
+        /// </summary>
+        public static bool SoundsAtTheCommit(string cueName, bool revealed, bool vetoStaged) =>
+            !revealed || (vetoStaged && !string.Equals(cueName, "Veto", StringComparison.Ordinal));
     }
 }

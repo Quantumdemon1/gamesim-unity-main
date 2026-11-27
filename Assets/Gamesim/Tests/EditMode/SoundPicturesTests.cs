@@ -32,7 +32,7 @@ namespace Gamesim.Tests.EditMode
             foreach (var row in SoundPictures.Rows)
                 Assert.That(row.Channel, Is.EqualTo(row.Kind == SoundKind.Interface ? SoundChannel.Interface : SoundChannel.Effects), row.ToString());
             // The news the plan names, each information.
-            foreach (var cue in new[] { "SocialUp", "SocialDown", "Nomination", "Veto", "Vote", "Eviction", "CompetitionWin", "Finale", "Save" })
+            foreach (var cue in new[] { "SocialUp", "SocialDown", "Nomination", "Veto", "Vote", "Eviction", "CompetitionWin", "Finale", "Save", "Summons" })
                 Assert.That(SoundPictures.IsInformation(cue), Is.True, cue + " carries news.");
             foreach (var cue in new[] { "Button", "PanelOpen", "PanelClose", "Hover", "TutorialStep" })
                 Assert.That(SoundPictures.IsInformation(cue), Is.False, cue + " answers a hand.");

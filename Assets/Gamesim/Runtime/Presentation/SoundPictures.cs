@@ -100,6 +100,9 @@ namespace Gamesim.Presentation
                 "The front door's leaves give after their rattle and swing open, and the light beyond comes up.", gainDb: DoorGainDb),
             new Row("DoorShut", SoundKind.World, SoundChannel.Effects,
                 "The front door's leaves land shut, and the light beyond dies away.", gainDb: DoorGainDb),
+            // The house called to a staged ceremony (AU-07).
+            new Row("Summons", SoundKind.Information, SoundChannel.Effects,
+                "The strip comes up with the ceremony's headline and the summons line: the house gathers at the table, or takes its seats."),
         };
 
         /// <summary>

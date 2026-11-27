@@ -31,6 +31,26 @@ namespace Gamesim.Tests.EditMode
             Assert.That(CommitSound.CueName(new[] { "final-eviction", "winner" }), Is.EqualTo("Finale"), "and under the winner.");
         }
 
+        /// <summary>
+        /// A staged veto meeting's commit only summons the house (AU-07): the veto sounds with the page
+        /// that shows the decision, not while the house is still finding its seats. On the HUD the
+        /// commit sounds the veto as it always did; a reveal makes its own sounds; and a bigger beat in
+        /// a staged meeting's commit keeps its sound there.
+        /// </summary>
+        [Test]
+        public void AStagedVetoMeetingLeavesTheVetosSoundToItsDecision()
+        {
+            Assert.That(CommitSound.SoundsAtTheCommit("Veto", revealed: true, vetoStaged: true), Is.False,
+                "Staged, the veto waits for the decision's page.");
+            Assert.That(CommitSound.SoundsAtTheCommit("Veto", revealed: false, vetoStaged: false), Is.True,
+                "On the HUD's card, the commit sounds the veto, as it always did.");
+            Assert.That(CommitSound.SoundsAtTheCommit("Nomination", revealed: true, vetoStaged: true), Is.True,
+                "A bigger beat in the same commit keeps its sound.");
+            Assert.That(CommitSound.SoundsAtTheCommit("Nomination", revealed: true, vetoStaged: false), Is.False,
+                "A staged key ceremony makes its own sounds.");
+            Assert.That(CommitSound.SoundsAtTheCommit("Button", revealed: false, vetoStaged: false), Is.True, "Every other commit sounds.");
+        }
+
 #if UNITY_5_3_OR_NEWER
         /// <summary>
         /// Every ceremony a commit can append makes a sound of its own, and none falls through to the

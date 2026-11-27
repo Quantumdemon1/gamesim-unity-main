@@ -311,6 +311,11 @@ namespace Gamesim.Tests.PlayMode
             var beats = new List<CeremonyBeat>();
             void Record(CeremonyBeat beat) => beats.Add(beat);
             takeover.BeatReached += Record;
+            // The veto's sound goes with its decision's page, a skipped one included (AU-07).
+            var audio = director.GetComponent<HouseAudio>();
+            int vetoes = 0;
+            void Hear(HouseAudio.Cue cue) { if (cue == HouseAudio.Cue.Veto) vetoes++; }
+            audio.CueAsked += Hear;
             try
             {
                 var command = NextCommand(director.Snapshot);
@@ -321,6 +326,7 @@ namespace Gamesim.Tests.PlayMode
                 var committed = director.Snapshot;
                 Assert.That(director.IsCeremonyStaged, Is.True, "The veto meeting is staged in the house.");
                 Assert.That(director.CeremonyStagePhase, Is.EqualTo(EpisodeDirector.CeremonyStageStep.Summons), "The house is summoned.");
+                Assert.That(vetoes, Is.EqualTo(0), "The commit leaves the veto's sound to the decision.");
                 yield return null;
                 Assert.That(director.CeremonySkipShowing, Is.True, "The chip says a press moves the meeting on.");
 
@@ -334,6 +340,7 @@ namespace Gamesim.Tests.PlayMode
                     { CeremonyBeatKind.Opened, CeremonyBeatKind.VetoDecided, CeremonyBeatKind.ReplacementNamed }),
                     "The decision and the replacement are reported on the way: " + string.Join(", ", beats));
                 Assert.That(beats.Skip(1).All(beat => beat.Skipped), Is.True, "as skipped.");
+                Assert.That(vetoes, Is.EqualTo(1), "The skipped decision sounds the veto once.");
                 yield return Frames(2);
                 Assert.That(takeover.IsPlaying, Is.True, "The same press does not close it as well.");
 
@@ -349,8 +356,75 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(director.Snapshot.revision, Is.EqualTo(committed.revision), "Skipping commits nothing:");
                 Assert.That(director.Snapshot.nominees, Is.EqualTo(committed.nominees), "the block is the committed one.");
                 Assert.That(director.NpcAutonomyDiagnostic, Is.Null);
+                Assert.That(vetoes, Is.EqualTo(1), "and the veto sounded once in all.");
             }
-            finally { takeover.BeatReached -= Record; }
+            finally { takeover.BeatReached -= Record; audio.CueAsked -= Hear; }
+        }
+
+        /// <summary>
+        /// The staged veto meeting's sounds (AU-07): the summons' chime in the frame the strip calls
+        /// the house to its seats, and the veto's sound once, with the page on the living room's
+        /// screen that shows the decision - not at the commit, while the house is still finding its
+        /// seats. A skip past the last page sounds nothing more.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator CeremonyStage_TheVetoMeetingChimesTheSummonsAndSoundsTheVetoWithItsDecision()
+        {
+            yield return InstallStagedSeason(71, state => AtVetoMeeting(state, playerHolds: false));
+            var audio = director.GetComponent<HouseAudio>();
+            var takeover = SceneComponents<CeremonyTakeover>().Single();
+            var sting = SceneComponents<CeremonySting>().Single();
+            string summonsLine = EpisodeDirector.SummonsLine(CeremonySting.VetoKind);
+            bool SummonsOnTheStrip() => sting.PlayingKind == CeremonySting.VetoKind
+                && sting.GetComponentsInChildren<TMP_Text>(true).Any(label => label.text == summonsLine);
+            Assert.That(SummonsOnTheStrip(), Is.False, "Nothing calls the house before the meeting is committed.");
+            var asked = new List<string>();
+            int vetoFrame = -1;
+            bool chimedWithTheLine = false, vetoOnTheScreen = false;
+            CeremonyTakeover.MeetingPage? vetoPage = null;
+            void Listen(HouseAudio.Cue cue)
+            {
+                if (cue == HouseAudio.Cue.Summons)
+                {
+                    asked.Add("Summons");
+                    chimedWithTheLine = SummonsOnTheStrip();
+                }
+                else if (cue == HouseAudio.Cue.Veto)
+                {
+                    asked.Add("Veto");
+                    vetoFrame = Time.frameCount;
+                    vetoPage = takeover.Page;
+                    vetoOnTheScreen = takeover.PlayingMeeting;
+                }
+            }
+            audio.CueAsked += Listen;
+            try
+            {
+                yield return PlayUntilTheVetoMeeting();
+                Assert.That(director.IsCeremonyStaged, Is.True, "The veto meeting is staged in the house.");
+                Assert.That(director.CeremonyStagePhase, Is.EqualTo(EpisodeDirector.CeremonyStageStep.Summons), "The house is summoned first.");
+                Assert.That(asked, Is.EqualTo(new[] { "Summons" }), "The commit chimes the summons and keeps the veto's sound for its decision.");
+                Assert.That(chimedWithTheLine, Is.True, "The chime comes with the summons line on the strip.");
+
+                director.SkipCeremonySummons();
+                yield return WaitFor(() => takeover.PlayingMeeting, 3f, "the meeting plays once the summons is skipped");
+                Assert.That(asked, Is.EqualTo(new[] { "Summons" }), "The meeting's first pages make no sound of their own.");
+                float decisionBy = CeremonyPacing.FadeIn + CeremonyPacing.VetoIntro(takeover.MeetingPace) + CeremonyPacing.VetoQuestion(takeover.MeetingPace);
+                float by = Time.realtimeSinceStartup + decisionBy + 3f;
+                while (takeover.Page != CeremonyTakeover.MeetingPage.Decision && Time.realtimeSinceStartup < by) yield return null;
+                Assert.That(takeover.Page, Is.EqualTo(CeremonyTakeover.MeetingPage.Decision), "The decision is on the screen.");
+                Assert.That(asked, Is.EqualTo(new[] { "Summons", "Veto" }), "The veto sounds once, after the summons,");
+                Assert.That(vetoFrame, Is.EqualTo(Time.frameCount), "in the frame the decision's page came up,");
+                Assert.That(vetoOnTheScreen, Is.True, "with the meeting on the living room's screen,");
+                Assert.That(vetoPage, Is.EqualTo(CeremonyTakeover.MeetingPage.Decision), "turned to the decision.");
+
+                takeover.SkipToResult();
+                Assert.That(takeover.Page, Is.EqualTo(CeremonyTakeover.MeetingPage.Final));
+                Assert.That(asked, Is.EqualTo(new[] { "Summons", "Veto" }), "A skip past the last page sounds nothing more.");
+                takeover.Cancel();
+                yield return WaitFor(() => !director.IsCeremonyStaged, 3f, "the stage lets the house go");
+            }
+            finally { audio.CueAsked -= Listen; }
         }
 
         /// <summary>

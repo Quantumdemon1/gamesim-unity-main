@@ -195,6 +195,9 @@ namespace Gamesim.Episode
             hud = gameObject.AddComponent<EpisodeHud>(); hud.Initialize(this);
             sting = CeremonySting.Attach(gameObject);
             takeover = CeremonyTakeover.Attach(gameObject);
+            // A staged veto meeting sounds the veto with the page that shows its decision (AU-07), a
+            // skipped page included: only the meeting on a set's screen reports that beat.
+            takeover.BeatReached += beat => { if (beat.Kind == CeremonyBeatKind.VetoDecided && audioBed != null) audioBed.PlayCue(HouseAudio.Cue.Veto); };
             voteReveal = VoteReveal.Attach(gameObject);
             // The reveals make their own sounds as they reach each beat - a vote, the result -
             // rather than the commit making the result's sound before the card has counted to it.
@@ -1038,8 +1041,9 @@ namespace Gamesim.Episode
                             RosterHouseguests(committed), ceremonySpeed);
                     // The veto meeting is staged in the living room and plays on its screen
                     // (EpisodeDirector.CeremonyStageVeto.cs); unstaged it is the generic card below,
-                    // exactly as it was. Its commit still makes the veto's sound, the same for
-                    // either outcome: no card of its own makes one.
+                    // exactly as it was, and its commit makes the veto's sound. Staged, the commit
+                    // only summons the house, with the summons' chime, and the veto sounds with the
+                    // page that shows the decision (CommitSound.SoundsAtTheCommit).
                     if (kind == CeremonySting.VetoKind && TryStageVetoMeeting(committed, text, wasActive, wasNominated, blockBefore))
                         revealed = vetoStaged = true;
                     else if (reveal != null && TryBeginCeremonyStage(kind, committed,
@@ -1107,7 +1111,8 @@ namespace Gamesim.Episode
                     }
                 }
                 if (revealed) HoldHudForReveal();
-                if ((!revealed || vetoStaged) && !winCueWithCard && command.kind != EpisodeCommandKind.MarkOpeningBeat && command.kind != EpisodeCommandKind.Introduce)
+                if (CommitSound.SoundsAtTheCommit(commitCue.ToString(), revealed, vetoStaged) && !winCueWithCard
+                    && command.kind != EpisodeCommandKind.MarkOpeningBeat && command.kind != EpisodeCommandKind.Introduce)
                     audioBed.PlayCue(commitCue);
             }
             BeginConversationExchange(exchangeBefore, result, command);

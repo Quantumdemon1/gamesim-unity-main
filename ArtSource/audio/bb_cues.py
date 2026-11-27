@@ -114,6 +114,13 @@ def cues():
     # entrance is never under the last one's door.
     yield "DoorOpen", stereo(door_open(), rev=0.18, size=0.5)
     yield "DoorShut", stereo(door_shut(), rev=0.28, size=0.7)
+    # The summons (AU-07), appended: the chime that calls the house to a staged ceremony as the strip
+    # says so. Three struck bars, up a sixth and down a third, warm and unhurried - a call, not news
+    # of an outcome, so nothing like the veto's or the win's runs.
+    summons = s.Track(1.45)
+    for index, name in enumerate(["G4", "E5", "C5"]):
+        summons.add(bell(s.hz(name), 0.85 if index == 2 else 0.7, gain=0.42), index * 0.24, pan=-0.15 + 0.15 * index)
+    yield "Summons", stereo(summons, rev=0.3, size=0.8)
 
 
 def latch(gain=0.3):
@@ -138,6 +145,17 @@ def door_open():
     groan = np.sin(2.0 * np.pi * np.cumsum(95.0 + 35.0 * t / 0.65) / s.SR) * swell * 0.2
     track.add(s.lowpass(groan, 600.0), 0.08)
     return track
+
+
+def bell(freq, dur, gain=0.4):
+    """A soft struck bar: the fundamental with its octave and a faint twelfth, dying away as a bar does."""
+    n = s.seconds(dur)
+    t = np.arange(n) / s.SR
+    body = (np.sin(2.0 * np.pi * freq * t)
+            + 0.3 * np.sin(2.0 * np.pi * 2.0 * freq * t) * np.exp(-t * 3.0)
+            + 0.08 * np.sin(2.0 * np.pi * 3.0 * freq * t) * np.exp(-t * 6.0))
+    shape = np.minimum(1.0, t / 0.003) * np.exp(-t * 6.5) * np.clip((dur - t) / 0.03, 0.0, 1.0)
+    return s.lowpass(body * shape, 4000.0) * gain
 
 
 def door_shut():

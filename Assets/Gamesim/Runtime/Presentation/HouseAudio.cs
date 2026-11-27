@@ -18,7 +18,10 @@ namespace Gamesim.Presentation
             TutorialStep,
             // The front door (AU-06): its leaves giving after the rattle, and landing shut. The
             // director plays them as the door set says its leaves moved (OpeningDoorSet). Appended.
-            DoorOpen, DoorShut
+            DoorOpen, DoorShut,
+            // The chime that calls the house to a staged ceremony (AU-07), with the summons line on
+            // the strip. Appended.
+            Summons
         }
 
         /// <summary>The last cue asked for, muted or not - what a test listens to.</summary>
@@ -1011,6 +1014,8 @@ namespace Gamesim.Presentation
             new Composition(Cue.TutorialStep, "Tutorial step", 0.1f, new Tone(500, 0.1f, 0, 0.15f, 700)),
             new Composition(Cue.DoorOpen, "Door opens", 0.6f, new Tone(160, 0.12f, 0, 0.14f, 90), new Tone(220, 0.45f, 0.1f, 0.05f, 300)),
             new Composition(Cue.DoorShut, "Door shuts", 0.55f, new Tone(120, 0.4f, 0, 0.16f, 45), new Tone(1800, 0.05f, 0.03f, 0.04f)),
+            new Composition(Cue.Summons, "Summons", 1.2f,
+                new Tone(392f, 0.6f, 0, 0.12f), new Tone(659.25f, 0.6f, 0.24f, 0.12f), new Tone(523.25f, 0.7f, 0.48f, 0.12f)),
         };
 
         /// <summary>How many of the cues' clips are loaded, or loading, rather than waiting for their first sounding: every cue once the house has started.</summary>

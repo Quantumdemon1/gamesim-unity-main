@@ -28,6 +28,30 @@ namespace Gamesim.Simulation
             TalkTableStarRachelReilly.Rows, TalkTableStarXavierPrather.Rows, TalkTableStarJunSong.Rows,
             // Slice S5 (talk rules 5): the class pools' week-event talks, every row written for level 5 (TalkRow.FromRules).
             TalkTableEventsSpark.Rows, TalkTableEventsSteady.Rows, TalkTableEventsGuarded.Rows,
+            // Slice S5 (talk rules 5): each regular's own talks (spec 5.4's person tables), every row written for level 5.
+            TalkTableAlexChen.Rows, TalkTableEmmaBrown.Rows, TalkTableJordanTaylor.Rows, TalkTableCaseyWilson.Rows,
+            TalkTableRileyJohnson.Rows, TalkTableJamieRoberts.Rows, TalkTableQuinnMartinez.Rows, TalkTableAveryThompson.Rows,
+            TalkTableTaylorKim.Rows, TalkTableSamWilliams.Rows, TalkTableBlakePeterson.Rows, TalkTableMayaHassan.Rows,
+        };
+
+        /// <summary>
+        /// The regulars' own talks by template id (slice S5, talk rules 5): every Regular Season template has one, and no All-Star
+        /// does. Each row's <see cref="TalkRow.Owner"/> is its key and its <see cref="TalkRow.FromRules"/> is talk rules 5.
+        /// </summary>
+        public static readonly IReadOnlyDictionary<string, TalkRow[]> PersonTables = new Dictionary<string, TalkRow[]>
+        {
+            { TalkTableAlexChen.Owner, TalkTableAlexChen.Rows },
+            { TalkTableEmmaBrown.Owner, TalkTableEmmaBrown.Rows },
+            { TalkTableJordanTaylor.Owner, TalkTableJordanTaylor.Rows },
+            { TalkTableCaseyWilson.Owner, TalkTableCaseyWilson.Rows },
+            { TalkTableRileyJohnson.Owner, TalkTableRileyJohnson.Rows },
+            { TalkTableJamieRoberts.Owner, TalkTableJamieRoberts.Rows },
+            { TalkTableQuinnMartinez.Owner, TalkTableQuinnMartinez.Rows },
+            { TalkTableAveryThompson.Owner, TalkTableAveryThompson.Rows },
+            { TalkTableTaylorKim.Owner, TalkTableTaylorKim.Rows },
+            { TalkTableSamWilliams.Owner, TalkTableSamWilliams.Rows },
+            { TalkTableBlakePeterson.Owner, TalkTableBlakePeterson.Rows },
+            { TalkTableMayaHassan.Owner, TalkTableMayaHassan.Rows },
         };
 
         /// <summary>The All-Star templates' own romance tables by template id (slice S3): every All-Stars template has one.</summary>

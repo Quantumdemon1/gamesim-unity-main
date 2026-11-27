@@ -410,3 +410,23 @@ VERDICT: PASS R0: criteria 1-7 pass on the held-out seeds on snapshot b25d799d3b
 
 - This is the first of four enrolments: plan 32 (the house talks back) moves `Current` to 12, 13 and 14, one stack at a
   time, each once it is built and measured.
+
+## Story rules 12, Manners: the house talks back, enrolled (plan 32 A-ON, 2026-11-26)
+- Built in three slices: the first schema-31 old-save cell (OLD-SAVE-ACCEPTANCE 2.15), no word-for-word repeat of a vote
+  answer in one week at 12 (the `line:` record), then the switch.
+- Measured before the switch: Stack A's paired report (`HouseTalkLab.StackAReport`, 50 seeds a cell, 2,400 seasons, 11
+  against 12 with the walker none, casual and attentive), read by house size, pooled over the cells (the lead's ruling).
+  Every gate of plan 32 section M is inside: no errors; at 8 seats the read ballots +6.0 / +6.8 / +4.9 points, the win
+  rate 0.0 / +2.3 / +3.0 (the attentive arm exactly at its limit), the skill gap 14 to 15, decisions +0.36 / +0.26 / +2.51;
+  hunches true 62.2% and 58.4%. Watch items for S9 are in the plan's section Q3.
+- The switch: `StoryRules.Current` is `Manners`, so every new season starts on story rules 12: vote answers in a voice
+  and a manner, tells, free Notice and Listen, hunches on the web, the paid listen-in refused. A saved season keeps its
+  version; load, migration and recovery never call `EnableStory`. No saved field and no schema: 12 goes into
+  `story.rulesVersion`.
+- The Target on Their Back's next-winner cast (pull request 127) is keyed to 12, so seasons at 11 replay as recorded;
+  its honest words for the protect and numbers answers stay at every level, and `RolesSeasonDigests` re-records the three
+  busy sixteen-seat seasons they move, with the reason in the file.
+- Held at 11 by name, for tests about something else: the all-week rules' measured fresh seasons, the free-time board's
+  and the whole-house locks' fixtures, the paid listen-in's leak case, an ally's straight answer, and the notes' record-by-
+  record lines. The pins of a shipped season follow 12. `MannersSeasonDigests` holds 48 fresh seasons at 12 by name for
+  Stack B; the lab's goldens and budget nought's rules-12 twins are recorded at the switch (BALANCE_BASELINE.md).

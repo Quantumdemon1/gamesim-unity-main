@@ -87,6 +87,52 @@ namespace Gamesim.Tests.EditMode
             Assert.That(((JObject)retained29["story"]).Property("talkRules"), Is.Null);
         }
 
+        /// <summary>
+        /// The first schema-31 reference (OLD-SAVE-ACCEPTANCE 2.15): CurrentOldSaveTrace checkpoints a live state at 31 whole, its
+        /// talk fields too, exactly as the recorder's OldSaveTrace hashes a state at its own schema; a season with a free talk had
+        /// is still refused at 30, an invalid one is refused at 31 too, and the state is never changed. So 31 is admitted without
+        /// loosening 30.
+        /// </summary>
+        [Test]
+        public void TheCurrentTraceCheckpointsALiveSeasonWholeAtThirtyOneAndAFreeTalkHadStillHasNoThirty()
+        {
+            var fresh = SeasonBuilder.Create(new SeasonBuilder.Choice { HouseSize = 8 }, 3303u);
+            ShippedRules.ApplyFresh(fresh);
+            var engine = new EpisodeEngine(fresh);
+            var s = engine.Snapshot;
+            string npc = s.Active.First(c => !c.isPlayer).id;
+            var offer = FreeTalk.Offer(s, npc);
+            Assert.That(offer.Available, Is.True, offer.Reason);
+            var talked = engine.Apply(new EpisodeCommand
+            {
+                id = "talk-31", actorId = s.playerId, expectedRevision = s.revision, expectedPhase = s.phase,
+                kind = EpisodeCommandKind.JustTalk, targetId = npc, text = FreeTalk.CommandText(offer.Talk.Id, offer.Talk.Replies[0].Tone),
+            });
+            Assert.That(talked.accepted, Is.True, talked.reason);
+            var state = talked.state;
+            string before = Text(JObject.FromObject(state));
+
+            var own = OldSaveTrace.Fields(state);
+            Assert.That((int)own["story"]["contacts"].First(c => (string)c["npcId"] == npc)["talks"], Is.EqualTo(1), "A free talk was had.");
+            var season = (JObject)own.DeepClone();
+            season.Remove("events");
+            var at31 = CurrentOldSaveTrace.Checkpoint(state, 31);
+            Assert.That(at31.season, Is.EqualTo(OldSaveTrace.Sha256(OldSaveTrace.Canonical(season, true))));
+            Assert.That(at31.blind, Is.EqualTo(OldSaveTrace.Sha256(OldSaveTrace.Canonical(own, true))));
+            Assert.That(at31.text, Is.EqualTo(OldSaveTrace.Sha256(OldSaveTrace.Canonical(own, false))));
+            Assert.That(at31, Is.EqualTo(OldSaveTrace.Checkpoint(state, 31)), "The recorder hashes the same state the same way.");
+            Assert.Throws<InvalidDataException>(() => CurrentOldSaveTrace.Checkpoint(state, 30), "A season with a free talk had has no schema-30 view.");
+            Assert.That(Text(JObject.FromObject(state)), Is.EqualTo(before), "The state is never changed.");
+
+            // Before the talk the same season is checkpointed at 30 by its own arm, as it always was, and at 31 whole: two views.
+            Assert.That(CurrentOldSaveTrace.Checkpoint(s, 30), Is.EqualTo(OldSaveTrace.Checkpoint(s, 30)));
+            Assert.That(CurrentOldSaveTrace.Checkpoint(s, 31), Is.Not.EqualTo(CurrentOldSaveTrace.Checkpoint(s, 30)));
+
+            var invalid = state.Clone();
+            invalid.contestants[1].id = invalid.contestants[0].id;
+            Assert.Throws<InvalidDataException>(() => CurrentOldSaveTrace.Checkpoint(invalid, 31), "An invalid source is refused at 31 too.");
+        }
+
         private static EpisodeState WithContact()
         {
             var s = SeasonBuilder.Create(new SeasonBuilder.Choice { HouseSize = 8 }, 3102u);

@@ -668,6 +668,26 @@ namespace Gamesim.Tests.EditMode
         public void BudgetNoughtPlaysTheShippedSeasonsAtStoryRulesEleven() => BudgetNought(tuningHeld: false, StoryRules.Roles, "budget0-tuning1-story11", BudgetNoughtTuning1RolesRows);
 
         /// <summary>
+        /// <see cref="BudgetNoughtRows"/>' seasons, held at tuning 0, at story rules 12, Manners (plan 32 A-ON): the story rules
+        /// every fresh season starts on since that enrolment, recorded at it. Since A-ON the rules-11 twins above name Roles
+        /// and are held there, so they keep their digests.
+        /// </summary>
+        internal const string BudgetNoughtMannersRows = "c8b38878e1575af5";
+
+        /// <summary>
+        /// <see cref="BudgetNoughtTuning1Rows"/>' seasons at story rules 12, Manners: tuning 1 and story rules 12 together, the
+        /// seasons the game ships from A-ON's enrolment, recorded at it. Both rules-12 twins name Manners, so B-ON's enrolment
+        /// holds them there (<see cref="BudgetNought"/>).
+        /// </summary>
+        internal const string BudgetNoughtTuning1MannersRows = "0bac9fc23466b20c";
+
+        [Test, Explicit("Story rules 12: budget nought's seasons held at tuning 0, at story rules 12, the enrolled story rules (about 20 min). Run by name.")]
+        public void BudgetNoughtPlaysTheDriversSeasonsAtStoryRulesTwelve() => BudgetNought(tuningHeld: true, StoryRules.Manners, "budget0-story12", BudgetNoughtMannersRows);
+
+        [Test, Explicit("Story rules 12: budget nought's seasons at tuning 1 and story rules 12, the shipped seasons (about 15 min). Run by name.")]
+        public void BudgetNoughtPlaysTheShippedSeasonsAtStoryRulesTwelve() => BudgetNought(tuningHeld: false, StoryRules.Manners, "budget0-tuning1-story12", BudgetNoughtTuning1MannersRows);
+
+        /// <summary>
         /// Budget nought's grid, held at tuning 0 or not, at story rules <paramref name="storyRules"/>, hashed against
         /// <paramref name="expected"/>. Each pin names the story rules its digest was recorded at, never Current: while they
         /// are <see cref="StoryRules.Current"/> the seasons play EnableStory's own (a cell may not name Current,

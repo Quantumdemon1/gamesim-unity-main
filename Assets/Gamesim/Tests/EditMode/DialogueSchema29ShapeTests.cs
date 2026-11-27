@@ -166,8 +166,8 @@ namespace Gamesim.Tests.EditMode
             Assert.That(state.unifiedHearingRulesVersion, Is.EqualTo(1));
             Assert.That(state.economyRulesVersion, Is.EqualTo(1));
             Assert.That(state.story, Is.Not.Null);
-            // The shipped story rules: 11, Roles, since its enrolment (ROLE-MOMENTS-PLAN R7; it was 10, Blame, and 9, threads, before).
-            Assert.That(state.story.rulesVersion, Is.EqualTo(11));
+            // The shipped story rules: 12, Manners, since its enrolment (plan 32 A-ON; it was 11, Roles, from R7, 10, Blame, and 9, threads, before).
+            Assert.That(state.story.rulesVersion, Is.EqualTo(12));
             var fields = ShippedRules.Fields(state).ToDictionary(row => row.Key, row => row.Value);
             foreach (string name in new[]
             {

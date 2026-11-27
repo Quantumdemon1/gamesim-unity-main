@@ -28,6 +28,7 @@ namespace Gamesim.Tests.EditMode
         private static readonly Dictionary<string, Func<EpisodeState>> Guarded = new Dictionary<string, Func<EpisodeState>>
         {
             { nameof(RolesSeasonDigests), () => Season(typeof(RolesSeasonDigests), 6, 1u) },
+            { nameof(MannersSeasonDigests), () => Season(typeof(MannersSeasonDigests), 6, 1u) },
             { nameof(CommitmentRulesSeasonDigests), () => Season(typeof(CommitmentRulesSeasonDigests), "director", 6, 1u, true) },
             { nameof(ModeOneSeasonDigests), () => Season(typeof(ModeOneSeasonDigests), "director", 6, 1u) },
         };

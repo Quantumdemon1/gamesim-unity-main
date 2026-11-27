@@ -5,10 +5,10 @@ namespace Gamesim.Tests.EditMode
 {
     /// <summary>
     /// What a season may hold of the house talk's records (plan 32 §L; EpisodeValidation.HouseTalk.cs): below story rules 12 a
-    /// <c>said:</c>, <c>tell:</c> or <c>h2h:</c> cooldown key is refused outright; at 12 each must name a seated houseguest, a
-    /// week of the season, a known stance with a manner that fits it (a tell's manner is a tell) and a competition's kind, and
-    /// an <c>h2h:</c> never names the player. Later slices append their records to the same validator and their cases here.
-    /// Pure simulation, so the Unity-free subset runs it.
+    /// <c>said:</c>, <c>tell:</c>, <c>h2h:</c> or <c>line:</c> cooldown key is refused outright; at 12 each must name a seated
+    /// houseguest, a week of the season, a known stance with a manner that fits it (a tell's manner is a tell), a competition's
+    /// kind and one of a slot's lines, and an <c>h2h:</c> never names the player. Later slices append their records to the
+    /// same validator and their cases here. Pure simulation, so the Unity-free subset runs it.
     /// </summary>
     public sealed class HouseTalkValidationTests
     {
@@ -30,6 +30,7 @@ namespace Gamesim.Tests.EditMode
         [TestCase("said:{w}:{npc}:honest:definite")]
         [TestCase("tell:{npc}:hedged")]
         [TestCase("h2h:{w}:hoh:{npc}")]
+        [TestCase("line:{w}:{npc}:definite:0")]
         public void BelowTwelveEveryRecordIsRefused(string template)
         {
             var s = With(StoryRules.Roles, template);
@@ -51,6 +52,10 @@ namespace Gamesim.Tests.EditMode
         [TestCase("h2h:{w}:hoh:{p}")]
         [TestCase("h2h:{w}:hoh:nobody-seated")]
         [TestCase("h2h:{w+1}:veto:{npc}")]
+        [TestCase("line:{w}:{npc}:definite:3")]
+        [TestCase("line:{w}:{npc}:mumbled:0")]
+        [TestCase("line:{w+1}:{npc}:definite:0")]
+        [TestCase("line:{w}:nobody-seated:definite:0")]
         public void AtTwelveAMalformedRecordIsRefused(string template)
         {
             var s = With(StoryRules.Manners, template);

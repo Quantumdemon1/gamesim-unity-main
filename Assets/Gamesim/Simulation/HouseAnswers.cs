@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Gamesim.Simulation
 {
@@ -34,7 +35,12 @@ namespace Gamesim.Simulation
     /// (<see cref="Fill"/>): the first name, "you" for the player, capitalised where it opens the line.
     ///
     /// <para>S1 holds the vote bank (Stack A, 75 lines), the read's two lines and the notebook's words. A bank freezes with
-    /// its rules version: once <see cref="StoryRules.Current"/> reaches 12, a change to these lines needs a new level.</para>
+    /// its rules version: <see cref="StoryRules.Current"/> reached 12 at A-ON, so a change to these lines needs a new level.</para>
+    ///
+    /// <para>Which line of a slot a vote answer takes freezes with it (<see cref="VoteLineIndex"/>): no two voters in one
+    /// voice and manner give the same line in a week, and nobody gives last week's line again in the same manner, while the
+    /// slot has a line left. Each answer's line is on the record (<see cref="EpisodeEngine.LinePrefix"/>), so the notebook
+    /// quotes the words the log gave and a later answer never changes an earlier one.</para>
     /// </summary>
     public static class HouseAnswers
     {
@@ -136,8 +142,7 @@ namespace Gamesim.Simulation
         /// <summary>A vote line, unfilled: the voice's slot for the manner (a voice without the slot speaks Plain), line <paramref name="index"/>.</summary>
         public static string VoteLine(string voice, string manner, int index)
         {
-            if (!VoteBank.TryGetValue(voice ?? Voice.Plain, out var slots) || !slots.ContainsKey(manner ?? "")) slots = VoteBank[Voice.Plain];
-            if (!slots.TryGetValue(manner ?? "", out var lines)) lines = slots[Manner.NeutralFor(voice)];
+            var lines = Slot(voice, manner);
             return lines[Math.Max(0, Math.Min(lines.Length - 1, index))];
         }
 
@@ -157,8 +162,87 @@ namespace Gamesim.Simulation
         /// <summary>The key of the vote line's coin: <c>w{week}:answer:vote:{voter}</c>.</summary>
         public static string VoteLineKey(int week, string voterId) => "w" + week + ":answer:vote:" + voterId;
 
-        /// <summary>The vote answer a voter gave in a week, filled: the same coin, voice and manner give the same line on every read.</summary>
+        /// <summary>The vote answer a voter gave in a week, filled: the line <see cref="VoteLineIndex"/> gives, the same on every read.</summary>
         public static string VoteAnswer(EpisodeState s, int week, ContestantState voter, string manner, string statedId) =>
-            Fill(s, VoteLine(Voice.Of(voter, false), manner, StoryRandom.Index(s, VoteLineKey(week, voter.id), LinesASlot)), statedId);
+            Fill(s, VoteLine(Voice.Of(voter, false), manner, VoteLineIndex(s, week, voter, manner)), statedId);
+
+        /// <summary>
+        /// Which line of the voice's slot for the manner a voter's answer in a week takes. Below story rules 12 it is the coin's
+        /// (<see cref="VoteLineKey"/>), as it always was. At 12 the answer's own record (<see cref="RecordedLine"/>) gives it
+        /// once the answer is on the record, so every read quotes the line the log gave. Before that it is the coin's line,
+        /// skipped while it is taken and the slot still has a line that is not, in the slot's order from the coin's: taken this
+        /// week by an answer already on the record in the same slot (the same voice and manner), or by this voter's own answer
+        /// last week in that slot. When every line is taken, a line nobody has said this week comes first, then the coin's.
+        /// Nothing is drawn but the coin, a keyed hash of the story's stream, so the season's stream is never touched.
+        /// </summary>
+        public static int VoteLineIndex(EpisodeState s, int week, ContestantState voter, string manner)
+        {
+            int coin = StoryRandom.Index(s, VoteLineKey(week, voter.id), LinesASlot);
+            if (!EpisodeEngine.StoryAt(s, StoryRules.Manners)) return coin;
+            string voice = Voice.Of(voter, false);
+            var own = RecordedLine(s, voter.id, week);
+            if (own != null && own.manner == manner) return Math.Max(0, Math.Min(LinesASlot - 1, own.index));
+            var slot = Slot(voice, manner);
+            var thisWeek = new HashSet<int>();
+            foreach (var row in s.story.cooldowns)
+            {
+                var other = ParseLine(row?.key);
+                if (other == null || other.week != week || other.voterId == voter.id) continue;
+                var who = s.Find(other.voterId);
+                if (who != null && ReferenceEquals(Slot(Voice.Of(who, false), other.manner), slot)) thisWeek.Add(other.index);
+            }
+            var last = week > 1 ? RecordedLine(s, voter.id, week - 1) : null;
+            int lastWeek = last != null && ReferenceEquals(Slot(voice, last.manner), slot) ? last.index : -1;
+            int count = slot.Length;
+            for (int step = 0; step < count; step++)
+            {
+                int index = (coin + step) % count;
+                if (!thisWeek.Contains(index) && index != lastWeek) return index;
+            }
+            for (int step = 0; step < count; step++)
+            {
+                int index = (coin + step) % count;
+                if (!thisWeek.Contains(index)) return index;
+            }
+            return coin;
+        }
+
+        /// <summary>The record of the line an answer took: <c>line:{week}:{voter}:{manner}:{index}</c>.</summary>
+        public static string LineRecordKey(int week, string voterId, string manner, int index) =>
+            EpisodeEngine.LinePrefix + week + ":" + voterId + ":" + manner + ":" + index;
+
+        /// <summary>A line record, read from its key.</summary>
+        public sealed class LineRecord
+        {
+            public int week, index;
+            public string voterId, manner;
+        }
+
+        /// <summary>The record of the line a voter's answer took in a week; null when there is none.</summary>
+        public static LineRecord RecordedLine(EpisodeState s, string voterId, int week)
+        {
+            string prefix = EpisodeEngine.LinePrefix + week + ":" + voterId + ":";
+            var key = s?.story?.cooldowns?.FirstOrDefault(c => c?.key != null && c.key.StartsWith(prefix, StringComparison.Ordinal))?.key;
+            return ParseLine(key);
+        }
+
+        /// <summary>A <c>line:</c> key's parts, or null for any other key or a malformed one.</summary>
+        public static LineRecord ParseLine(string key)
+        {
+            if (key == null || !key.StartsWith(EpisodeEngine.LinePrefix, StringComparison.Ordinal)) return null;
+            var parts = key.Split(':');
+            if (parts.Length != 5 || !int.TryParse(parts[1], out int week) || parts[2].Length == 0 || !Manner.IsKnown(parts[3])
+                || !int.TryParse(parts[4], out int index) || index < 0 || index >= LinesASlot)
+                return null;
+            return new LineRecord { week = week, voterId = parts[2], manner = parts[3], index = index };
+        }
+
+        /// <summary>The voice's slot for the manner, resolved as <see cref="VoteLine"/> resolves it: one array per slot.</summary>
+        private static string[] Slot(string voice, string manner)
+        {
+            if (!VoteBank.TryGetValue(voice ?? Voice.Plain, out var slots) || !slots.ContainsKey(manner ?? "")) slots = VoteBank[Voice.Plain];
+            if (!slots.TryGetValue(manner ?? "", out var lines)) lines = slots[Manner.NeutralFor(voice)];
+            return lines;
+        }
     }
 }

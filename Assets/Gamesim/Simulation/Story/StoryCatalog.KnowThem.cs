@@ -146,10 +146,17 @@ namespace Gamesim.Simulation
             cast = c =>
             {
                 if (c.state.week > 3) return null;
+                var winners = Npcs(c).Where(x => StoryPeople.IsRealPerson(x) && Lore.SheetIn(c.state, x.id)?.wonSeason == true)
+                    .OrderByDescending(x => c.Score(P(c), x.id)).ThenBy(x => x.id, StringComparer.Ordinal);
+                // Story rules 12 casts the next winner who is free when the first is resting. Below 12 a season casts the
+                // first winner or nobody, as it did when it started, so a season saved at 11 or below plays as recorded.
+                if (!EpisodeEngine.StoryAt(c.state, StoryRules.Manners))
+                {
+                    var big = winners.FirstOrDefault();
+                    return big == null ? null : Bind().With("BIGNAME", big.id).Headlining(big.id);
+                }
                 var template = Find(TargetArc);
-                return Npcs(c).Where(x => StoryPeople.IsRealPerson(x) && Lore.SheetIn(c.state, x.id)?.wonSeason == true)
-                    .OrderByDescending(x => c.Score(P(c), x.id)).ThenBy(x => x.id, StringComparer.Ordinal)
-                    .Select(x => Bind().With("BIGNAME", x.id).Headlining(x.id))
+                return winners.Select(x => Bind().With("BIGNAME", x.id).Headlining(x.id))
                     .FirstOrDefault(binding => EpisodeEngine.AvailableStoryCast(c.state, template, binding));
             },
             weight = (c, b) => 20,

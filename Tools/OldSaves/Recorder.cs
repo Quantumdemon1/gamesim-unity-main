@@ -10,7 +10,11 @@
 //                                            "studier": the plain walk that also studies in each free time, up to twice,
 //                                            a study refused for an expected reason skipped (B9's tuning levers,
 //                                            OLD-SAVE-ACCEPTANCE 2.9); record then prints what the levers did after the load,
-//                                            and exits 5 if no study was accepted after it
+//                                            and exits 5 if no study was accepted after it; or "talker": the plain walk that
+//                                            also takes every free talk on offer ("Just talk", schema 31's talk rules), in each
+//                                            open window, with each housemate in id order, in the reply that lands best
+//                                            (OLD-SAVE-ACCEPTANCE 2.15); record then prints what free talk did after the load,
+//                                            and exits 5 if no free talk was accepted after it
 //   continue <save> <out> <week> <phase>     load an older save with that build's store, play it on to a point and save it
 //                                            with that store: the file a player who carried the season on has, at that build's schema
 //   converse <out> <seed> <size> <last week> a fresh seeded season (director, that build's Rules.Fresh, which must switch the
@@ -104,7 +108,7 @@ namespace Gamesim.OldSaves
 
         private static int Record(string save, string outDir, string walkerName)
         {
-            bool studies = Walker.Studies(walkerName);
+            bool studies = Walker.Studies(walkerName), talks = Walker.Talks(walkerName);
             Directory.CreateDirectory(outDir);
             var bytes = File.ReadAllBytes(save);
             var slot = Path.Combine(outDir, "slot");
@@ -141,8 +145,9 @@ namespace Gamesim.OldSaves
 
             Check(state, 0);
             var engine = new EpisodeEngine(state);
-            var walker = new Walker("oldsave-", studies);
+            var walker = new Walker("oldsave-", studies, talks);
             var levers = studies ? new LeverTally(state) : null;
+            var talked = talks ? new TalkTally(state) : null;
             int step = 0;
             for (; step < 4000 && engine.Snapshot.phase != EpisodePhase.Finished; step++)
             {
@@ -162,6 +167,7 @@ namespace Gamesim.OldSaves
                 script.Add(row);
                 Check(applied.state, step + 1);
                 levers?.Add(applied.state);
+                talked?.Add(chosen, applied.state);
             }
             var final = engine.Snapshot;
             if (final.phase != EpisodePhase.Finished) throw new InvalidOperationException("Unfinished after " + step + " commands.");
@@ -196,7 +202,68 @@ namespace Gamesim.OldSaves
                     return 5;
                 }
             }
+            if (talks)
+            {
+                Console.WriteLine(talked.Line());
+                // A talker walk with no free talk after the load replays none: a regression that closes every window, or a save
+                // the player cannot talk from. The record is written, but the cell is no use.
+                if (talked.Talks == 0)
+                {
+                    Console.Error.WriteLine("NO FREE TALK: the talker walk had no free talk accepted after the load, so the record replays none.");
+                    return 5;
+                }
+            }
             return 0;
+        }
+
+        /// <summary>
+        /// For the talker walker (schema 31's free talk, OLD-SAVE-ACCEPTANCE 2.15): what free talk did in the recorded walk after
+        /// the load - the free talks accepted, the friendship stages they logged and the standing snapshots they took - so a seed
+        /// can be chosen by it. Read through the saved fields and the command's kind by name, so it compiles at every build; a
+        /// build without free talk counts zeros.
+        /// </summary>
+        private sealed class TalkTally
+        {
+            private long next;
+            private JObject before;
+
+            /// <summary>The free talks accepted after the load.</summary>
+            public int Talks { get; private set; }
+
+            private int stages, standings;
+
+            public TalkTally(EpisodeState loaded) { before = OldSaveTrace.Fields(loaded); next = Sequence(before); }
+
+            /// <summary>Counts what the command that led to <paramref name="after"/> did.</summary>
+            public void Add(EpisodeCommand command, EpisodeState after)
+            {
+                var fields = OldSaveTrace.Fields(after);
+                if (command.kind.ToString() == "JustTalk") Talks++;
+                if (fields["events"] is JArray events)
+                    foreach (var e in events)
+                    {
+                        var sequence = e["sequence"];
+                        if (sequence == null || sequence.Type != JTokenType.Integer || (long)sequence < next) continue;
+                        if (e["kind"] != null && e["kind"].Type == JTokenType.String && (string)e["kind"] == "talk-stage") stages++;
+                    }
+                // A standing snapshot is a contact's standingWeek moving: one dated line a week.
+                if (fields["story"]?["contacts"] is JArray contacts)
+                    foreach (var contact in contacts)
+                    {
+                        var week = contact["standingWeek"];
+                        if (week == null || week.Type != JTokenType.Integer || (long)week == 0) continue;
+                        var was = (before["story"]?["contacts"] as JArray)?.FirstOrDefault(c => (string)c["npcId"] == (string)contact["npcId"]);
+                        if (was == null || !JToken.DeepEquals(was["standingWeek"], week)) standings++;
+                    }
+                next = Math.Max(next, Sequence(fields));
+                before = fields;
+            }
+
+            /// <summary>The <c>talker:</c> line: the tallies after the load.</summary>
+            public string Line() => "talker: after the load: free talks " + Talks + ", friendship stages logged " + stages + ", standing snapshots " + standings;
+
+            private static long Sequence(JObject fields) =>
+                fields["nextSequence"] != null && fields["nextSequence"].Type == JTokenType.Integer ? (long)fields["nextSequence"] : 0;
         }
 
         /// <summary>
@@ -503,7 +570,7 @@ namespace Gamesim.OldSaves
         /// </summary>
         private static int Generate(string outFile, uint seed, int size, string rules, int week, EpisodePhase phase, string walkerName)
         {
-            bool studies = Walker.Studies(walkerName);
+            bool studies = Walker.Studies(walkerName), talks = Walker.Talks(walkerName);
             EpisodeState fresh;
             if (rules == "director" || rules == "director-allstars")
             {
@@ -518,8 +585,8 @@ namespace Gamesim.OldSaves
             }
             else if (rules == "default") fresh = ContentCatalog.Create(seed);
             else throw new ArgumentException("rules is director, director-allstars or default");
-            fresh.sessionId = "oldsave-" + rules + "-" + seed + "-" + size + (studies ? "-" + Walker.Studier : "");
-            return PlayOnAndSave(fresh, new Walker("generate-", studies), outFile, week, phase);
+            fresh.sessionId = "oldsave-" + rules + "-" + seed + "-" + size + (studies ? "-" + Walker.Studier : "") + (talks ? "-" + Walker.Talker : "");
+            return PlayOnAndSave(fresh, new Walker("generate-", studies, talks), outFile, week, phase);
         }
 
         /// <summary>
@@ -642,6 +709,9 @@ namespace Gamesim.OldSaves
     /// a study ("memorize-layout") tried up to twice in each free time, before the talks. A study refused at the season's
     /// limit, with the window's actions spent, or out of the house is skipped and leaves nothing in the script; any other
     /// refusal of a study stops the walk. The plain profile tries none, so every fixture before it walks exactly as it did.</para>
+    /// <para>The talker profile (<see cref="Talker"/>, schema 31's free talk, OLD-SAVE-ACCEPTANCE 2.15) is the same walk with the
+    /// free talk on offer taken first in each open window, one housemate a step in id order (<see cref="FreeTalkWalk"/>). A free
+    /// talk is refused for no expected reason, so any refusal stops the walk.</para>
     /// </summary>
     public sealed class Walker
     {
@@ -650,6 +720,9 @@ namespace Gamesim.OldSaves
 
         /// <summary>The plain walk that also studies in each free time (B9's tuning levers).</summary>
         public const string Studier = "studier";
+
+        /// <summary>The plain walk that also takes every free talk on offer (schema 31's "Just talk").</summary>
+        public const string Talker = "talker";
 
         /// <summary>The study's command kind, by name: the recorder compiles at builds older than the study.</summary>
         private const string StudyKind = "StudyHouse";
@@ -660,18 +733,22 @@ namespace Gamesim.OldSaves
         private readonly Dictionary<string, int> studied = new Dictionary<string, int>();
         private readonly string prefix;
         private readonly bool studies;
+        private readonly bool freeTalks;
         private int sequence;
 
-        /// <summary>A walker naming its commands <paramref name="prefix"/>0001 on: "oldsave-" records a script, "generate-" plays a fresh season to its save point and "continue-" an older save on to its, so a script's ids never meet the save's own. With <paramref name="studies"/>, the studier profile.</summary>
-        public Walker(string prefix = "oldsave-", bool studies = false) { this.prefix = prefix; this.studies = studies; }
+        /// <summary>A walker naming its commands <paramref name="prefix"/>0001 on: "oldsave-" records a script, "generate-" plays a fresh season to its save point and "continue-" an older save on to its, so a script's ids never meet the save's own. With <paramref name="studies"/>, the studier profile; with <paramref name="freeTalks"/>, the talker profile.</summary>
+        public Walker(string prefix = "oldsave-", bool studies = false, bool freeTalks = false) { this.prefix = prefix; this.studies = studies; this.freeTalks = freeTalks; }
 
-        /// <summary>Whether a walker profile studies: <see cref="Plain"/> (or none) does not, <see cref="Studier"/> does; any other name is refused.</summary>
+        /// <summary>Whether a walker profile studies: <see cref="Plain"/> (or none) and <see cref="Talker"/> do not, <see cref="Studier"/> does; any other name is refused.</summary>
         public static bool Studies(string name)
         {
-            if (string.IsNullOrEmpty(name) || name == Plain) return false;
+            if (string.IsNullOrEmpty(name) || name == Plain || name == Talker) return false;
             if (name == Studier) return true;
-            throw new ArgumentException("walker is " + Plain + " or " + Studier + ", not " + name);
+            throw new ArgumentException("walker is " + Plain + ", " + Studier + " or " + Talker + ", not " + name);
         }
+
+        /// <summary>Whether a walker profile takes the free talks on offer: only <see cref="Talker"/> (the name is checked by <see cref="Studies"/>).</summary>
+        public static bool Talks(string name) => name == Talker;
 
         /// <summary>
         /// The refusals of a study the studier skips, word for word: the two sentences of TuningRules.FullRefusal (the
@@ -699,6 +776,20 @@ namespace Gamesim.OldSaves
             // season on dialogue rules has one, so every older fixture's walk is unchanged.
             var conversation = Dialogue.Choice(s, this);
             if (conversation != null) { yield return conversation; yield break; }
+            // The talker (schema 31's free talk, OLD-SAVE-ACCEPTANCE 2.15): in each open window, before anything else, the free
+            // talk on offer with the first housemate in id order not yet talked to there, in the reply that lands best. Only the
+            // talker profile talks, so every other walk is unchanged.
+            if (freeTalks)
+            {
+                var free = FreeTalkWalk.Next(s);
+                if (free != null)
+                {
+                    var talk = Command(s, (EpisodeCommandKind)Enum.Parse(typeof(EpisodeCommandKind), FreeTalkWalk.Kind));
+                    talk.targetId = free.Value.npcId;
+                    talk.text = free.Value.text;
+                    yield return talk;
+                }
+            }
 #if OLDSAVE_BEFORE_SCHEMA3
             // Schema 2: no diary room, so nothing can be pending.
             if (s.phase == EpisodePhase.Social)
@@ -826,6 +917,62 @@ namespace Gamesim.OldSaves
             else if (s.phase == EpisodePhase.Jury && !s.Active.Any(p => p.isPlayer) && !s.votes.Any(v => v.voterId == s.playerId))
             { c.kind = EpisodeCommandKind.CastVote; c.targetId = s.Active.First().id; }
             return c;
+        }
+    }
+
+    /// <summary>
+    /// Schema 31's free talk ("Just talk", talk rules 1 and later), for the talker walker: the next free talk on offer, read
+    /// through the simulation's own queries (FreeTalk.WindowKey, Offer, LandingNow and CommandText, the ones the talk screen
+    /// calls) and reached by reflection, so the recorder still compiles at every build before free talk. There nothing is on offer.
+    /// </summary>
+    internal static class FreeTalkWalk
+    {
+        /// <summary>The command's kind, by name.</summary>
+        internal const string Kind = "JustTalk";
+
+        private const System.Reflection.BindingFlags Public = System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static;
+        private static readonly Type Talk = typeof(EpisodeState).Assembly.GetType("Gamesim.Simulation.FreeTalk");
+
+        private static object Call(string name, Type[] types, object[] arguments)
+        {
+            var method = Talk.GetMethod(name, Public, null, types, null);
+            if (method == null) throw new MissingMethodException(Talk.FullName, name);
+            try { return method.Invoke(null, arguments); }
+            catch (System.Reflection.TargetInvocationException error) when (error.InnerException != null) { throw error.InnerException; }
+        }
+
+        private static object Field(object owner, string name) => owner.GetType().GetField(name).GetValue(owner);
+
+        /// <summary>
+        /// The first housemate, in id order, with a free talk on offer that has a tone reply, and the command's text: that talk in
+        /// the tone that lands best on them now (FreeTalk.LandingNow), the first of a tie in the row's order. A Flirt and a
+        /// romance row's choices are never taken, so the walk starts no romance. Null when no window is open, a diary waits,
+        /// nobody has a talk on offer, or the build has no free talk.
+        /// </summary>
+        internal static (string npcId, string text)? Next(EpisodeState s)
+        {
+            if (Talk == null || typeof(EpisodeState).GetField("pendingDiary")?.GetValue(s) != null) return null;
+            if ((int)Call("WindowKey", new[] { typeof(EpisodeState) }, new object[] { s }) == 0) return null;
+            foreach (var npc in s.Active.Where(c => !c.isPlayer).OrderBy(c => c.id, StringComparer.Ordinal))
+            {
+                var offer = Call("Offer", new[] { typeof(EpisodeState), typeof(string) }, new object[] { s, npc.id });
+                if (!(bool)offer.GetType().GetProperty("Available").GetValue(offer)) continue;
+                var row = Field(offer, "Talk");
+                string best = null;
+                int bestLanding = int.MinValue;
+                foreach (var reply in (System.Collections.IEnumerable)Field(row, "Replies"))
+                {
+                    if (reply == null) continue;
+                    string tone = (string)Field(reply, "Tone");
+                    var choice = reply.GetType().GetField("Choice")?.GetValue(reply);
+                    if (string.IsNullOrEmpty(tone) || tone == "flirt" || choice != null && Convert.ToInt32(choice) != 0) continue;
+                    int landing = (int)Call("LandingNow", new[] { typeof(EpisodeState), typeof(string), typeof(string) }, new object[] { s, npc.id, tone });
+                    if (landing > bestLanding) { best = tone; bestLanding = landing; }
+                }
+                if (best != null)
+                    return (npc.id, (string)Call("CommandText", new[] { typeof(string), typeof(string) }, new object[] { (string)Field(row, "Id"), best }));
+            }
+            return null;
         }
     }
 

@@ -1184,6 +1184,7 @@ Existing captions stay word for word: "Listen in", "Listen in on a conversation"
 | Key | Expires | Written by |
 |---|---|---|
 | `said:` | week + 1 | §G1 |
+| `line:` | week + 2 | §G1 (the line an answer took: one a voter, so next week's answer leaves it out) |
 | `tell:` | week + 100 | §G4 |
 | `liar:` | week + 2 | §F |
 | `found:` | week + 100 | §E3 |
@@ -1198,6 +1199,8 @@ Existing captions stay word for word: "Listen in", "Listen in on a conversation"
 The engine's own `once:` key also stays live all season for each template started with `oncePerHeadliner` (`SS/EpisodeEngine.Story.cs:590`). It defaults to true (`SS/StoryTemplates.cs:36`). B2's chapters set it false, and so does `the-plan`, as the pawn talk's template does (`SS/StoryCatalog.Staging.cs:414`): its once per HoH a season is a pure reader over `s.storylines`, as `PawnTalkHad` is (§F), so it adds no key.
 
 At 16 seats (the verification stress house; no playable roster seats more than 12, `S/SeasonBuilder.cs:86-88`) the worst case is about 45 `tell:` keys; 15 `said:` keys a week; up to 30 `liar:` keys live over two weeks; at most 5 `found:` keys (one per found-out lie, `AsksASeason` = 5); 6 `h2h:` keys; ≤ 2 `heard:` and 1 `pact-heard:` key a week; ≤ 2 `talk:` keys, ≤ 15 `confidant:` keys (one per confidant), 1 `invent:` key and ≤ 3 `invented:` keys live at once. A capacity test in that house pins that none is dropped (§N).
+
+The `line:{week}:{voter}:{manner}:{index}` record (added before 12 shipped) holds the line of the slot a vote answer took. A voter has one at a time, so at 16 seats it adds at most 15 keys live. `HouseAnswers.VoteLineIndex` reads it: no two answers in one voice and manner say the same line in a week, nobody repeats last week's line in the same manner while the slot has a line left, and the notebook quotes the recorded line.
 
 **Pure readers instead of keys:**
 - once-per-houseguest acquaintances;
@@ -1678,6 +1681,12 @@ The nine slices of §O become these. Each lands as its own PR, in this order, af
 S9 of §O is gone: its paired reports, goldens and enrolment are A-ON, B-ON and C-ON, one per stack.
 
 **Landed, as of 2026-11-17.** Orders 1 to 7 are on main: OF-a (PR #64), HR-1 (#65) and HT0 (#66) on 2026-11-14; OF-p (#68), OF-b (#69), HR-2 (#70) and the offers fixes (#71) on 2026-11-15; and S1 (#74) on 2026-11-16, which lands dark. The next slice is S2a. Nothing from S2a on is built.
+
+**A-ON, built 2026-11-26 (order 10).** S2a (#102) and S2b (#103) landed dark, then two slices before the switch: the first schema-31 old-save cell (OLD-SAVE-ACCEPTANCE 2.15) and no word-for-word repeat of a vote answer in one week at 12 (the `line:` record, §L). A-ON itself:
+- **Stack A's report** (`HouseTalkLab.StackAReport`, `HOUSE_TALK_SEEDS=50`, 2,400 seasons, one CPU job of 11 hours at a80203dc), read against §M's gates **by house size, pooled over the cells** (the lead's ruling: §M writes its gates for the season "at 8 seats"; a 50-seed cell cannot resolve a 3-point win gate, so cells are reported, not gated). Every gate is inside. Paired against 11 on the same seasons, for the arms 12 with no walker / casual / attentive: errors 0 of 2,400; read-ballot accuracy at 8 seats +6.0 / +6.8 / +4.9 points (lower at 12); win rate at 8 seats 0.0 / +2.3 / +3.0 (the attentive arm exactly at its limit), at 12 seats -1.0 / -3.0 / -3.3; the skill gap (reader minus passive) 14 to 15 at 8 seats, 13.5 to 12.5 / 12.5 / 11.0 over every cell; hunch true 62.2% (casual) and 58.4% (attentive); decisions a season at 8 seats +0.36 / +0.26 / +2.51; no ledger row dropped. **Watch items for S9** (11 against 13 and 14, with more seeds in the 8-seat house with an NPC world): the 8-seat attentive win at exactly +3.0; the 8-seat NPC-world cells alone at +3.3 / +4.7 on 150 seasons (not significant, McNemar p about 0.34); one hunch cell at 53.2% (the passive player, 8 seats, NPC world, attentive). If S9 confirms an attentive win above +3 there, §M's first cut applies then (`ListensAWeek` 2 to 1).
+- **The switch:** `StoryRules.Current` is `Manners`, so every new season starts on story rules 12. Load, migration and recovery never call `EnableStory`, so a season saved at 11 or below keeps its rules (the old-save cells at 10 and 11 are the proof).
+- **The Target cast keyed to 12.** PR #127 let The Target on Their Back cast the next past winner when the first is resting, at every level, which moved four busy sixteen-seat seasons of `RolesSeasonDigests`. The next-winner cast is now part of what 12 turns on; below 12 a season casts its first winner or nobody, as it did when it started.
+- The audit, the pins, the goldens, the digests (`MannersSeasonDigests` holds 12 by name for Stack B) and the old-save cell at story rules 12 are listed in IMPLEMENTATION-LOG.md and BALANCE_BASELINE.md.
 
 ### Q4. Hot files, one PR at a time, in landing order
 

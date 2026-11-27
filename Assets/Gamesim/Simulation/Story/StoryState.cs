@@ -376,9 +376,9 @@ namespace Gamesim.Simulation
 
         /// <summary>
         /// Manners (plan 32, "The house talks back", Stack A): how each houseguest answers you - candour, tells,
-        /// the vote answer bank - and overhearing. Claimed as 12 by the owner on 2026-10-30 (plan 32, answer 1) and
-        /// named here before any code reads it: not yet defined (<see cref="IsDefined"/> refuses it) until its stack's
-        /// first slice moves <see cref="Latest"/> to it, and played by new seasons only at its own enrolment.
+        /// the vote answer bank - and overhearing. Claimed as 12 by the owner on 2026-10-30 (plan 32, answer 1), defined
+        /// by its stack's first slice (S1 moved <see cref="Latest"/> to it), and played by every new season since its
+        /// enrolment (A-ON: <see cref="Current"/>).
         /// </summary>
         public const int Manners = 12;
         /// <summary>
@@ -404,12 +404,13 @@ namespace Gamesim.Simulation
 
         /// <summary>
         /// What a season switched on today plays under: a new season's value (<see cref="EpisodeEngine.EnableStory"/>),
-        /// never a gate - every rule reads the milestone that introduced it. Roles is enrolled (ROLE-MOMENTS-PLAN R7,
-        /// "As built") after the lab's held-out balance check, as Blame was before it (STORY-RULES-10-PLAN §8); a season
-        /// keeps the version it was started on, and the save migration and the web importer still write threads. A later
-        /// milestone moves this only at its own enrolment, once it is built and measured.
+        /// never a gate - every rule reads the milestone that introduced it. Manners is enrolled (plan 32 A-ON, the owner's
+        /// ruling of 2026-11-13 that the house talks back by default) after Stack A's paired report, as Roles was before it
+        /// (ROLE-MOMENTS-PLAN R7) and Blame before that (STORY-RULES-10-PLAN §8); a season keeps the version it was started
+        /// on, and the save migration and the web importer still write threads. A later milestone moves this only at its
+        /// own enrolment, once it is built and measured.
         /// </summary>
-        public const int Current = Roles;
+        public const int Current = Manners;
 
         /// <summary>
         /// The last milestone this build defines: the bound a saved season and the catalogue are held to,

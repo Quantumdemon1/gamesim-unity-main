@@ -748,7 +748,7 @@ namespace Gamesim.Simulation
             },
             new TalkRow
             {
-                Id = "avery.rh.promises", Owner = Owner, Kind = TalkKind.Rhythm, Layer = 0, FromRules = TalkRules.ComesToTalk,
+                Id = "avery.rh.kept", Owner = Owner, Kind = TalkKind.Rhythm, Layer = 0, FromRules = TalkRules.ComesToTalk,
                 When = new TalkGate { Layer = 1, Week = 6 },
                 Open = "(sitting on the edge of the pool, feet in the water) \"The house keeps getting smaller. I made promises in here. I'm going to keep every one, even the ones that hurt.\"",
                 Replies = new[]

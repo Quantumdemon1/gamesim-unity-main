@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using System.Text.RegularExpressions;
 using Gamesim.Simulation;
 using NUnit.Framework;
@@ -81,6 +82,21 @@ namespace Gamesim.Tests.EditMode
                 else if (!row.Id.StartsWith(Head(row) + ".")) bad.Add(row.Id + ": does not start with its pool or person " + Head(row));
             }
             foreach (var dup in Rows.GroupBy(r => r.Id).Where(g => g.Count() > 1)) bad.Add("duplicate id " + dup.Key);
+            Assert.That(bad, Is.Empty);
+        }
+
+        /// <summary>
+        /// The commitment reader scan (<see cref="CommitmentReaderScanTests"/>) reads every source line, string literals too, so a
+        /// talk id or line such as "x.promises" in a table file reads to it as a read of the commitment lists and fails the scan.
+        /// Read here with the scan's own pattern, so the tables' targeted run catches it (the review of slice 5's own talks).
+        /// </summary>
+        [Test]
+        public void NoIdOrLineReadsAsACommitmentReadToTheSourceScan()
+        {
+            var read = typeof(CommitmentReaderScanTests).GetField("Read", BindingFlags.NonPublic | BindingFlags.Static)?.GetValue(null) as Regex;
+            Assert.That(read, Is.Not.Null, "The control: the scan's pattern, CommitmentReaderScanTests.Read.");
+            var bad = TalkTables.All.Where(r => read.IsMatch(r.Id ?? "")).Select(r => "id " + r.Id).ToList();
+            bad.AddRange(Rows.SelectMany(Lines).Where(l => l.Value != null && read.IsMatch(l.Value)).Select(l => l.Key));
             Assert.That(bad, Is.Empty);
         }
 

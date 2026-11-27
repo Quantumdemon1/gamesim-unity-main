@@ -297,7 +297,7 @@ namespace Gamesim.Simulation
             {
                 new BeatTemplate
                 {
-                    id = "it-got-out", surface = StorySurfaces.Approach, venue = Storage,
+                    id = "it-got-out", surface = StorySurfaces.Approach, venue = Storage, speaker = "ALLY",
                     title = "Loose Lips", summary = "An ally has found out about your final two with somebody else.",
                     text = "{ALLY} corners you in the storage room. \"Final two with {PARTNER}? When exactly were you going to tell me?\"",
                     lapse = "change-subject",
@@ -433,7 +433,7 @@ namespace Gamesim.Simulation
                 },
                 new BeatTemplate
                 {
-                    id = "somebody-knows", surface = StorySurfaces.Approach, venue = Hallway,
+                    id = "somebody-knows", surface = StorySurfaces.Approach, venue = Hallway, speaker = "CONFIDANT",
                     title = "Somebody Else Knows", summary = "A secret you were trusted with is out.",
                     text = "{CONFIDANT} finds you, white-faced. \"Somebody knows. I told one person in this house, and that was you.\"",
                     lapse = "say-nothing",
@@ -486,7 +486,7 @@ namespace Gamesim.Simulation
             {
                 new BeatTemplate
                 {
-                    id = "final-two", surface = StorySurfaces.Approach, venue = Yard,
+                    id = "final-two", surface = StorySurfaces.Approach, venue = Yard, speaker = "PARTNER",
                     title = "Ride or Die", summary = "Your closest ally wants to make it a final two.",
                     text = "{PARTNER} sits down next to you in the backyard and does not bother with small talk. \"Final two. You and me. I'm serious.\"",
                     lapse = "not-yet",
@@ -601,7 +601,7 @@ namespace Gamesim.Simulation
             {
                 new BeatTemplate
                 {
-                    id = "give-them-a-show", surface = StorySurfaces.Approach, venue = Living,
+                    id = "give-them-a-show", surface = StorySurfaces.Approach, venue = Living, speaker = "SHOWRUNNER",
                     title = "Give Them a Show", summary = "A houseguest proposes a fake feud to hide a real alliance.",
                     text = "{SHOWRUNNER} corners you on the living-room couch, right where the cameras are, and smiles like it is a threat. \"You and me, we fight. Loudly. Every week. And nobody ever works out we're together.\"",
                     lapse = "not-my-style",

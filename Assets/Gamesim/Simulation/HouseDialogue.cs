@@ -8,7 +8,7 @@ namespace Gamesim.Simulation
     /// topics in the web game. New prose, not a generated service response or a rules mutation.
     /// Reads only public phase, the speaker's own relationship, direct promises and shared alliance.
     /// </summary>
-    public static class HouseDialogue
+    public static partial class HouseDialogue
     {
         public static string Greeting(EpisodeState state, string npcId)
         {
@@ -16,9 +16,9 @@ namespace Gamesim.Simulation
             if (npc == null) return string.Empty;
             string id = ContentCatalog.CanonicalId(npc.id);
             // Whoever is deciding has time for the player: that is what the strategy windows are.
-            if (StrategyRules.IsDecider(state, npc.id)) return WindowGreeting(state, npc.id, id);
+            if (StrategyRules.IsDecider(state, npc.id)) return WindowGreeting(state, npc, id);
             if (state.phase != EpisodePhase.Social && state.phase != EpisodePhase.Campaign)
-                return Vary(state,
+                return Voiced(state, npc, "ceremony",
                     Pick(id,
                         "The ceremony comes first. Let's talk when we have time to be clear.",
                         "The next round is waiting. Catch me when we're done.",
@@ -41,7 +41,7 @@ namespace Gamesim.Simulation
                         "One process at a time. Once the ceremony closes, I'm available.",
                         "The ceremony first. Then we talk."));
             if (state.phase == EpisodePhase.Campaign && Contains(state.nominees, npc.id))
-                return Vary(state,
+                return Voiced(state, npc, "block",
                     Pick(id,
                         "I'm on the block. I can make my case, but I won't pretend I know your vote.",
                         "I'm nominated. Give me a fair chance to tell you why I should stay.",
@@ -63,7 +63,7 @@ namespace Gamesim.Simulation
                         "Being on the block does wonders for your popularity. Suddenly everyone has a minute.",
                         "I'm nominated, and I know some of what's being said isn't accurate. Let me correct it.",
                         "I'm nominated. I'd like a chance to explain."));
-            string opening = Vary(state,
+            string opening = Voiced(state, npc, "opening",
                 Pick(id,
                     "Before we make a deal, let's be clear about what we're promising.",
                     "Give me a fair shot in the yard. After that, we can talk numbers.",
@@ -149,7 +149,7 @@ namespace Gamesim.Simulation
             if (npc == null || !HasOwnMemory(state, npc.id, state.playerId, "We spent time talking in week "))
                 return string.Empty;
             string id = ContentCatalog.CanonicalId(npc.id);
-            return Vary(state,
+            return Voiced(state, npc, "talked",
                 Pick(id,
                     "I'm glad we took the time to talk.",
                     "Good. A straight conversation beats circling each other all afternoon.",
@@ -184,42 +184,42 @@ namespace Gamesim.Simulation
             if (npc == null) return string.Empty;
             string id = ContentCatalog.CanonicalId(npc.id);
             if (acceptedAction == EpisodeCommandKind.FormAlliance && SharedAlliance(state, npc.id, true))
-                return AllianceYes(state, id);
+                return AllianceYes(state, npc, id);
             // Under the commitment rules a proposal can be turned down and still be spent
             // (ACTIONS-DEALS-ALLIANCES-PLAN C4): a committed proposal that left no pact between them is
             // a no, said without a reason - the reason would be what they privately think of the player.
             if (acceptedAction == EpisodeCommandKind.FormAlliance && EpisodeEngine.CommitmentRulesOn(state))
-                return AllianceNo(state, id);
+                return AllianceNo(state, npc, id);
             // "Bring {name} into {pact}" (C5), answered by the one asked: brought in, as a pact's yes is
             // answered; their own no, as a proposal's no is, without a reason; and where it was a member
             // who would not have them, what they make of that - the line said who it was.
             if (acceptedAction == EpisodeCommandKind.BringIntoAlliance)
             {
                 var answer = BringInAnswer(state, npc);
-                if (answer != null && answer.kind != EpisodeEngine.AllianceRefusedKind) return AllianceYes(state, id);
+                if (answer != null && answer.kind != EpisodeEngine.AllianceRefusedKind) return AllianceYes(state, npc, id);
                 if (answer != null && answer.text != null && answer.text.StartsWith(npc.name + " turned down ", StringComparison.Ordinal))
-                    return AllianceNo(state, id);
+                    return AllianceNo(state, npc, id);
                 if (answer != null)
-                    return Pick(id,
+                    return Voiced(state, npc, "member-no", Pick(id,
                         "If they won't have me, I'm not going to beg to be let in. Thank you for asking, though.",
                         "Sounds like your people have opinions about me. Noted.",
                         "Oh. They don't want me in it. That's... all right. Thank you for trying.",
                         "Rejected by committee. A new low, and I've sat on the block.",
                         "A pact needs everyone's yes, and I didn't get one. That's how it should work.",
-                        "It sounds like the others aren't ready for me. Thanks for asking.");
+                        "It sounds like the others aren't ready for me. Thanks for asking."));
             }
             // Under the commitment rules (ACTIONS-DEALS-ALLIANCES-PLAN C2) the player cut ties the week
             // this houseguest turned on the pact, and the player knows it: they had it coming. A pact of
             // two ended; a bigger one went on without them, so they share no pact at all any more.
             if (acceptedAction == EpisodeCommandKind.LeaveAlliance && !SharedAlliance(state, npc.id, true)
                 && Allegiance.KnownThisWeek(state, npc.id))
-                return Pick(id,
+                return Voiced(state, npc, "cut-ties", Pick(id,
                     "That's fair. I made my choice first; you're only answering it.",
                     "Fine. I'd have done the same in your shoes.",
                     "I know. I'd cut me off too. I'm sorry it came to this.",
                     "Yeah. I figured that was coming. No hard feelings, honestly.",
                     "Understood. My move cost me your trust. That was the price.",
-                    "Fair enough. I gave you every reason to.");
+                    "Fair enough. I gave you every reason to."));
             // Under the commitment rules (C5) a leave from a pact of three or more takes only the player
             // out, so the pact goes on without them and no ended one is left between the two: what they
             // remember of this week says the player left, and the line this week says it went on - never
@@ -227,7 +227,7 @@ namespace Gamesim.Simulation
             bool leftThisWeek = acceptedAction == EpisodeCommandKind.LeaveAlliance && EpisodeEngine.CommitmentRulesOn(state)
                 && RememberedThisWeek(state, npc.id, state.playerId, "Left our alliance.");
             if (leftThisWeek && LeftGoingOn(state, npc))
-                return Vary(state,
+                return Voiced(state, npc, "left-goes-on",
                     Pick(id,
                         "You've left us. The rest of us will keep it going, and I'll remember that you walked.",
                         "You're out. We keep the pact; you keep whatever you think you've won.",
@@ -251,7 +251,7 @@ namespace Gamesim.Simulation
                         "We go on without you. Good luck."));
             if (acceptedAction == EpisodeCommandKind.LeaveAlliance
                 && ((!SharedAlliance(state, npc.id, true) && SharedAlliance(state, npc.id, false)) || leftThisWeek))
-                return Vary(state,
+                return Voiced(state, npc, "left-ended",
                     Pick(id,
                         "You've left our alliance. I'll treat that as a change in our agreement, not an unspoken favor.",
                         "You left our alliance. All right. I'm playing my own game from here.",
@@ -274,7 +274,7 @@ namespace Gamesim.Simulation
                         "Understood. Our agreement is over; the history isn't.",
                         "The alliance is done. Good luck."));
             if (acceptedAction == EpisodeCommandKind.PromiseSafety && DirectActivePromise(state, npc.id, PromiseKind.Safety))
-                return Vary(state,
+                return Voiced(state, npc, "safety",
                     Pick(id,
                         "I heard your safety promise. I'll judge it by the decisions you actually control.",
                         "You promised me safety. Don't say it just because it sounds good right now.",
@@ -297,7 +297,7 @@ namespace Gamesim.Simulation
                         "Noted. A safety promise binds you, not the six other ballots.",
                         "Safety promised. Thank you."));
             if (acceptedAction == EpisodeCommandKind.PromiseFinalTwo && DirectActivePromise(state, npc.id, PromiseKind.FinalTwo))
-                return Vary(state,
+                return Voiced(state, npc, "final-two",
                     Pick(id,
                         "You made a final-two promise to me. It's your commitment; don't mistake my hearing it for a second promise.",
                         "You said final two. That's a big commitment. I won't forget you made it.",
@@ -320,7 +320,7 @@ namespace Gamesim.Simulation
                         "Final two promised. The odds improve if we both survive the week.",
                         "Final two. I'll remember."));
             if (acceptedAction == EpisodeCommandKind.PromiseVote && DirectActivePromise(state, npc.id, PromiseKind.Vote))
-                return Vary(state,
+                return Voiced(state, npc, "vote",
                     Pick(id,
                         "I heard your voting promise. I'm holding you to your choice, not to guesses about the house.",
                         "You told me how you'd vote. Follow through if you're going to say it.",
@@ -343,7 +343,7 @@ namespace Gamesim.Simulation
                         "A promised vote is a single data point. Still, it's a real one.",
                         "Your vote. Thank you."));
             if (acceptedAction == EpisodeCommandKind.ShareInformation && HasOwnMemory(state, npc.id, null, "Heard from you: "))
-                return Vary(state,
+                return Voiced(state, npc, "shared",
                     Pick(id,
                         "I'll keep what you told me separate from what I've witnessed myself.",
                         "I heard you. I'm not calling something a fact just because it helps my game.",
@@ -382,7 +382,7 @@ namespace Gamesim.Simulation
             // Active promises do not erase an earlier recorded outcome.
             var outcome = LatestDirectOutcome(state, npc.id);
             if (outcome != null && outcome.status == PromiseStatus.Broken)
-                return Vary(state,
+                return Voiced(state, npc, "broken",
                     Pick(id,
                         "You broke a promise to me. I can listen, but rebuilding trust will take more than another promise.",
                         "You broke your promise to me. Show me something different before asking me to rely on you.",
@@ -405,7 +405,7 @@ namespace Gamesim.Simulation
                         "The promise failed. I'm not judging you, just updating.",
                         "You didn't keep your word. I'll be careful."));
             if (outcome != null && outcome.status == PromiseStatus.Fulfilled)
-                return Vary(state,
+                return Voiced(state, npc, "kept",
                     Pick(id,
                         "You kept your promise to me. That gives this conversation something solid to build on.",
                         "You followed through on your promise to me. I respect that.",
@@ -428,7 +428,7 @@ namespace Gamesim.Simulation
                         "Fulfilled as stated. I'll weight your future promises higher.",
                         "You followed through. I appreciate it."));
             if (SharedAlliance(state, npc.id, true))
-                return Vary(state,
+                return Voiced(state, npc, "allies",
                     Pick(id,
                         "We share an alliance. Let's make sure we're discussing the same plan.",
                         "We're allies. I want a plan that gives both of us a real shot.",
@@ -459,7 +459,7 @@ namespace Gamesim.Simulation
             double trust = EpisodeEngine.CommitmentRulesOn(state) && state.relationships != null
                 ? KnownOdds.PresumedView(state, npc.id) : OwnTrust(state, npc.id);
             if (trust <= -15)
-                return Vary(state,
+                return Voiced(state, npc, "wary",
                     Pick(id,
                         "I'm cautious about relying on you. Let's keep this conversation specific.",
                         "I'm not ready to rely on you. Say what you mean and we'll start there.",
@@ -482,7 +482,7 @@ namespace Gamesim.Simulation
                         "Low confidence on you. Talk specifics and it may rise.",
                         "I'm not sure I can trust you."));
             if (trust >= 25)
-                return Vary(state,
+                return Voiced(state, npc, "trusted",
                     Pick(id,
                         "I'm comfortable talking with you. That doesn't mean we should skip the details.",
                         "I feel good about talking with you. Let's keep it straightforward.",
@@ -504,7 +504,7 @@ namespace Gamesim.Simulation
                         "Ah, someone I actually like. Sit down.",
                         "You're reliable. That's rare and I value it.",
                         "I'm glad it's you. What's going on?"));
-            return Vary(state,
+            return Voiced(state, npc, "unknown",
                 Pick(id,
                     "I'm still getting to know you. What matters most to you in this game?",
                     "I'm still figuring you out. I'd rather hear your plan directly.",
@@ -593,8 +593,8 @@ namespace Gamesim.Simulation
         }
 
         /// <summary>A pact's yes: what a houseguest says once they are in one with the player.</summary>
-        private static string AllianceYes(EpisodeState state, string id) =>
-            Vary(state,
+        private static string AllianceYes(EpisodeState state, ContestantState npc, string id) =>
+            Voiced(state, npc, "pact-yes",
                 Pick(id,
                     "We have an alliance. Let's keep its commitments precise and talk before changing course.",
                     "We're working together. I still intend to compete for my own game.",
@@ -618,8 +618,8 @@ namespace Gamesim.Simulation
                     "We're working together. Good."));
 
         /// <summary>A pact's no, under the commitment rules: said without a reason (C4).</summary>
-        private static string AllianceNo(EpisodeState state, string id) =>
-            Vary(state,
+        private static string AllianceNo(EpisodeState state, ContestantState npc, string id) =>
+            Voiced(state, npc, "pact-no",
                 Pick(id,
                     "Not an alliance, not yet. I'd rather we earn one than announce it.",
                     "No. I'm not tying my game to yours. Not yet.",
@@ -709,31 +709,31 @@ namespace Gamesim.Simulation
         /// Head of Household before nominations, the veto holder before the meeting, or the Head of
         /// Household then, about a replacement.
         /// </summary>
-        private static string WindowGreeting(EpisodeState state, string npcId, string id)
+        private static string WindowGreeting(EpisodeState state, ContestantState npc, string id)
         {
             if (state.phase == EpisodePhase.Nomination)
-                return Pick(id,
+                return Voiced(state, npc, "window-nominate", Pick(id,
                     "Nominations are mine to make this week. Tell me what you came to say, and be precise.",
                     "I've got two names to call. If you've got something for me, now's the time.",
                     "I know why you're here. Everyone's been by. It's okay, go on.",
                     "Ah, the lobbying begins. I'm listening, but I'm not promising.",
                     "I'm weighing everything right now. Give me something to weigh.",
-                    "I have to name two people. Talk to me.");
-            if (npcId == state.vetoHolderId)
-                return Pick(id,
+                    "I have to name two people. Talk to me."));
+            if (npc.id == state.vetoHolderId)
+                return Voiced(state, npc, "window-veto", Pick(id,
                     "The veto is mine to use or keep. Make your case clearly.",
                     "Everybody wants a piece of this necklace. Go ahead.",
                     "I haven't decided about the veto yet. Tell me what you think.",
                     "Here to tell me what to do with it? Fine, I'm listening.",
                     "Using it or not changes the whole week. Make your case.",
-                    "I've got the veto. Talk to me.");
-            return Pick(id,
+                    "I've got the veto. Talk to me."));
+            return Voiced(state, npc, "window-replace", Pick(id,
                 "If the veto comes down, I name the replacement. Say what you need to.",
                 "If somebody comes off the block, I'm picking who goes up. Talk.",
                 "If the veto gets used I have to name someone. I'm listening.",
                 "Replacement nominee: my least favourite job. Pitch me.",
                 "A replacement would be my call. Tell me what I should know.",
-                "If the veto is used, I name the replacement. Talk to me.");
+                "If the veto is used, I name the replacement. Talk to me."));
         }
 
         private static string Vary(EpisodeState state, string first, string second, string third)

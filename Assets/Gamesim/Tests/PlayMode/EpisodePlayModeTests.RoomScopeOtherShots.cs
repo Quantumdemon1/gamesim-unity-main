@@ -422,7 +422,8 @@ namespace Gamesim.Tests.PlayMode
         /// kitchen hidden. The two's rooms are tracked as they stand: the houseguest carried from the bedroom into
         /// the private room draws the private room on the next frame. Ended, free play's view. A
         /// conversation the director opens with someone in the kitchen draws the kitchen once its camera is in,
-        /// and its panel closed, free play's view in the same frame. Under reduced motion the two-shot takes no
+        /// and brings up its soft key light on the camera's side, aimed at the two faces (LT6); its panel closed,
+        /// free play's view in the same frame, and the key eases out and is gone. Under reduced motion the two-shot takes no
         /// shot and keeps the viewer's: the view's own, free play's (RS5).
         /// </summary>
         [UnityTest]
@@ -520,12 +521,22 @@ namespace Gamesim.Tests.PlayMode
                 Assert.That(director.ViewedRooms, Is.EqualTo(RoomSet.Of("Kitchen")), "The conversation draws the kitchen.");
                 Assert.That(view.cullingMask & RoomLayers.Mask, Is.EqualTo(RoomSet.Of("Kitchen").CullingBits));
                 Rs6aAssertHidden(partner.transform, partner.DisplayName + ", in the private room,");
+                // LT6: the two-shot held, the conversation's soft key comes up on the camera's side, aimed at the two faces.
+                yield return Rs6bWaitUntilArrived(() => cameraRig.HoldsTheTwoShot && director.ConversationKey != null
+                    && director.ConversationKey.intensity >= ConversationKeyLight.Intensity - 1e-3f,
+                    "The two-shot holds and the conversation's key light has eased up to its full, soft strength.");
+                Lt6AssertTheKeyOnThePair(director.ConversationKey, view, player.transform, third.transform);
             }
             finally { director.ClosePanels(); }
             Assert.That(cameraRig.IsConversationFocused, Is.False, "The panel closed ends the conversation,");
             Assert.That(director.ViewedRooms, Is.EqualTo(cameraRig.Rooms), "and the view is free play's in the same frame (RS5).");
             yield return null;
             Rs5AssertFreePlaysView("The conversation closed", Rs5PlayersRoom());
+            // LT6: the conversation over, its key eases out and is gone from the scene.
+            yield return Rs6bWaitUntilArrived(() => director.ConversationKey == null, "The conversation closed, its key light eases out and goes.");
+            yield return null;
+            Assert.That(UnityEngine.Object.FindObjectsByType<Light>(FindObjectsInactive.Include, FindObjectsSortMode.None).Count(l => l.name == ConversationKeyLight.Name),
+                Is.Zero, "No conversation key light is left in the scene.");
 
             // Under reduced motion the two-shot takes no shot: the view is the view's own.
             Rs6bMotion(true);
@@ -778,6 +789,40 @@ namespace Gamesim.Tests.PlayMode
 
         /// <summary>The player's own room by the floors: what free play on the player shows.</summary>
         private RoomSet Rs5PlayersRoom() => RoomSet.Of(director.WalkerRoomOf(player.transform));
+
+        /// <summary>
+        /// LT6: the conversation's key light on a pair the two-shot holds: an unshadowed spot reaching no further than
+        /// four metres, on the camera's side of the two, aimed at the middle of their heads, both faces inside its cone.
+        /// </summary>
+        private static void Lt6AssertTheKeyOnThePair(Light key, Camera view, Transform first, Transform second)
+        {
+            Assert.That(key, Is.Not.Null, "The conversation's key light is up.");
+            Assert.That(key.name, Is.EqualTo(ConversationKeyLight.Name), "It is the conversation's key light,");
+            Assert.That(key.type, Is.EqualTo(LightType.Spot), "a spot,");
+            Assert.That(key.shadows, Is.EqualTo(LightShadows.None), "unshadowed, so it asks for no shadow map,");
+            Assert.That(key.enabled && key.intensity > 0f, Is.True, "lit,");
+            Assert.That(key.range, Is.GreaterThan(0f).And.LessThanOrEqualTo(ConversationKeyLight.MaxRange), "reaching no further than four metres.");
+            var heads = new[] { Lt6Head(first), Lt6Head(second) };
+            var middle = (heads[0] + heads[1]) * .5f;
+            var at = key.transform.position;
+            Assert.That(Vector3.Dot(at - middle, view.transform.position - middle), Is.GreaterThan(0f), "It stands on the camera's side of the pair,");
+            Assert.That(Vector3.Angle(key.transform.forward, middle - at), Is.LessThan(5f), "aimed at the middle of their heads,");
+            foreach (var head in heads)
+                Assert.That(Vector3.Angle(key.transform.forward, head - at), Is.LessThan(key.spotAngle * .5f), "with each face inside its cone.");
+        }
+
+        /// <summary>Where a body's head is, as the two-shot frames it: the head bone, the stand-in's head, a seat's focus, or head height.</summary>
+        private static Vector3 Lt6Head(Transform body)
+        {
+            var presentation = body.GetComponent<CharacterPresentation>();
+            if (presentation != null && presentation.HeadBone != null) return presentation.HeadBone.position;
+            var root = presentation != null ? presentation.VisualRoot : null;
+            var primitiveHead = root != null ? root.Find("Chest/Head pivot") : null;
+            if (primitiveHead != null) return primitiveHead.position;
+            var seat = body.GetComponent<HouseSeatPresentation>();
+            if (seat != null && seat.Active) return seat.VisualFocus;
+            return body.position + Vector3.up * 1.7f;
+        }
 
         /// <summary>Waits on the real clock (the rig eases on unscaled time, which no frame count pins) for a condition, then asserts it.</summary>
         private IEnumerator Rs6bWaitUntilArrived(System.Func<bool> arrived, string what)

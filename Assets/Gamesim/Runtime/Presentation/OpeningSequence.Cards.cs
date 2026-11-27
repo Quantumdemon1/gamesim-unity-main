@@ -181,8 +181,10 @@ namespace Gamesim.Presentation
                 while (!world.Ready && !world.Failed && waited < 3f) { waited += Time.unscaledDeltaTime; yield return null; }
                 if (!world.Ready)
                 {
-                    world.StrikeSet();
-                    world.RestoreHome();
+                    // Let go for good, not just put back: a stage still placed would be walked,
+                    // held and put back again by every beat after this one.
+                    world.Abandon();
+                    world = null;
                     staged = false;
                 }
             }

@@ -257,6 +257,9 @@ namespace Gamesim.Episode
                 FinishCompetitionShow(); return;
             }
             var plan = run.Plan;
+            // The approach close-up holds EntranceHoldSeconds at most while the field still walks in;
+            // the hold widens it sooner when everybody is there first.
+            if (!run.HoldBegun && CompetitionEntranceHeld) WidenCompetitionEntrance();
             if (!run.HoldBegun)
             {
                 // The field is already nearby and walks at the house pace. The hold still needs

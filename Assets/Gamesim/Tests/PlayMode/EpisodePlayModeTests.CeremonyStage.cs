@@ -210,6 +210,11 @@ namespace Gamesim.Tests.PlayMode
             yield return InstallStagedSeason(51, AtNomination);
             var state = director.Snapshot;
             string hoh = state.hohId;
+            // The table's own fill as the scene has it, read before anything is staged.
+            var fill = SceneComponents<Light>().Single(light => light.name == EpisodeDirector.NominationFillName);
+            Color authored = fill.color;
+            float authoredIntensity = fill.intensity;
+            float Gap(Color a, Color b) => Mathf.Max(Mathf.Abs(a.r - b.r), Mathf.Max(Mathf.Abs(a.g - b.g), Mathf.Abs(a.b - b.b)));
             float summonedAt = 0f;
             yield return PlayUntilTheCeremony(observeSummons: () => { summonedAt = Time.unscaledTime; AssertShortCeremonyRoutes(); });
             Assert.That(director.IsCeremonyStaged, Is.True, "The nomination is staged in the house.");
@@ -235,6 +240,16 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(keys.GetComponentsInChildren<RectTransform>(true).Count(rect => rect.name.StartsWith("Key ")),
                 Is.EqualTo(state.Active.Count() - 1 - 2), "with a key for everyone who draws one.");
 
+            // The table's fill has turned warm for the ceremony, about a second from the summons: its
+            // colour only, at the room's own intensity.
+            yield return WaitFor(() => !director.IsCeremonyStaged || Gap(fill.color, EpisodeDirector.NominationFillDuringCeremony) < 0.002f,
+                EpisodeDirector.NominationFillSeconds + 2f, "the table's fill turns warm while the nomination holds the house");
+            Assert.That(director.CeremonyStagePhase, Is.EqualTo(EpisodeDirector.CeremonyStageStep.Playing), "The card is still up.");
+            Assert.That(Gap(fill.color, EpisodeDirector.NominationFillDuringCeremony), Is.LessThan(0.002f),
+                "The table's fill is warm under the card, not the room's " + authored + ": " + fill.color);
+            Assert.That(Gap(fill.color, authored), Is.GreaterThan(0.1f), "It differs from the room's own colour.");
+            Assert.That(fill.intensity, Is.EqualTo(authoredIntensity), "at the room's own intensity.");
+
             // Seated, at the hips: a seat moves the visual body onto the chair and leaves the root at the approach.
             yield return WaitFor(() => director.CeremonyStageSeated >= 3, 10f, "the house sits down as it arrives");
             var seats = CeremonySeating.Anchors(director.gameObject.scene, CeremonySeating.NominationSeat);
@@ -259,6 +274,11 @@ namespace Gamesim.Tests.PlayMode
                     || npc.GetComponent<HouseSeatPresentation>().IsExiting), Is.True, "The chairs empty.");
             Assert.That(player.HasActivityOwner, Is.False, "The player has their body back.");
             Assert.That(Hud.IsHeldForReveal, Is.False, "The chrome is back.");
+            // And the table's fill eases back with the camera's release, onto the scene's own value exactly.
+            float backBy = Time.realtimeSinceStartup + EpisodeDirector.NominationFillSeconds + 2f;
+            while (!fill.color.Equals(authored) && Time.realtimeSinceStartup < backBy) yield return null;
+            Assert.That(fill.color, Is.EqualTo(authored), "The table's fill goes back to the room's own colour once the card is skipped.");
+            Assert.That(fill.intensity, Is.EqualTo(authoredIntensity), "and its intensity was never touched.");
         }
 
         /// <summary>

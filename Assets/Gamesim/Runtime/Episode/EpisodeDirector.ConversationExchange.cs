@@ -92,6 +92,7 @@ namespace Gamesim.Episode
                 self, conversationExchange.IsDramatic,
                 () => AdvanceConversationExchange(session, revision, step),
                 () => SkipConversationExchange(session, revision, step));
+            ShowExchangeLineOnTheClock(session, revision, step, self ? conversationExchange.PlayerLine : conversationExchange.NpcLine);
             if (cameraRig != null) cameraRig.ConversationWindowOffset = hud.ConversationWindowOffset;
             return true;
         }
@@ -143,6 +144,8 @@ namespace Gamesim.Episode
                 if (ExchangeOwns(projected)) ApplyConversationSpeaker();
                 else CancelConversationExchange(false);
             }
+            // "Conversation lines: Move on" (EpisodeDirector.ConversationLinePace.cs).
+            TickExchangeLinePace();
             if (saveFeedbackUntil > 0f && Time.unscaledTime >= saveFeedbackUntil)
             { saveFeedbackUntil = 0f; hud?.HideSaveFeedback(); }
         }

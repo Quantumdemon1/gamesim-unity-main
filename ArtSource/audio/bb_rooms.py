@@ -8,6 +8,15 @@ on purpose: a bed is what you notice when it stops. Kitchen: a fridge hum and a 
 soft air and a low mains hum. Bedroom: the quietest air. Private: air and a clock. HoH: warm air and
 a faint low chord. Nomination: a low drone that never settles. Games: a fluorescent buzz and an
 arcade flicker. Yard: wind in leaves and birds.
+
+Plain Python with numpy renders the same files:
+
+    python ArtSource/audio/bb_rooms.py Assets/Gamesim/Resources/Audio/Rooms
+
+Every bed is normalized to the same peak, and then lifted to RMS_FLOOR if its body sits under it.
+A peak alone made a bed with sparse sounds - a clock, birds - eleven decibels quieter than the living
+room, under the music where nobody could hear it. The floor brings it back to within 3 dB of the
+living room, which RoomToneBlendTests checks; a bed already above the floor renders as it always did.
 """
 import os
 import sys
@@ -18,6 +27,21 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import bb_synth as s  # noqa: E402
 
 LENGTH = 12.0
+
+# The quietest a bed's body may be, RMS over both channels in dBFS, and the peak a lift stops at.
+RMS_FLOOR = -26.0
+PEAK_CEILING = -1.0
+
+
+def at_least(stereo, rms_db=RMS_FLOOR, ceiling_db=PEAK_CEILING):
+    """The bed lifted so its RMS reaches rms_db, if it is under it, with its peak held under ceiling_db."""
+    rms = float(np.sqrt(np.mean(stereo ** 2)))
+    want = 10.0 ** (rms_db / 20.0)
+    if rms <= 0.0 or rms >= want:
+        return stereo
+    peak = float(np.max(np.abs(stereo)))
+    gain = min(want / rms, 10.0 ** (ceiling_db / 20.0) / peak)
+    return stereo * gain
 
 
 def air(track, offset, cutoff=600.0, gain=0.05, seed=3.0):
@@ -98,5 +122,5 @@ if __name__ == "__main__":
     out = os.path.abspath(args[0] if args else "Assets/Gamesim/Resources/Audio/Rooms")
     for name, render in ROOMS.items():
         stereo = s.loop_twice(render, LENGTH)
-        stereo = s.normalize(stereo, -14.0)
+        stereo = at_least(s.normalize(stereo, -14.0))
         print(name, "->", s.write_wav(os.path.join(out, name + ".wav"), stereo))

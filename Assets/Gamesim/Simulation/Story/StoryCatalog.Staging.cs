@@ -485,7 +485,7 @@ namespace Gamesim.Simulation
 
         private static BeatTemplate ConfrontationBeat(string id, string text) => new BeatTemplate
         {
-            id = id, surface = StorySurfaces.Approach, venue = Kitchen, title = "Confronted",
+            id = id, surface = StorySurfaces.Approach, venue = Kitchen, title = "Confronted", speaker = "THEM",
             summary = "A houseguest confronts you.", text = text, lapse = "deflect",
             options = new[]
             {
@@ -520,7 +520,7 @@ namespace Gamesim.Simulation
 
         private static BeatTemplate CampaignBeat(string id, string text) => new BeatTemplate
         {
-            id = id, surface = StorySurfaces.Approach, venue = Hallway, title = "The Campaign",
+            id = id, surface = StorySurfaces.Approach, venue = Hallway, title = "The Campaign", speaker = "THEM",
             summary = "A nominee asks for your vote.", text = text, lapse = "noncommittal",
             options = new[]
             {

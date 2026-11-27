@@ -42,6 +42,8 @@ namespace Gamesim.Presentation
         public const string ReducedSoundRow = "Reduced sound";
         public const string TextSizeRow = "Text size";
         public const string CaptionTimeRow = "Caption time";
+        /// <summary>Whether a conversation's spoken lines wait for a press (the default) or move on by themselves (UI plan D11).</summary>
+        public const string ConversationLinesRow = "Conversation lines";
         public const string CeremonyPaceRow = "Ceremony pace";
 
         // ------------------------------------------------------------------ Controls
@@ -55,7 +57,7 @@ namespace Gamesim.Presentation
         {
             AllSoundRow, MasterVolumeRow, MusicRow,
             CompactHudRow, QualityRow, VSyncRow, FrameRateRow, DisplayModeRow, ResolutionRow, MonitorRow, HouseViewRow, LanguageRow,
-            ReducedMotionRow, ReducedSoundRow, TextSizeRow, CaptionTimeRow, CeremonyPaceRow,
+            ReducedMotionRow, ReducedSoundRow, TextSizeRow, CaptionTimeRow, ConversationLinesRow, CeremonyPaceRow,
             CameraSpeedRow, CameraTiltRow, EdgePanningRow,
         };
 
@@ -75,6 +77,9 @@ namespace Gamesim.Presentation
 
         /// <summary>The caption time at a place in <see cref="CaptionTimeValues"/>.</summary>
         public static CaptionTime CaptionTimeAt(int index) => index == 1 ? CaptionTime.Longer : CaptionTime.Standard;
+
+        /// <summary>The conversation lines as the row reads them: waiting for a press (the default), then moving on by themselves.</summary>
+        public static readonly IReadOnlyList<string> ConversationLinesValues = new[] { "Wait for me", "Move on" };
 
         /// <summary>The ceremonies' paces as the row reads them: suspenseful (the default), then quick.</summary>
         public static readonly IReadOnlyList<string> CeremonyPaceValues = new[] { "Suspenseful", "Quick" };

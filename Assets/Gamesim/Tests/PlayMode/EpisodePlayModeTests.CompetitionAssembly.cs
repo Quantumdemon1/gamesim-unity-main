@@ -138,9 +138,120 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(SceneComponents<HouseInteractionAnchor>().Any(a=>a.VenueId=="competition-player"),Is.True);
             AssertShortStageWalk(player.Agent, "reduced-motion practice approach", allowCoveredStart: true);
             Assert.That(director.IsFramingCompetition, Is.False, "Reduced motion keeps the current camera.");
+            Assert.That(director.CompetitionStationFillShowing, Is.False, "Reduced motion takes no shot, so it lights no station fill.");
             yield return PressKey(Key.P);yield return new WaitForSecondsRealtime(.25f);
             Assert.That(screen.IsPlaying,Is.False);Assert.That(player.Agent.isStopped,Is.True);
             yield return PressKey(Key.Escape);Assert.That(director.IsPanelOpen,Is.True);
+        }
+
+        [UnityTest]
+        public IEnumerator SkippingTheAssemblyViewCutsToTheYardWideAtOnce()
+        {
+            WarpPlayer(director.StationPosition);Assert.That(director.TryOpenPhasePanel(),Is.True);
+            ButtonWithCaption("Begin the next competition").onClick.Invoke();yield return null;
+            WarpPlayer(director.StationPosition);Assert.That(director.TryOpenPhasePanel(),Is.True);
+            var screen=PracticeWithTheArrivalHeldUp(out var station);
+            yield return null;
+            yield return PressKey(Key.Enter);
+            Assert.That(screen.IsAssembling,Is.False,"Enter on Skip assembly view lets the assembly view go.");
+            yield return WaitFor(()=>Mathf.Abs(cameraRig.DesiredDistance-Gamesim.Episode.EpisodeDirector.CompetitionShotDistance)<.01f,1f,
+                "the yard wide within a second of the skip, the player still on the way");
+            Assert.That(cameraRig.IsTravelling,Is.False,"The wide is a cut.");
+            Assert.That(director.IsFramingCompetition,Is.True,"The wide is the competition's own shot.");
+            Assert.That(Vector3.Distance(player.transform.position,station.Approach),Is.GreaterThan(.35f),
+                "The skip took the wide, not the player's arrival.");
+            Assert.That(screen.IsPlaying,Is.False,"Skipping the view never bypasses the arrival gate.");
+            yield return PressKey(Key.Escape);Assert.That(director.IsPanelOpen,Is.True);
+        }
+
+        [UnityTest]
+        public IEnumerator TheEntranceCloseUpGivesWayToTheYardWideWhileAnArrivalIsHeldUp()
+        {
+            WarpPlayer(director.StationPosition);Assert.That(director.TryOpenPhasePanel(),Is.True);
+            ButtonWithCaption("Begin the next competition").onClick.Invoke();yield return null;
+            WarpPlayer(director.StationPosition);Assert.That(director.TryOpenPhasePanel(),Is.True);
+            var screen=PracticeWithTheArrivalHeldUp(out var station);
+            // The close-up was taken on this frame, on the real clock the director's hold reads.
+            float framed=Time.unscaledTime;
+            float hold=Gamesim.Episode.EpisodeDirector.EntranceHoldSeconds;
+            yield return WaitFor(()=>Mathf.Abs(cameraRig.DesiredDistance-Gamesim.Episode.EpisodeDirector.CompetitionShotDistance)<.01f,hold+2f,
+                "the yard wide by the close-up's hold, an arrival still held up");
+            float held=Time.unscaledTime-framed;
+            Debug.LogFormat("[Gamesim entrance hold] the close-up held {0:F2} s",held);
+            Assert.That(held,Is.GreaterThanOrEqualTo(hold-.05f),"The close-up comes first and holds its time.");
+            Assert.That(screen.IsAssembling,Is.True,"Nothing skipped the view: the close-up's hold took the wide.");
+            Assert.That(Vector3.Distance(player.transform.position,station.Approach),Is.GreaterThan(.35f),"The arrival is still held up.");
+            Assert.That(cameraRig.IsTravelling,Is.False,"The wide is a cut.");
+            yield return PressKey(Key.Escape);Assert.That(director.IsPanelOpen,Is.True);
+        }
+
+        /// <summary>
+        /// The player is lit at their station while the competition's own shot holds the camera: a soft,
+        /// unshadowed, neutral spot from the camera's side onto the station at head height, on the entrance
+        /// close-up and again on the yard wide after Skip assembly view. A cancel puts it out with the arena.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator TheStationFillLightsThePlayerWhileTheCompetitionHoldsTheCameraAndGoesOnCancel()
+        {
+            WarpPlayer(director.StationPosition);Assert.That(director.TryOpenPhasePanel(),Is.True);
+            ButtonWithCaption("Begin the next competition").onClick.Invoke();yield return null;
+            WarpPlayer(director.StationPosition);Assert.That(director.TryOpenPhasePanel(),Is.True);
+            var screen=PracticeWithTheArrivalHeldUp(out var station);
+            yield return null;
+            Assert.That(director.IsFramingCompetition,Is.True,"The entrance close-up is the competition's own shot.");
+            AssertStationFill(station,"on the entrance close-up");
+            yield return PressKey(Key.Enter);
+            Assert.That(screen.IsAssembling,Is.False,"Enter on Skip assembly view lets the assembly view go.");
+            yield return WaitFor(()=>Mathf.Abs(cameraRig.DesiredDistance-Gamesim.Episode.EpisodeDirector.CompetitionShotDistance)<.01f,1f,
+                "the yard wide within a second of the skip");
+            yield return null;
+            AssertStationFill(station,"on the yard wide");
+            var fill=director.CompetitionStationFill.gameObject;
+            yield return PressKey(Key.Escape);Assert.That(director.IsPanelOpen,Is.True);
+            Assert.That(director.CompetitionStationFillShowing,Is.False,"A cancel puts the station fill out with the arena.");
+            yield return null;
+            Assert.That(fill==null,Is.True,"The station fill is gone, not left standing in the yard.");
+            Assert.That(SceneComponents<Light>().Any(light=>light.name==Gamesim.Episode.EpisodeDirector.CompetitionStationFillName),Is.False);
+        }
+
+        /// <summary>The station fill as promised, aimed at the player's station from the side the camera stands on.</summary>
+        private void AssertStationFill(HouseInteractionAnchor station,string when)
+        {
+            var fill=director.CompetitionStationFill;
+            Assert.That(fill,Is.Not.Null,"The station fill is lit "+when+".");
+            Assert.That(fill.type,Is.EqualTo(LightType.Spot),"A spot "+when+".");
+            Assert.That(fill.shadows,Is.EqualTo(LightShadows.None),"An unshadowed fill "+when+".");
+            Assert.That(fill.intensity,Is.EqualTo(1.5f).Within(.01f),"A fill's strength "+when+".");
+            Assert.That(fill.range,Is.GreaterThan(2f).And.LessThanOrEqualTo(4f),"A reach past the player, not across the yard, "+when+".");
+            Assert.That(fill.color.r==fill.color.g && fill.color.g==fill.color.b,Is.True,"A neutral fill "+when+".");
+            var aim=station.Position+Vector3.up*Gamesim.Episode.EpisodeDirector.CompetitionStationFillAim;
+            var from=fill.transform.position;
+            Assert.That(Vector3.Distance(from,aim),Is.InRange(1f,fill.range-.5f),"The fill stands near the player "+when+".");
+            Assert.That(Vector3.Angle(fill.transform.forward,aim-from),Is.LessThan(2f),"The fill aims at the station at head height "+when+".");
+            var eye=cameraRig.ViewCamera.transform.position;
+            var toFill=Vector3.ProjectOnPlane(from-aim,Vector3.up);
+            var toEye=Vector3.ProjectOnPlane(eye-aim,Vector3.up);
+            Assert.That(Vector3.Angle(toFill,toEye),Is.LessThan(45f),"The fill lights the side of the player the camera sees "+when+".");
+        }
+
+        /// <summary>
+        /// A practice's assembly on its entrance close-up, with the player's own arrival held up (their
+        /// walk at no speed): the arena cannot be ready, so only the skip or the close-up's hold can take
+        /// the yard wide. The scene is loaded again for every test, so the speed goes with it.
+        /// </summary>
+        private CompetitionGameScreen PracticeWithTheArrivalHeldUp(out HouseInteractionAnchor station)
+        {
+            typeof(Gamesim.Episode.EpisodeDirector).GetField("reducedMotion",BindingFlags.Instance|BindingFlags.NonPublic).SetValue(director,false);
+            cameraRig.SetReducedMotion(false);
+            ButtonWithCaption("Practice this competition").onClick.Invoke();
+            player.Agent.speed=0f;
+            var screen=RequireCompetitionAssemblyScreen();
+            Assert.That(screen.IsAssembling,Is.True,"The game opens on its assembly view.");
+            station=SceneComponents<HouseInteractionAnchor>().Single(a=>a.VenueId=="competition-player");
+            Assert.That(Vector3.Distance(player.transform.position,station.Approach),Is.GreaterThan(.35f),"The player starts off their mark.");
+            Assert.That(cameraRig.DesiredDistance,Is.LessThan(Gamesim.Episode.EpisodeDirector.CompetitionShotDistance-1f),
+                "The game opens on the station's close-up.");
+            return screen;
         }
 
         private void AssertShortStageWalk(NavMeshAgent agent, string label, bool allowCoveredStart = false)

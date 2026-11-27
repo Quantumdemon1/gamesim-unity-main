@@ -54,13 +54,13 @@ namespace Gamesim.Simulation
             return layers.OrderBy(l => l.Number).ToList();
         }
 
-        /// <summary>"This week, from them": the latest snapshot, or null when off or none was taken.</summary>
+        /// <summary>"This week, from them": the latest snapshot, in first names (<see cref="TalkText.FirstNames"/>), or null when off or none was taken.</summary>
         public static Standing FromThem(EpisodeState s, string npcId)
         {
             if (!FreeTalk.On(s)) return null;
             var contact = FreeTalk.Contact(s, npcId);
             if (contact == null || contact.standingWeek <= 0 || string.IsNullOrEmpty(contact.standing)) return null;
-            return new Standing { Week = contact.standingWeek, Line = contact.standing, Current = contact.standingWeek == s.week };
+            return new Standing { Week = contact.standingWeek, Line = TalkText.FirstNames(s, contact.standing), Current = contact.standingWeek == s.week };
         }
 
         // ------------------------------------------------------------------ slice S2 (talk rules 2): stage, chemistry, your read

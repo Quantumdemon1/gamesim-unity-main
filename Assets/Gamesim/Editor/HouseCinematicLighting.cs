@@ -186,7 +186,44 @@ namespace Gamesim.Editor
                 if (fill) light.intensity = Mathf.Min(light.intensity, 4.0f);
                 count++;
             }
+            TierLamps(scene);
             return count;
+        }
+
+        /// <summary>
+        /// Each lamp asks for the shadow tier its home room's lamp count gives (SB1,
+        /// <see cref="Gamesim.Episode.VerificationViews.LampShadowTier"/>): the room scope leaves only the
+        /// viewed room's lamps on, and URP divides every map in a frame by one scale, so a lamp asks for
+        /// the smallest tier at which no frame of its room's lamps gets fewer pixels than High gave. The
+        /// follow spotlight asks for the Low tier (FollowRing). Authored here: URP refuses a tier set
+        /// outside play mode through its property, and nothing sets one at run time.
+        /// </summary>
+        private static void TierLamps(Scene scene)
+        {
+            if (!HouseRoomScope.TryCreate(scene, out var scope, out string why))
+            {
+                Debug.LogWarning("[Gamesim] Cinematic lighting · the lamps' shadow tiers are left as they are: " + why);
+                return;
+            }
+            var pipeline = GraphicsSettings.currentRenderPipeline as UniversalRenderPipelineAsset;
+            int atlas = pipeline != null ? pipeline.additionalLightsShadowmapResolution : 2048;
+            int low = pipeline != null ? pipeline.additionalLightsShadowResolutionTierLow : 256;
+            int medium = pipeline != null ? pipeline.additionalLightsShadowResolutionTierMedium : 512;
+            int high = pipeline != null ? pipeline.additionalLightsShadowResolutionTierHigh : 1024;
+            var homes = new List<HouseRoomScope.LampHome>();
+            scope.LampHomes(homes);
+            foreach (var home in homes)
+            {
+                int tier = Gamesim.Episode.VerificationViews.LampShadowTier(homes.Count(other => other.Room == home.Room), atlas, low, medium, high, low);
+                int urpTier = tier == Gamesim.Episode.VerificationViews.ShadowTierLow ? UniversalAdditionalLightData.AdditionalLightsShadowResolutionTierLow
+                    : tier == Gamesim.Episode.VerificationViews.ShadowTierMedium ? UniversalAdditionalLightData.AdditionalLightsShadowResolutionTierMedium
+                    : UniversalAdditionalLightData.AdditionalLightsShadowResolutionTierHigh;
+                var data = home.Light.GetComponent<UniversalAdditionalLightData>();
+                if (data == null) data = home.Light.gameObject.AddComponent<UniversalAdditionalLightData>();
+                var serialized = new SerializedObject(data);
+                serialized.FindProperty("m_AdditionalLightsShadowResolutionTier").intValue = urpTier;
+                serialized.ApplyModifiedPropertiesWithoutUndo();
+            }
         }
 
         /// <summary>The neon strips, the glow materials and the screens light their surroundings in the bake.</summary>

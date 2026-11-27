@@ -532,6 +532,149 @@ namespace Gamesim.Tests.EditMode
             return s;
         }
 
+        // ================================================================== walk-ups name the houseguest (Source.Story)
+
+        /// <summary>
+        /// The Approach beats whose words have a houseguest come to the player, each naming that role as its speaker. A
+        /// superset, so a later slice's speakers add to it.
+        /// </summary>
+        private static readonly string[] SpeakerBeats =
+        {
+            "loose-lips:it-got-out", "what-they-left-out:somebody-knows", "ride-or-die:final-two", "staged-feud:give-them-a-show",
+            "kitchen-blowup:thanks-hothead", "kitchen-blowup:thanks-target", "cold-shoulder:thanks-hothead", "cold-shoulder:thanks-target",
+            "secret-alliance-offer:discovery", "the-agenda:sizing-up", "caught-talking:word-gets-back", "the-confession:discovery",
+            "the-lobby:lobby", "tensions-rise:tensions", "final-pleas:pleas", "last-minute-campaign:campaign",
+            "confronted:harsh-words", "confronted:firm-words", "campaign-pitch:close-plea", "campaign-pitch:cool-plea",
+        };
+
+        /// <summary>
+        /// ST1. The catalogue names who comes: every beat above names a speaker, and every beat that names one is an Approach
+        /// beat whose speaker is one of its arc's parts and whose words name them. A beat the player goes to does not (the
+        /// photo on the nightstand, the Head of Household's lobby after the competition).
+        /// </summary>
+        [Test]
+        public void TheCatalogueNamesWhoComesToThePlayer()
+        {
+            var named = StoryCatalog.All.SelectMany(arc => arc.beats.Where(beat => !string.IsNullOrEmpty(beat.speaker))
+                .Select(beat => (arc, beat))).ToList();
+            Assert.That(named.Select(row => row.arc.id + ":" + row.beat.id).Distinct(), Is.SupersetOf(SpeakerBeats));
+            foreach (var (arc, beat) in named)
+            {
+                string where = arc.id + ":" + beat.id;
+                Assert.That(beat.surface, Is.EqualTo(StorySurfaces.Approach), where + ": only an Approach beat walks up.");
+                Assert.That(arc.roles.Select(role => role.key), Does.Contain(beat.speaker), where + " names one of its arc's parts.");
+                Assert.That(beat.text, Does.Contain("{" + beat.speaker + "}"), where + "'s own words name who comes.");
+            }
+            Assert.That(StoryCatalog.Find("photo-on-the-nightstand").Beat("the-photo").speaker, Is.Null, "The player finds them: nobody comes.");
+            Assert.That(StoryCatalog.Find("after-the-comp").Beat("lobby").speaker, Is.Null, "The player goes to the new Head of Household.");
+        }
+
+        /// <summary>
+        /// ST2. An open lobby beat is one <see cref="ComesToYou.Source.Story"/> row from its lobbyist, read with nothing on the
+        /// waiting list (the story is no item of it): the beat's id, the lobbyist as the asker, the catalogue beat as its kind,
+        /// its week, the story's line, until the nominations - which the next advance reaches - never whispered. Reading it
+        /// writes nothing.
+        /// </summary>
+        [Test]
+        public void AnOpenBeatComesFromItsSpeaker()
+        {
+            var s = StoryHouse("the-lobby", out var beat);
+            string lobbyist = Part(beat, "LOBBYIST");
+            Assert.That(WaitingOnYou.Read(s).Any, Is.False, "The premise: nothing else waits on the player.");
+            string before = JsonConvert.SerializeObject(s);
+            uint game = s.randomState, npcs = s.npcSocial.randomState;
+            var ask = ComesToYou.Read(s).Single();
+            Assert.That((ask.source, ask.recordId, ask.askerId, ask.type, ask.week),
+                Is.EqualTo((ComesToYou.Source.Story, beat.id, lobbyist, "the-lobby:lobby", s.week)));
+            Assert.That(ask.line, Is.EqualTo(ComesToYou.StoryLine));
+            Assert.That(ask.line, Does.Not.Contain("\"").And.Not.Contain("“"), "The bubble adds no quote marks to a plain line.");
+            Assert.That(ask.lapseLine, Is.EqualTo("It stands until the nominations."));
+            Assert.That(ask.lapsesOnAdvance, Is.True, "The next advance names the nominees, where the beat closes.");
+            Assert.That(ask.whisper, Is.False);
+            Assert.That(ask.IsCurrent(s), Is.True);
+            Assert.That(ComesToYou.StorySpeaker(s, beat), Is.EqualTo(lobbyist));
+            Assert.That(ComesToYou.Find(s, beat.id)?.source, Is.EqualTo(ComesToYou.Source.Story));
+            Assert.That(JsonConvert.SerializeObject(s), Is.EqualTo(before), "Reading writes nothing.");
+            Assert.That((s.randomState, s.npcSocial.randomState), Is.EqualTo((game, npcs)));
+        }
+
+        /// <summary>
+        /// ST3. Nobody brings it once its speaker has left, once it is answered or has lapsed, in a phase no houseguest brings
+        /// the player anything in, or to a player out of the game: no row, and the row read before is no longer current. A
+        /// new session lists it again, but the old row stands for nothing.
+        /// </summary>
+        [TestCase("evicted")] [TestCase("closed")] [TestCase("phase")] [TestCase("player")] [TestCase("session")]
+        public void NobodyBringsABeatTheyCannotBring(string change)
+        {
+            var s = StoryHouse("the-lobby", out var beat);
+            var ask = ComesToYou.Read(s).Single();
+            s.revision++;
+            Assert.That(ask.IsCurrent(s), Is.True, "A clock revision does not end it.");
+            switch (change)
+            {
+                case "evicted": s.Find(Part(beat, "LOBBYIST")).status = ContestantStatus.Evicted; break;
+                case "closed": beat.resolved = true; break;
+                case "phase": s.phase = EpisodePhase.Eviction; break;
+                case "player": s.Find(s.playerId).status = ContestantStatus.Evicted; break;
+                default: s.sessionId += "-loaded"; break;
+            }
+            Assert.That(ask.IsCurrent(s), Is.False, change);
+            if (change == "session") Assert.That(ComesToYou.Read(s).Single().IsCurrent(s), Is.True, "Read again, it stands in the new session.");
+            else Assert.That(ComesToYou.Read(s).Where(row => row.source == ComesToYou.Source.Story), Is.Empty, change);
+            Assert.That(new ComesToYou.Ask { source = ComesToYou.Source.Story, recordId = beat.id, askerId = ask.askerId }.IsCurrent(s), Is.False,
+                "An ask the reader did not build stands for nothing.");
+        }
+
+        /// <summary>
+        /// ST4. A beat whose words have the player go to somebody names no speaker, so it lists nothing and stays the Pull's:
+        /// the lobby after the competition, where the player goes to the new Head of Household.
+        /// </summary>
+        [Test]
+        public void ABeatWithoutASpeakerListsNothing()
+        {
+            var s = StoryHouse("after-the-comp", out var beat);
+            Assert.That(ComesToYou.StorySpeaker(s, beat), Is.Null);
+            Assert.That(ComesToYou.Read(s), Is.Empty);
+        }
+
+        /// <summary>
+        /// ST5. One queue: a story row and a reply card are read together, in the public order (what the next advance lets go
+        /// first: the beat closes at the nominations, the card at the close of campaigning), so the director's caps and gaps
+        /// count them alike. Each asker counts the other as one more houseguest who wants a word, and the speaker's next ask is
+        /// the beat.
+        /// </summary>
+        [Test]
+        public void AStoryRowSharesTheQueueWithACard()
+        {
+            var s = StoryHouse("the-lobby", out var beat);
+            string lobbyist = Part(beat, "LOBBYIST");
+            string sender = s.Active.First(c => !c.isPlayer && c.id != lobbyist && c.id != s.hohId).id;
+            var card = Card(s, ReplyCards.Confrontation, sender);
+            var asks = ComesToYou.Read(s);
+            Assert.That(asks.Select(ask => (ask.source, ask.recordId)),
+                Is.EqualTo(new[] { (ComesToYou.Source.Story, beat.id), (ComesToYou.Source.Card, card.id) }));
+            Assert.That(ComesToYou.OtherAskers(asks, sender, ask => ask.IsCurrent(s)), Is.EqualTo(1));
+            Assert.That(ComesToYou.OtherAskers(asks, lobbyist, ask => ask.IsCurrent(s)), Is.EqualTo(1));
+            Assert.That(ComesToYou.NextFrom(asks, lobbyist, null, ask => ask.IsCurrent(s))?.recordId, Is.EqualTo(beat.id));
+        }
+
+        /// <summary>
+        /// A house in the nomination before any name, a houseguest Head of Household, the story on from this week, and one
+        /// story the engine opens at the crowning by its own seam: the beat it puts to the player, an Approach.
+        /// </summary>
+        private static EpisodeState StoryHouse(string arcId, out HouseEventState beat)
+        {
+            var s = State(EpisodePhase.Nomination);
+            s.hohId = Npc(s, 0); s.nominees.Clear();
+            EpisodeEngine.EnableStory(s, s.week);
+            Assert.That(EpisodeEngine.StartStory(s, arcId, StoryAnchors.HohCrowned), Is.True, "The premise: the engine opens " + arcId + ".");
+            beat = EpisodeEngine.OpenStoryBeats(s).Single();
+            Assert.That(beat.surface, Is.EqualTo(StorySurfaces.Approach), "The premise: an Approach beat.");
+            return s;
+        }
+
+        private static string Part(HouseEventState beat, string role) => beat.cast.Single(part => part.role == role).contestantId;
+
         // ------------------------------------------------------------------ the houses
 
         private static EpisodeState State(EpisodePhase phase = EpisodePhase.Campaign, int week = 3)

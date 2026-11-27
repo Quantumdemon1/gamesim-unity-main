@@ -38,7 +38,7 @@ namespace Gamesim.Episode
         /// <summary>Display: the window, the frame rate, the HUD's size, the house view and the language (EpisodeDirector.Display.cs).</summary>
         private void DisplaySection() => DisplaySettings();
 
-        /// <summary>Accessibility: motion, sound, the text's size, how long captions stay, and the ceremonies' pace.</summary>
+        /// <summary>Accessibility: motion, sound, the text's size, how long captions stay, whether conversation lines move on by themselves, and the ceremonies' pace.</summary>
         private void AccessibilitySection()
         {
             hud.Aside(AccessibilityLine);
@@ -50,6 +50,9 @@ namespace Gamesim.Episode
             // How long the ceremony's strip and a witnessed conversation's line stay up (A10).
             hud.SettingChoice(SettingRowWords.CaptionTimeRow, SettingRowWords.CaptionTimeValues, captionTime == CaptionTime.Longer ? 1 : 0,
                 index => SetCaptionTime(SettingRowWords.CaptionTimeAt(index)));
+            // Whether a conversation's spoken lines wait for a press or move on after their reading time (D11).
+            hud.SettingChoice(SettingRowWords.ConversationLinesRow, SettingRowWords.ConversationLinesValues, autoContinueLines ? 1 : 0,
+                index => SetAutoContinueLines(index == 1));
             hud.SectionHeading("CEREMONIES");
             hud.SettingChoice(SettingRowWords.CeremonyPaceRow, SettingRowWords.CeremonyPaceValues, ceremonyPace == CeremonyPace.Quick ? 1 : 0,
                 index => { SetCeremonyPace(SettingRowWords.CeremonyPaceAt(index)); Render(); });

@@ -661,7 +661,37 @@ namespace Gamesim.Episode
                 Distance = 4.2f, Pitch = 18f, Yaw = 12f, FieldOfView = 38f, Rooms = CompetitionRooms,
             });
             competitionEntranceFramed = true;
+            competitionEntranceFramedAt = Time.unscaledTime;
             if (competitionShow == null) competitionFramed = true;
+        }
+
+        /// <summary>
+        /// The longest the entrance close-up holds, in seconds of the real clock, before the yard wide
+        /// takes it over with whoever is still walking in. The close-up comes first, so every arrival
+        /// starts out of its frame; held until the last houseguest stood on their mark, it kept the
+        /// game's "taking their places" over a station-sized view for as long as the assembly's 30 s.
+        /// </summary>
+        public const float EntranceHoldSeconds = 4f;
+
+        /// <summary>Whether the entrance close-up is up and has held its time; a paused assembly's time does not count.</summary>
+        private bool CompetitionEntranceHeld
+            => competitionEntranceFramed && Time.unscaledTime - competitionEntranceFramedAt >= EntranceHoldSeconds;
+
+        /// <summary>Whether the player let their own game's assembly view go (Skip assembly view): its screen is up and past it.</summary>
+        private bool CompetitionAssemblySkipped
+            => challengeRun != null && competitionScreen != null && competitionScreen.IsShowing && !competitionScreen.IsAssembling;
+
+        /// <summary>
+        /// The entrance close-up gives way to the yard wide: a show's own wide, or an own game's (the ring
+        /// tower's for the tower). The arrivals were placed under the close-up, so the wide shows them
+        /// walking in, not appearing. A shot the viewer's input let go is not taken back.
+        /// </summary>
+        private void WidenCompetitionEntrance()
+        {
+            competitionEntranceFramed = false;
+            if (cameraRig == null || !cameraRig.HasShot) return;
+            if (competitionShow != null) FrameCompetitionShow();
+            else FrameCompetition();
         }
 
         private void FrameCompetition()
@@ -675,6 +705,64 @@ namespace Gamesim.Episode
                 FieldOfView = CompetitionShotFieldOfView, Rooms = CompetitionRooms,
             });
             competitionFramed = true;
+        }
+
+        /// <summary>The soft light on the player at their competition station, by its name.</summary>
+        public const string CompetitionStationFillName = "Competition station fill";
+        /// <summary>The station fill's strength: a fill, about the ceremony's reaction fill, never a second key.</summary>
+        public const float CompetitionStationFillIntensity = 1.5f;
+        /// <summary>How far the station fill reaches, in metres: past the player, not across the yard (never more than 4).</summary>
+        public const float CompetitionStationFillRange = 3.5f;
+        /// <summary>The height over the station the fill aims at: the face, with the hands an apparatus raises just below it.</summary>
+        public const float CompetitionStationFillAim = 1.55f;
+        private Light competitionStationFill;
+
+        /// <summary>Whether the station fill is lit, for a test.</summary>
+        public bool CompetitionStationFillShowing => competitionStationFill != null && competitionStationFill.enabled;
+
+        /// <summary>The station fill itself while it is lit, for a test; null otherwise.</summary>
+        public Light CompetitionStationFill => CompetitionStationFillShowing ? competitionStationFill : null;
+
+        /// <summary>
+        /// The player lit at their station while the competition's own shot holds the camera. The yard has
+        /// no house lamp, so the lit frames and gates read much brighter than the face and raised hands in
+        /// front of them. A soft, unshadowed, neutral spot from the camera's side onto the station at head
+        /// height, as the ceremony's reaction fill lights a seated face. The arena's every frame: it follows
+        /// the camera from the close-up to the wide (the ring tower's included) and to an endurance shot, and
+        /// goes as soon as the shot is not the competition's - reduced motion takes none, the viewer's input
+        /// lets one go - or the arena ends. It reads the station and the camera, never the season.
+        /// </summary>
+        private void SyncCompetitionStationFill()
+        {
+            if (!IsFramingCompetition || competitionPlayerStation == null) { RemoveCompetitionStationFill(); return; }
+            if (competitionStationFill == null)
+            {
+                var lamp = new GameObject(CompetitionStationFillName);
+                lamp.transform.SetParent(transform, false);
+                competitionStationFill = lamp.AddComponent<Light>();
+                competitionStationFill.type = LightType.Spot;
+                competitionStationFill.shadows = LightShadows.None;
+                competitionStationFill.color = Color.white;
+                competitionStationFill.intensity = CompetitionStationFillIntensity;
+                competitionStationFill.range = CompetitionStationFillRange;
+                // The outer angle first: the inner never stands wider than it.
+                competitionStationFill.spotAngle = 70f;
+                competitionStationFill.innerSpotAngle = 40f;
+            }
+            // From the camera's side as it stands now: 1.8 m toward it, a little to its left and above the face.
+            var aim = competitionPlayerStationPosition + Vector3.up * CompetitionStationFillAim;
+            var offset = Quaternion.Euler(0f, cameraRig.transform.eulerAngles.y, 0f) * new Vector3(-.4f, .35f, -1.8f);
+            competitionStationFill.transform.SetPositionAndRotation(aim + offset, Quaternion.LookRotation(-offset));
+            competitionStationFill.enabled = true;
+        }
+
+        /// <summary>The station fill off and gone: the arena's end, a cancel or a commit, or a shot that is not the competition's.</summary>
+        private void RemoveCompetitionStationFill()
+        {
+            if (competitionStationFill == null) return;
+            competitionStationFill.enabled = false;
+            Destroy(competitionStationFill.gameObject);
+            competitionStationFill = null;
         }
 
         private void ChallengePanel()

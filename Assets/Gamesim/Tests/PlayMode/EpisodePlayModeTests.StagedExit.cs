@@ -104,7 +104,8 @@ namespace Gamesim.Tests.PlayMode
         /// The result is taken in the chairs, and the goodbye comes between the card and the walk:
         /// the evicted stand and face the house, every seated head turns to them, whoever sits
         /// claps, the camera is on their face, their line is on the strip, the chrome is aside and
-        /// the warm key light on the red chairs - and only once it is over do they walk, slowly.
+        /// the warm key light has left the red chairs for their face, from the camera's side - and
+        /// only once it is over do they walk, slowly.
         /// </summary>
         [UnityTest]
         public IEnumerator StagedExit_TheGoodbyeComesBetweenTheCardAndTheWalk()
@@ -188,6 +189,39 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(director.CeremonySkipShowing, Is.True, "the chip names the press that moves it on,");
             Assert.That(director.EvictionKeyLightShowing, Is.True, "and the key light is still on.");
             Assert.That(Presentation(leaving).IsSeated, Is.False, "They are up out of the chair.");
+            // The key light leaves the red chairs for their face: it began on or before this frame and
+            // swings over 0.3 s. From then on, on every frame of the goodbye read here, it is aimed at
+            // their head from a little above the eyes, near enough to light the face, in the chairs' warm
+            // color and no brighter - and, on a frame whose camera has landed, from the camera's side.
+            float keyOnTheFaceBy = Time.unscaledTime + 0.35f;
+            int keyReadsFromTheLens = 0;
+            string KeyOffTheFace(bool fromTheLens)
+            {
+                var key = director.transform.Find(EpisodeDirector.EvictionKeyLightName);
+                var lamp = key != null ? key.GetComponent<Light>() : null;
+                if (lamp == null || !lamp.enabled) return "no key light is on";
+                var bone = Presentation(leaving).HeadBone;
+                var head = bone != null ? bone.position : leaving.transform.position + Vector3.up * 1.55f;
+                var lens = cameraRig.ViewCamera.transform.position;
+                var toKey = key.position - head;
+                var off = new List<string>();
+                if (fromTheLens && Vector3.Dot(toKey.normalized, (lens - head).normalized) <= 0.5f) off.Add("not on the camera's side of the face");
+                if (Vector3.Angle(key.forward, head - key.position) >= 8f) off.Add("not aimed at the head");
+                if (toKey.magnitude < 1.6f || toKey.magnitude > 2.6f) off.Add("not 1.6 to 2.6 m from the head");
+                if (toKey.y < 0.1f || toKey.y > 1f) off.Add("not a little above the eyes");
+                if (lamp.intensity > 6f) off.Add("brighter than on the chairs");
+                if (Mathf.Abs(lamp.color.r - 1f) > 0.01f || Mathf.Abs(lamp.color.g - 0.86f) > 0.01f || Mathf.Abs(lamp.color.b - 0.66f) > 0.01f)
+                    off.Add("not the chairs' warm color");
+                return off.Count == 0 ? null : string.Join(", ", off) + " (key " + key.position.ToString("F2") + ", head " + head.ToString("F2")
+                    + ", lens " + lens.ToString("F2") + ", intensity " + lamp.intensity.ToString("F2") + ")";
+            }
+            void WatchTheKey(string when)
+            {
+                if (Time.unscaledTime < keyOnTheFaceBy || director.CeremonyStagePhase != EpisodeDirector.CeremonyStageStep.Goodbye) return;
+                bool landed = cameraRig.HasArrived();
+                Assert.That(KeyOffTheFace(landed), Is.Null, "The key light is on the evicted's face " + when + ", not on the empty chair:");
+                if (landed) keyReadsFromTheLens++;
+            }
             // The goodbye is noncontact (the owner's decision): watched on every frame from the card
             // going down to the house getting up - the farewell's own frames among them - not only at the end.
             string embraceSeen = null;
@@ -231,9 +265,23 @@ namespace Gamesim.Tests.PlayMode
                 {
                     WatchTheGoodbye("during the farewell");
                     Assert.That(embraceSeen, Is.Null, "The farewell is the short noncontact one: " + embraceSeen);
+                    WatchTheKey("during the farewell");
                     yield return farewell.Current;
                 }
             }
+            // Read from a landed camera at least once: on the push in when nobody stands for the
+            // farewell, and on the farewell's own shot or the face after it when somebody does.
+            while ((Time.unscaledTime < keyOnTheFaceBy || keyReadsFromTheLens == 0)
+                && director.CeremonyStagePhase == EpisodeDirector.CeremonyStageStep.Goodbye
+                && Time.unscaledTime < closedAt + EpisodeDirector.GoodbyeSeconds - 0.5f)
+            {
+                WatchTheGoodbye("while the key light found their face");
+                WatchTheKey("as the camera settled on them");
+                yield return null;
+            }
+            WatchTheKey("once the camera settled on them");
+            Assert.That(keyReadsFromTheLens, Is.GreaterThan(0),
+                "The key light was read on the evicted's face from a landed camera during the goodbye. " + director.CeremonyStageReport("goodbye key light"));
             var face = leaving.transform.position + Vector3.up * 1.55f;
             Assert.That(cameraRig.HasShot, Is.True, "The camera is the goodbye's,");
             Assert.That(Vector3.Distance(cameraRig.DesiredFocus, face), Is.LessThan(0.3f), "on the evicted's face.");
@@ -275,6 +323,12 @@ namespace Gamesim.Tests.PlayMode
                     return motion.LeaseId != null && motion.LeaseId.StartsWith("departure:");
                 }, 3f, "the walk out takes its first route");
             Assert.That(motion.Speed, Is.LessThanOrEqualTo(EpisodeDirector.StagedWalkSpeed + 0.05f), "They walk slowly while the house watches.");
+            // The walk has its own key light from its first route, aimed at their head from the
+            // camera's side, where the goodbye's no longer reaches.
+            Assert.That(director.WalkingOutId, Is.EqualTo(evicted), "They are still walking,");
+            Assert.That(director.transform.Find(EpisodeDirector.WalkOutKeyLightName), Is.Not.Null, "and the walk has a key light of its own,");
+            Assert.That(WalkKeyOffTheHead(leaving, cameraRig.HasArrived(), out _), Is.Null, "on their head from the camera's side:");
+            Assert.That(director.EvictionKeyLightShowing, Is.False, "the goodbye's stays off.");
 
             director.SkipWalkOut();
             yield return WaitFor(() =>
@@ -287,8 +341,51 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(embraceSeen, Is.Null, "and nobody embraces after it either.");
             Assert.That(Hud.IsHeldForReveal, Is.False, "The chrome is back once the door is shut behind them,");
             Assert.That(director.transform.Find(EpisodeDirector.EvictionKeyLightName), Is.Null, "the key light is gone,");
+            Assert.That(ExitLightsOn(), Is.Empty, "no light of the exit's is left on after the press,");
             Assert.That(director.NpcAutonomyDiagnostic, Is.Null, "and the house's world runs on.");
             Assert.That(motion.Speed, Is.EqualTo(HouseNpcMotion.DefaultSpeed), "The pace is the house's own again.");
+        }
+
+        /// <summary>
+        /// Why the staged walk's own key light is not on the departing head from the camera's side,
+        /// or null. A key gone dark is no fault - a wall between the head and the lens puts it out
+        /// rather than paint the wall - and <paramref name="lit"/> says whether it was read lit.
+        /// </summary>
+        private string WalkKeyOffTheHead(Component body, bool fromTheLens, out bool lit)
+        {
+            lit = false;
+            var key = director.transform.Find(EpisodeDirector.WalkOutKeyLightName);
+            var lamp = key != null ? key.GetComponent<Light>() : null;
+            if (lamp == null) return "there is no walk-out key light";
+            if (lamp.type != LightType.Spot || lamp.shadows != LightShadows.None || lamp.range > 4.5f)
+                return "the walk-out key is not an unshadowed spot reaching 4.5 m at most (" + lamp.type + ", " + lamp.shadows + ", range " + lamp.range.ToString("F2") + ")";
+            if (!lamp.enabled) return null;
+            lit = true;
+            var bone = Presentation(body).HeadBone;
+            var head = bone != null ? bone.position : body.transform.position + Vector3.up * 1.55f;
+            var lens = cameraRig.ViewCamera.transform.position;
+            var toKey = key.position - head;
+            var off = new List<string>();
+            if (fromTheLens && Vector3.Dot(toKey.normalized, (lens - head).normalized) <= 0.5f) off.Add("not on the camera's side of the head");
+            if (Vector3.Angle(key.forward, head - key.position) >= 8f) off.Add("not aimed at the head");
+            return off.Count == 0 ? null : string.Join(", ", off) + " (key " + key.position.ToString("F2") + ", head " + head.ToString("F2")
+                + ", lens " + lens.ToString("F2") + ") at frame " + Time.frameCount;
+        }
+
+        /// <summary>The exit's lights still on: the walk's key, and the door's spill over the threshold.</summary>
+        private static string[] ExitLightsOn() => Object.FindObjectsByType<Light>(FindObjectsSortMode.None)
+            .Where(lamp => lamp != null && lamp.enabled
+                && (lamp.name == EpisodeDirector.WalkOutKeyLightName || lamp.name == OpeningDoorSet.BurstLightName))
+            .Select(lamp => lamp.name + " under " + lamp.transform.root.name).ToArray();
+
+        /// <summary>The brightest channel the door's backing is drawn in, or -1 when it has none.</summary>
+        private static float BackingBrightest(GameObject root)
+        {
+            var plane = root.GetComponentsInChildren<Renderer>(true).LastOrDefault(each => each.name == OpeningDoorSet.OutsideLightName);
+            var material = plane != null ? plane.sharedMaterial : null;
+            if (material == null) return -1f;
+            var colour = material.HasProperty("_BaseColor") ? material.GetColor("_BaseColor") : material.color;
+            return colour.maxColorComponent;
         }
 
         /// <summary>
@@ -296,7 +393,10 @@ namespace Gamesim.Tests.PlayMode
         /// house, and the shot holds on the shut door for its whole hold; only then does their body
         /// go, behind a dip, and the door with it. The chrome is aside until then. The yard's door,
         /// the fallback: it is built only at the cut to it, where the living room's stands closed
-        /// from the goodbye (StagedExit_TheLivingRoomsDoorLetsThemOut).
+        /// from the goodbye (StagedExit_TheLivingRoomsDoorLetsThemOut). The light beyond the open
+        /// door is a lit room, not a white sheet; the walk has its own key light on their head from
+        /// the camera's side until the door closes, the goodbye's staying off; and no light of the
+        /// exit's is left on once they are gone.
         /// </summary>
         [UnityTest]
         public IEnumerator StagedExit_TheDoorShutsBehindThemBeforeTheyGo()
@@ -306,11 +406,15 @@ namespace Gamesim.Tests.PlayMode
             yield return PlayTheStagedEvictionToItsWalkOut();
             string leaving = stagedLeaving;
             var body = HouseguestBody(leaving);
+            var motion = body.GetComponent<HouseNpcMotion>();
             Assert.That(director.WalkOutIsStaged, Is.True, "The walk out is the stage's.");
             Assert.That(DoorSetUp(), Is.False, "The door is not standing in the yard while the house watches them go.");
 
-            float widest = 0f, shutAt = 0f;
+            float widest = 0f, shutAt = 0f, backing = -1f;
             bool sawOpen = false, onTheDoor = false, shut = false, inTheHouseWhenShut = false, heldThrough = true;
+            bool goodbyeKeyOn = false;
+            string walkKeyOff = null;
+            int walkKeyReads = 0, walkKeyReadsFromTheLens = 0;
             float by = Time.realtimeSinceStartup + EpisodeDirector.WalkOutSeconds + 2f;
             while (director.WalkingOutId != null && Time.realtimeSinceStartup < by)
             {
@@ -323,6 +427,7 @@ namespace Gamesim.Tests.PlayMode
                         sawOpen = true;
                         // The opening's door shot, whose focus the push-in keeps.
                         onTheDoor = Vector3.Distance(cameraRig.DesiredFocus, DoorShotFocusForTests) < 0.2f;
+                        backing = BackingBrightest(root);
                     }
                     widest = Mathf.Max(widest, door.Openness);
                     if (!shut && widest >= 0.35f && !door.IsOpen && door.Openness <= 0.01f)
@@ -331,6 +436,17 @@ namespace Gamesim.Tests.PlayMode
                         shutAt = Time.unscaledTime;
                         inTheHouseWhenShut = body.gameObject.activeInHierarchy;
                     }
+                }
+                goodbyeKeyOn |= director.EvictionKeyLightShowing;
+                // From the walk's first route until the door is told to close behind them.
+                bool closing = door != null && widest >= 0.35f && !door.IsOpen;
+                if (walkKeyOff == null && director.WalkingOutId == leaving && !closing
+                    && motion != null && motion.LeaseId != null && motion.LeaseId.StartsWith("departure:"))
+                {
+                    bool landed = cameraRig.HasArrived();
+                    walkKeyOff = WalkKeyOffTheHead(body, landed, out bool lit);
+                    if (lit) walkKeyReads++;
+                    if (lit && landed) walkKeyReadsFromTheLens++;
                 }
                 heldThrough &= Hud.IsHeldForReveal;
                 yield return null;
@@ -345,9 +461,15 @@ namespace Gamesim.Tests.PlayMode
             Assert.That(inTheHouseWhenShut, Is.True, "while their body was still in the house:");
             Assert.That(held, Is.GreaterThanOrEqualTo(EpisodeDirector.DoorHoldSeconds - 0.05f), "the shot held on the shut door before they went.");
             Assert.That(heldThrough, Is.True, "The chrome was aside for the whole walk.");
+            Assert.That(backing, Is.InRange(0f, 0.8f), "The light beyond the open door is a lit room, no brighter than 0.8, not a white sheet.");
+            Assert.That(goodbyeKeyOn, Is.False, "The goodbye's key light stayed off for the walk;");
+            Assert.That(walkKeyOff, Is.Null, "the walk's own key light is on their head from the camera's side until the door closes:");
+            Assert.That(walkKeyReadsFromTheLens, Is.GreaterThan(0),
+                "and it was read lit from a landed camera (" + walkKeyReads + " lit reads in all).");
             Assert.That(body.gameObject.activeInHierarchy, Is.False, "They are gone,");
             yield return null;
-            Assert.That(DoorSetUp(), Is.False, "and the door with them.");
+            Assert.That(DoorSetUp(), Is.False, "and the door with them,");
+            Assert.That(ExitLightsOn(), Is.Empty, "and no light of the exit's is left on.");
             yield return WaitFor(() => !director.IsCeremonyStaged, 3f, "the house gets up");
             yield return null;
             Assert.That(Hud.IsHeldForReveal, Is.False, "The chrome is back.");
@@ -607,6 +729,9 @@ namespace Gamesim.Tests.PlayMode
             var camera = cameraRig.ViewCamera;
             var lens = new CaptureLens(camera, 960, 540);
             float began = -1f;
+            // The longest frame seen in the goodbye: every timing window below widens by it, so one
+            // stretched frame (a busy machine) cannot fail a take whose cut, push and landing are right.
+            float longestFrame = 0f, landedAt = -1f;
             int portraits = 0, entryFrame = -1, cutLanded = -1, pushBegan = -1, pushMoving = -1, pushLanded = -1;
             bool released = false, free = false, lostOffRoom = false;
             Exception observerFailure = null;
@@ -715,6 +840,7 @@ namespace Gamesim.Tests.PlayMode
                                     issues.Add("Taylor was seated when the skipped goodbye began.");
                             }
                             float elapsed = Time.unscaledTime - began;
+                            longestFrame = Mathf.Max(longestFrame, Time.unscaledDeltaTime);
                             cameraTrace.AppendLine(FormattableString.Invariant($"{Time.frameCount}\t{elapsed:F5}\t{room}\t{floor}\t{seated}\t{visual.IsSeated}\t{requested:F5}\t{applied:F5}\t{travelling}\t{director.ViewedRooms}\t{camera.cullingMask}\t{director.IsBodyDrawn(leaving.transform)}"));
                             if (skipSummons && !lostOffRoom && (!onFloor || floor != voteRoom || room != voteRoom || room == stageRoom || seated || visual.IsSeated))
                             {
@@ -734,21 +860,31 @@ namespace Gamesim.Tests.PlayMode
                                 if (pushBegan < 0)
                                 {
                                     pushBegan = Time.frameCount;
-                                    if (cutLanded < entryFrame || pushBegan <= cutLanded || elapsed < .045f || elapsed > .20f)
+                                    // The cue fires on the first frame past 0.05 s, so one long frame can carry it that much later.
+                                    if (cutLanded < entryFrame || pushBegan <= cutLanded || elapsed < .045f || elapsed > .05f + longestFrame + .1f)
                                         issues.Add("The 2.4 m push did not follow a completed 3.1 m cut on its scheduled cue.");
                                 }
                                 if (travelling && applied > 2.47f && applied < 3.03f) pushMoving = Time.frameCount;
                                 if (!travelling && pushLanded < 0 && Mathf.Abs(applied - 2.4f) <= .07f)
                                 {
                                     pushLanded = Time.frameCount;
-                                    if (elapsed < 1.85f || elapsed > 2.35f || pushMoving <= pushBegan || pushLanded <= pushMoving)
+                                    landedAt = elapsed;
+                                    if (elapsed < 1.85f || elapsed > LatestGoodbyePushLanding(longestFrame) || pushMoving <= pushBegan || pushLanded <= pushMoving)
                                         issues.Add("The two-second goodbye push did not travel between its two physical boom marks on time.");
                                 }
                             }
                             if (portraits < at.Length && elapsed >= at[portraits])
                             {
-                                if (elapsed > at[portraits] + .35f) issues.Add(moments[portraits] + ": the capture missed its part of the hold.");
-                                Sample(moments[portraits++], true);
+                                // The held portrait is of the landed push, which lands only about 50 ms before its mark:
+                                // on the off-room take it waits for the landing, until the latest the landing may come.
+                                bool forTheLanding = skipSummons && moments[portraits] == "held";
+                                bool waiting = forTheLanding && pushLanded < 0 && elapsed <= LatestGoodbyePushLanding(longestFrame);
+                                float due = forTheLanding && pushLanded >= 0 ? Mathf.Max(at[portraits], landedAt) : at[portraits];
+                                if (!waiting)
+                                {
+                                    if (elapsed > due + .35f + longestFrame) issues.Add(moments[portraits] + ": the capture missed its part of the hold.");
+                                    Sample(moments[portraits++], true);
+                                }
                             }
                         }
                         else if (began >= 0f)
@@ -861,14 +997,25 @@ namespace Gamesim.Tests.PlayMode
             return (changed, tested);
         }
 
+        /// <summary>
+        /// The latest goodbye second at which the observer may see the 2 s push land at 2.4 m. The rig
+        /// counts the push from the frame before its cue (before 0.05 s), so it lands by 2.05 s plus one
+        /// frame; the observer and the rig both read in LateUpdate, in no fixed order, so the landing can
+        /// be seen one frame later still. The 0.3 s is the old window's room for the boom to settle.
+        /// </summary>
+        private static float LatestGoodbyePushLanding(float longestFrame) => 2.05f + .3f + 2f * longestFrame;
+
         private static string GoodbyeTakeFolder(bool skipped)
         {
             var args = Environment.GetCommandLineArgs();
             int index = Array.IndexOf(args, "--gamesim-save-root");
             string run = index >= 0 && index + 1 < args.Length ? args[index + 1]
                 : Path.Combine(Application.temporaryCachePath, "gamesim-goodbye-" + Guid.NewGuid().ToString("N"));
-            string folder = Path.GetFullPath(Path.Combine(run, skipped ? "staged-goodbye-skipped" : "staged-goodbye-normal"));
-            Assert.That(Directory.Exists(folder), Is.False, "Use a fresh run root to preserve the previous camera take.");
+            string name = skipped ? "staged-goodbye-skipped" : "staged-goodbye-normal";
+            string folder = Path.GetFullPath(Path.Combine(run, name));
+            // A rerun against the same run root keeps the earlier take and writes beside it.
+            for (int take = 2; Directory.Exists(folder); take++)
+                folder = Path.GetFullPath(Path.Combine(run, name + "-" + take));
             Directory.CreateDirectory(folder);
             Debug.Log("[Gamesim] stock goodbye camera evidence -> " + folder);
             return folder;

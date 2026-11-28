@@ -16,8 +16,9 @@ namespace Gamesim.Tests.EditMode
         [Test]
         public void TheVersionIsABoundOverAClosedSetEachAtTheSchemaThatIntroducedIt()
         {
-            Assert.That(DialogueRules.Version, Is.EqualTo(4), "The highest version this build defines: 4 since D4 defined the veto question.");
-            Assert.That(Enumerable.Range(-2, 8).Where(DialogueRules.IsDefined), Is.EqualTo(new[] { 0, 1, 2, 3, 4 }));
+            // Repinned at D5b-1, which defines rules 5 (the HoH consultation), switched off: the chip still writes 4.
+            Assert.That(DialogueRules.Version, Is.EqualTo(5), "The highest version this build defines: 5 since D5b-1 defined the HoH consultation.");
+            Assert.That(Enumerable.Range(-2, 9).Where(DialogueRules.IsDefined), Is.EqualTo(new[] { 0, 1, 2, 3, 4, 5 }));
             Assert.That(DialogueRules.IsDefined(DialogueRules.Version + 1), Is.False);
             Assert.That(DialogueRules.SchemaFor(0), Is.EqualTo(29));
             Assert.That(DialogueRules.SchemaFor(1), Is.EqualTo(29));
@@ -29,6 +30,7 @@ namespace Gamesim.Tests.EditMode
                 Assert.That(DialogueRules.Admits(2, schema), Is.EqualTo(schema >= 30));
                 Assert.That(DialogueRules.Admits(3, schema), Is.EqualTo(schema >= 30), "Rules 3 is defined from 30, as rules 2 is (D3).");
                 Assert.That(DialogueRules.Admits(4, schema), Is.EqualTo(schema >= 30), "Rules 4 is defined from 30, as rules 2 and 3 are (D4).");
+                Assert.That(DialogueRules.Admits(5, schema), Is.EqualTo(schema >= 30), "Rules 5 is defined from 30, as rules 2 to 4 are (D5b-1).");
                 Assert.That(DialogueRules.Admits(DialogueRules.Version + 1, schema), Is.False, "An undefined version is never admitted.");
                 Assert.That(DialogueRules.Admits(-1, schema), Is.False);
             }
@@ -92,10 +94,10 @@ namespace Gamesim.Tests.EditMode
         {
             Assert.That(DialogueRules.MaximumSteps, Is.EqualTo(3), "Rules 1's bound keeps its meaning.");
             Assert.That(DialogueRules.MaximumEpisodes, Is.EqualTo(100), "Every reader of the storyline ceiling keeps it.");
-            // Rules 3 (D3) and rules 4 (D4) keep rules 2's bounds; 5 is undefined.
-            Assert.That(new[] { 0, 1, 2, 3, 4, 5 }.Select(DialogueRules.StepsFor), Is.EqualTo(new[] { 0, 3, 5, 5, 5, 0 }));
-            Assert.That(new[] { 0, 1, 2, 3, 4, 5 }.Select(DialogueRules.ConversationBudget), Is.EqualTo(new[] { 0, 100, 32, 32, 32, 0 }));
-            Assert.That(new[] { 0, 1, 2, 3, 4, 5 }.Select(DialogueRules.EvidenceRows), Is.EqualTo(new[] { 0, 1, 3, 3, 3, 0 }));
+            // Rules 3 (D3), rules 4 (D4) and rules 5 (D5b-1, repinned there) keep rules 2's bounds; 6 is undefined.
+            Assert.That(new[] { 0, 1, 2, 3, 4, 5, 6 }.Select(DialogueRules.StepsFor), Is.EqualTo(new[] { 0, 3, 5, 5, 5, 5, 0 }));
+            Assert.That(new[] { 0, 1, 2, 3, 4, 5, 6 }.Select(DialogueRules.ConversationBudget), Is.EqualTo(new[] { 0, 100, 32, 32, 32, 32, 0 }));
+            Assert.That(new[] { 0, 1, 2, 3, 4, 5, 6 }.Select(DialogueRules.EvidenceRows), Is.EqualTo(new[] { 0, 1, 3, 3, 3, 3, 0 }));
             Assert.That(DialogueRules.Rules2StorylineCeiling, Is.EqualTo(92), "Never past the story pool's own stop (§5.5).");
         }
 
@@ -127,10 +129,11 @@ namespace Gamesim.Tests.EditMode
             Assert.That(DialogueRules.EntryGrant(grant), Is.EqualTo("grant:dialogue-grant-7"));
             Assert.That(DialogueRules.EntryGrant(action), Is.Null);
             Assert.That(DialogueRules.EntryTick(null, 3, Windows.AfterVeto), Is.Null);
-            for (int version = -1; version <= 5; version++)
+            // Repinned at D5b-1: rules 5 (the HoH grant) funds by action or grant as rules 4 does; 6 is undefined.
+            for (int version = -1; version <= 6; version++)
             {
-                Assert.That(DialogueRules.AcceptsFunding(version, DialogueRules.ActionEntry), Is.EqualTo(version >= 1 && version <= 4));
-                Assert.That(DialogueRules.AcceptsFunding(version, DialogueRules.GrantEntry), Is.EqualTo(version == 4), "Rules 4 is the first that may fund by grant.");
+                Assert.That(DialogueRules.AcceptsFunding(version, DialogueRules.ActionEntry), Is.EqualTo(version >= 1 && version <= 5));
+                Assert.That(DialogueRules.AcceptsFunding(version, DialogueRules.GrantEntry), Is.EqualTo(version == 4 || version == 5), "Rules 4 is the first that may fund by grant.");
                 Assert.That(DialogueRules.AcceptsFunding(version, "wallet"), Is.False);
             }
             Assert.That(DialogueRules.GrantFundingFrom, Is.EqualTo(4));

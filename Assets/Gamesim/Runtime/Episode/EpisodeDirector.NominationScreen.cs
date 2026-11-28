@@ -73,7 +73,9 @@ namespace Gamesim.Episode
             if (!picking || !string.IsNullOrEmpty(state.backdoorTargetId)) nominationBackdoorView = false;
             if (!picking) nominationFirst = nominationSecond = null;
             var open = active ? EpisodeEngine.OpenStoryBeats(state) : new List<HouseEventState>();
-            if (nominationOpenedBeat != null && !open.Any(beat => beat.id == nominationOpenedBeat)) nominationOpenedBeat = null;
+            // An answered beat closes its step; a consultation called in from the pitch board plays on (EpisodeDirector.Grants.cs).
+            if (nominationOpenedBeat != null && !open.Any(beat => beat.id == nominationOpenedBeat))
+                nominationOpenedBeat = FollowTheConsultation(state, nominationOpenedBeat);
             if (storyStepEvent != null && !open.Any(beat => beat.id == storyStepEvent)) ClearStoryStep();
 
             var steps = NominationSteps.Build(state, nominationOpenedBeat);

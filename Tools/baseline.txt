@@ -630,7 +630,17 @@
 # 11473 = 11472 + 1, 2026-11-27. The phone layout's menu, cast and creator rows tick and answer their presses with their screen's sounds (MenuWayOutFoleyScanTests 1).
 # 11499 = 11468 (the house-talks-back stack's) + the sound and focus-ring wave's 31 (11473 - 11442 on this branch):
 # disjoint cases, so the floor is their sum (the house-talks-back stack). Counted from the two sides.
-Gamesim.EditModeTests 11499
+# 11448 = 11442 + 6, 2026-11-27. Dialogue rules 5's HoH consultation, built switched off (DialogueRules5HoHTests 6, all also in the dotnet subset).
+# 11461 = 11442 + 19, 2026-11-27. Free talk's event talks, built switched off at talk rules 5 (FreeTalkEventTests 19, also in the dotnet subset).
+# 11465 = 11461 + 4, 2026-11-27. The regulars' own talks, built switched off at talk rules 5 (TalkPersonTablesTests 4, also in the dotnet subset).
+# 11467 = 11465 + 2, 2026-11-27. The free-talk review's fixes: a talk id the commitment scan reads as code, and Flirt on an event talk (TalkTablesTests 1, FreeTalkEventTests 1, also in the dotnet subset).
+# 11473 = 11448 (the consultation's) + the free-talk groundwork's 25 (11467 - 11442 on this branch): disjoint cases,
+# so the floor is their sum (the consultation). Counted from the two sides.
+# 11499 = 11468 (the house-talks-back stack's) + the groundwork's 31 (11473 - 11442 on this branch): disjoint cases,
+# so the floor is their sum (the house-talks-back stack). Counted from the two sides.
+# 11530 = 11499 (main's) + the groundwork's 31 (11499 - 11468 on this branch): disjoint cases, so the floor is their
+# sum (main's sound group). Counted from the two sides.
+Gamesim.EditModeTests 11530
 # The UMA-free build. 1215 = 1236, the count after the consolidation's lanes (S2a, S2b, S4a), less the 7
 # farewell probes moved to Gamesim.DiagnosticsPlayModeTests and the 14 farewell readiness tests that now
 # compile only under GAMESIM_UMA (judged on the UMA cast); 1230 = 1215 + S2d's 7, S4b's 2, S4c's 2 and
@@ -1825,4 +1835,14 @@ Gamesim.Uma.DiagnosticsPlayModeTests 10
 # 23558 = 23557 + 1, 2026-11-27. The same phone page press sound case the EditMode floor counts (MenuWayOutFoleyScanTests 1), which runs without Unity.
 # 23579 = 23549 (the house-talks-back stack's) + the sound and focus-ring wave's 30 (23558 - 23528 on this branch):
 # disjoint cases, so the floor is their sum (the house-talks-back stack). Counted from the two sides.
-Gamesim.SimulationTests 23579
+# 23534 = 23528 + 6, 2026-11-27. The same 6 DialogueRules5HoHTests cases the EditMode floor counts.
+# 23547 = 23528 + 19, 2026-11-27. The same 19 FreeTalkEventTests cases the EditMode floor counts.
+# 23551 = 23547 + 4, 2026-11-27. The same 4 TalkPersonTablesTests cases the EditMode floor counts.
+# 23553 = 23551 + 2, 2026-11-27. The same 2 review-fix cases the EditMode floor counts (TalkTablesTests 1, FreeTalkEventTests 1).
+# 23559 = 23534 (the consultation's) + the free-talk groundwork's 25 (23553 - 23528 on this branch): disjoint cases,
+# so the floor is their sum (the consultation). Counted from the two sides.
+# 23580 = 23549 (the house-talks-back stack's) + the groundwork's 31 (23559 - 23528 on this branch): disjoint cases,
+# so the floor is their sum (the house-talks-back stack). Counted from the two sides.
+# 23610 = 23579 (main's) + the groundwork's 31 (23580 - 23549 on this branch): disjoint cases, so the floor is their
+# sum (main's sound group). Counted from the two sides.
+Gamesim.SimulationTests 23610

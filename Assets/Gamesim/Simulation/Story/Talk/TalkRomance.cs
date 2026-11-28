@@ -251,12 +251,14 @@ namespace Gamesim.Simulation
         }
 
         /// <summary>
-        /// Whether the talk on offer carries the Flirt answer as a fourth reply: a layer, rhythm, standing or stage talk while
+        /// Whether the talk on offer carries the Flirt answer as a fourth reply: a layer, rhythm, standing, event or stage talk while
         /// <see cref="FlirtOpen"/>, never a romance talk. A Flirt on a stage talk is the window's counted talk and leaves the stage
-        /// talk due (not spent, no stage event row).
+        /// talk due (not spent, no stage event row). An event talk (spec 3.2: any talk, once flirting is open) is only ever on
+        /// offer from talk rules 5, so below that level nothing here changes.
         /// </summary>
         public static bool FlirtOffered(EpisodeState s, string npcId, TalkRow talk) =>
-            talk != null && (talk.Kind == TalkKind.Layer || talk.Kind == TalkKind.Rhythm || talk.Kind == TalkKind.Standing || talk.Kind == TalkKind.Stage)
+            talk != null && (talk.Kind == TalkKind.Layer || talk.Kind == TalkKind.Rhythm || talk.Kind == TalkKind.Standing || talk.Kind == TalkKind.Stage
+                || talk.Kind == TalkKind.Event)
             && FlirtOpen(s, npcId);
 
         /// <summary>The FlirtLine row the player's Flirt answer reads with a housemate in this window (their own table, else their class pool), or null.</summary>

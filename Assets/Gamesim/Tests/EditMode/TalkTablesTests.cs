@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using System.Text.RegularExpressions;
 using Gamesim.Simulation;
 using NUnit.Framework;
@@ -49,15 +50,23 @@ namespace Gamesim.Tests.EditMode
         static IEnumerable<string> TokensIn(string line) =>
             Regex.Matches(line ?? "", @"\{([^}]*)\}").Cast<Match>().Select(m => m.Groups[1].Value);
 
+        /// <summary>What a row's id starts with: its pool, or for a regular's own talk (slice 5) their short name ("taylor-kim": "taylor").</summary>
+        internal static string Head(TalkRow row) => row.Pool ?? (row.Owner == null ? null : row.Owner.Split('-')[0]);
+
+        /// <summary>A regular's own talk (slice 5's person tables): no pool, a Regular Season template's, written for talk rules 5.</summary>
+        static bool IsPersonRow(TalkRow row) =>
+            row.Pool == null && row.FromRules == TalkRules.ComesToTalk
+            && CastTemplates.In(CastTemplates.Roster.Regular).Any(t => t.Id == row.Owner);
+
         // ------------------------------------------------------------------ the registry
 
         [Test]
         public void TheRegistryJoinsEveryTableAndEveryPoolHasEachKind()
         {
-            Assert.That(TalkTables.Tables.Count, Is.EqualTo(16 + 15), "Four pools, three kinds each, each pool's stage talks (slice 2), and the three pools' and twelve All-Stars' romance talks (slice 3).");
+            Assert.That(TalkTables.Tables.Count, Is.EqualTo(16 + 15 + 3 + 12), "Four pools, three kinds each, each pool's stage talks (slice 2), the three pools' and twelve All-Stars' romance talks (slice 3), the three class pools' event talks and the twelve regulars' own talks (slice 5).");
             Assert.That(TalkTables.All.Count, Is.EqualTo(TalkTables.Tables.Sum(t => t.Length)));
-            Assert.That(Rows.Count(), Is.EqualTo(276 + 48), "The converter read 276 talks from the source and wrote 276 rows; slice 2 adds 48 stage talks.");
-            Assert.That(TalkTables.All.Count, Is.EqualTo(276 + 48 + 3 * 48 + 12 * 19), "Slice 3 adds 48 romance talks per class pool and 19 per All-Star.");
+            Assert.That(Rows.Count(), Is.EqualTo(276 + 48 + 42 + 12 * 30), "The converter read 276 talks from the source and wrote 276 rows; slice 2 adds 48 stage talks, slice 5 42 event talks and 30 of each regular's own.");
+            Assert.That(TalkTables.All.Count, Is.EqualTo(276 + 48 + 3 * 48 + 12 * 19 + 42 + 12 * 30), "Slice 3 adds 48 romance talks per class pool and 19 per All-Star.");
             foreach (string pool in TalkPools.All)
                 foreach (TalkKind kind in new[] { TalkKind.Layer, TalkKind.Rhythm, TalkKind.Standing })
                     Assert.That(Rows.Count(r => r.Pool == pool && r.Kind == kind), Is.GreaterThan(0), pool + " " + kind);
@@ -70,9 +79,24 @@ namespace Gamesim.Tests.EditMode
             foreach (var row in Rows)
             {
                 if (string.IsNullOrEmpty(row.Id) || row.Id.Length > 64 || row.Id.Contains(":")) bad.Add("bad id: " + row.Id);
-                else if (!row.Id.StartsWith(row.Pool + ".")) bad.Add(row.Id + ": does not start with its pool " + row.Pool);
+                else if (!row.Id.StartsWith(Head(row) + ".")) bad.Add(row.Id + ": does not start with its pool or person " + Head(row));
             }
             foreach (var dup in Rows.GroupBy(r => r.Id).Where(g => g.Count() > 1)) bad.Add("duplicate id " + dup.Key);
+            Assert.That(bad, Is.Empty);
+        }
+
+        /// <summary>
+        /// The commitment reader scan (<see cref="CommitmentReaderScanTests"/>) reads every source line, string literals too, so a
+        /// talk id or line such as "x.promises" in a table file reads to it as a read of the commitment lists and fails the scan.
+        /// Read here with the scan's own pattern, so the tables' targeted run catches it (the review of slice 5's own talks).
+        /// </summary>
+        [Test]
+        public void NoIdOrLineReadsAsACommitmentReadToTheSourceScan()
+        {
+            var read = typeof(CommitmentReaderScanTests).GetField("Read", BindingFlags.NonPublic | BindingFlags.Static)?.GetValue(null) as Regex;
+            Assert.That(read, Is.Not.Null, "The control: the scan's pattern, CommitmentReaderScanTests.Read.");
+            var bad = TalkTables.All.Where(r => read.IsMatch(r.Id ?? "")).Select(r => "id " + r.Id).ToList();
+            bad.AddRange(Rows.SelectMany(Lines).Where(l => l.Value != null && read.IsMatch(l.Value)).Select(l => l.Key));
             Assert.That(bad, Is.Empty);
         }
 
@@ -161,13 +185,16 @@ namespace Gamesim.Tests.EditMode
             {
                 var g = row.When;
                 if (g == null) { bad.Add(row.Id + ": no gate object"); continue; }
-                if (!TalkPools.IsKnown(row.Pool) || row.Owner != null) bad.Add(row.Id + ": a pool talk with pool " + row.Pool + " and owner " + row.Owner);
+                if ((!TalkPools.IsKnown(row.Pool) || row.Owner != null) && !IsPersonRow(row)) bad.Add(row.Id + ": a pool talk with pool " + row.Pool + " and owner " + row.Owner);
                 if (g.Window != null && !TalkWindows.IsKnown(g.Window)) bad.Add(row.Id + ": unknown window " + g.Window);
                 if (g.Layer < 0 || g.Layer > 4) bad.Add(row.Id + ": layer gate " + g.Layer);
                 if (g.Week < 0 || g.Week > 20) bad.Add(row.Id + ": week gate " + g.Week);
                 if (g.First && (g.Layer != 0 || g.Week != 0 || g.Window != null)) bad.Add(row.Id + ": a first talk with other gates");
                 if (!g.First && g.Layer == 0 && row.Kind != TalkKind.Stage) bad.Add(row.Id + ": neither first nor a layer gate");
                 if (row.Priority < 0 || row.Priority > 100) bad.Add(row.Id + ": priority " + row.Priority);
+                // Slice 5: an event gate only on an event talk, and a row's own level only 0 (every level) or talk rules 5.
+                if (g.Event != null && row.Kind != TalkKind.Event) bad.Add(row.Id + ": an event gate on a " + row.Kind + " talk");
+                if (row.FromRules != 0 && row.FromRules != TalkRules.ComesToTalk) bad.Add(row.Id + ": written for talk level " + row.FromRules);
                 switch (row.Kind)
                 {
                     case TalkKind.Layer:
@@ -186,6 +213,11 @@ namespace Gamesim.Tests.EditMode
                     case TalkKind.Stage:
                         // Slice 2: the stage itself is the gate (TalkStageTablesTests checks the rest).
                         if (row.Layer != 0 || g.First || g.Layer != 0 || row.Reveals || row.Usual || row.Standing != null) bad.Add(row.Id + ": a stage talk is layer 0 and gated by its stage");
+                        break;
+                    case TalkKind.Event:
+                        // Slice 5: said after a first talk, about a known event, at talk rules 5 only (FreeTalkEventTests checks the rest).
+                        if (row.Layer != 0 || g.First || g.Layer != 1 || row.Reveals || row.Usual || row.Standing != null) bad.Add(row.Id + ": an event talk is layer 0, gated at layer 1, and reveals nothing");
+                        if (!TalkEvents.IsKnown(g.Event) || row.FromRules != TalkRules.ComesToTalk) bad.Add(row.Id + ": an event talk names a known event and is written for talk rules 5");
                         break;
                     default:
                         bad.Add(row.Id + ": kind " + row.Kind + " is not in slice 1");
@@ -282,7 +314,7 @@ namespace Gamesim.Tests.EditMode
             "single",
         };
 
-        static readonly Regex DenyWords = new Regex(@"\b(?:" + string.Join("|", Deny.Select(Regex.Escape)) + @")\b|\bex-", RegexOptions.IgnoreCase);
+        internal static readonly Regex DenyWords = new Regex(@"\b(?:" + string.Join("|", Deny.Select(Regex.Escape)) + @")\b|\bex-", RegexOptions.IgnoreCase);
 
         [TestCase("I miss my wife.")] [TestCase("My Ex-partner")] [TestCase("Church on Sunday")] [TestCase("a little sick")] [TestCase("Let's date.")]
         public void TheDenyListCatchesAPrivateFact(string line) => Assert.That(DenyWords.IsMatch(line), Is.True);

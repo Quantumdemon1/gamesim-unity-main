@@ -178,6 +178,9 @@ namespace Gamesim.Simulation
         /// <summary>The kinds' default priorities (spec 3.13): layer and standing 70, a windowed rhythm talk 30, rhythm 20.</summary>
         public const int LayerPriority = 70, WindowPriority = 30, RhythmPriority = 20;
 
+        /// <summary>A week-event talk's priority (spec 3.13, talk rules 5): ahead of every ordinary talk, and of a due stage talk.</summary>
+        public const int EventPriority = 100;
+
         // ------------------------------------------------------------------ the queries
 
         /// <summary>Whether the season plays free talk: talk rules 1 or later and the story's lore on.</summary>
@@ -218,9 +221,10 @@ namespace Gamesim.Simulation
             if (romance != null && PriorityOf(romance) >= TalkRomance.DeclarationPriority)
                 return new TalkOffer { Refusal = TalkRefusal.None, Talk = romance };
 
-            // Talk rules 2 (T5): a stage talk that has come due is the talk on offer, ahead of every other.
+            // Talk rules 2 (T5): a stage talk that has come due is the talk on offer, ahead of every other; from talk rules 5 a
+            // week-event talk due with them goes first (priority 100 against a stage's 60, spec 3.13), and the stage talk stays due.
             var stageTalk = TalkFriendship.DueTalk(s, npcId);
-            if (stageTalk != null) return new TalkOffer { Refusal = TalkRefusal.None, Talk = stageTalk };
+            if (stageTalk != null && !EventDue(s, npc, contact)) return new TalkOffer { Refusal = TalkRefusal.None, Talk = stageTalk };
 
             var spent = new HashSet<string>((contact?.spentTalks ?? new List<string>()).Select(TalkRules.SpentId), StringComparer.Ordinal);
             bool full = spent.Count >= TalkRules.MostSpentTalks;
@@ -230,12 +234,16 @@ namespace Gamesim.Simulation
                 && Holds(s, npc, contact, t)).ToList();
             bool standingLeft = rows.Any(t => t.Kind == TalkKind.Standing && !spent.Contains(t.Id));
             TalkRow best = null; bool bestRepeat = false; int bestPriority = int.MinValue; double bestCoin = 2;
+            // From talk rules 5 (spec 3.13, "the person file, else the class pool"): at the same priority, a regular's own unspent
+            // talk goes ahead of their pool's. Below level 5 no own talk holds, so every offer there is decided as before.
+            bool five = TalkRules.At(s, TalkRules.ComesToTalk); bool bestOwn = false;
             void Consider(TalkRow t, bool repeat)
             {
                 int priority = PriorityOf(t);
                 double coin = StoryRandom.Unit(s, repeat ? "talk:v1:r:" + npcId + ":" + key + ":" + t.Id : "talk:v1:q:" + npcId + ":" + t.Id);
-                if (priority < bestPriority || priority == bestPriority && coin >= bestCoin) return;
-                best = t; bestRepeat = repeat; bestPriority = priority; bestCoin = coin;
+                bool own = five && !repeat && t.Owner != null && !TalkRomance.IsRomanceKind(t.Kind);
+                if (priority < bestPriority || priority == bestPriority && (own == bestOwn ? coin >= bestCoin : !own)) return;
+                best = t; bestRepeat = repeat; bestOwn = own; bestPriority = priority; bestCoin = coin;
             }
             foreach (var t in rows)
             {
@@ -253,6 +261,18 @@ namespace Gamesim.Simulation
 
         private static TalkOffer Refused(TalkRefusal refusal, string reason) => new TalkOffer { Refusal = refusal, Reason = reason };
 
+        /// <summary>
+        /// Whether a week-event talk is due with them (talk rules 5): an unspent one whose gates hold, while the spent list has room.
+        /// False below level 5, where nothing else is read.
+        /// </summary>
+        private static bool EventDue(EpisodeState s, ContestantState npc, ContactState contact)
+        {
+            if (!TalkEvents.On(s)) return false;
+            var spent = new HashSet<string>((contact?.spentTalks ?? new List<string>()).Select(TalkRules.SpentId), StringComparer.Ordinal);
+            if (spent.Count >= TalkRules.MostSpentTalks) return false;
+            return TalkBank.Rows.Any(t => t != null && t.Kind == TalkKind.Event && !spent.Contains(t.Id) && Holds(s, npc, contact, t));
+        }
+
         /// <summary>The player's contact row with a housemate, or null before any talk of either kind.</summary>
         public static ContactState Contact(EpisodeState s, string npcId) =>
             s?.story?.contacts?.FirstOrDefault(c => c != null && c.npcId == npcId);
@@ -266,6 +286,9 @@ namespace Gamesim.Simulation
             if (t == null || string.IsNullOrEmpty(t.Id) || t.Id.Length > TalkRules.MostIdLength || t.Id.IndexOf(TalkRules.ToneMark) >= 0
                 || string.IsNullOrEmpty(t.Open) || t.Replies == null || t.Replies.Length == 0
                 || t.Replies.Any(r => r == null || !TalkRules.IsTone(r.Tone) || r.Tone == TalkRules.Flirt)) return false;
+            // A row's own floor (slice S5): never offered below the talk level it was written for, so a row added for a later level
+            // leaves the talk on offer at every earlier level as it was.
+            if (t.FromRules > 0 && !TalkRules.At(s, t.FromRules)) return false;
             // The pool (ruling R7): an All-Star template only ever draws the star pool or its own table, and never layer 3.
             bool star = IsAllStar(npc);
             string templateId = StoryPeople.TemplateOf(npc)?.Id;
@@ -278,6 +301,8 @@ namespace Gamesim.Simulation
             if (when.Week > 0 && s.week < TalkChemistry.WeekGate(s, npc.id, when.Week)) return false;
             if (when.Window != null && !InWindow(s, when.Window)) return false;
             if (when.Layer > 0 && !AtLayer(s, npc.id, talks, when.Layer)) return false;
+            // event=<kind> (talk rules 5): this week's event with them, read from the committed state; never below level 5.
+            if (when.Event != null && !TalkEvents.Holds(s, npc.id, when.Event)) return false;
             // What it gives: a standing talk needs layer 4 and no snapshot yet this week; a layer frame needs a fact within its
             // layer to lead to, unless it is a first talk, which is said whatever it can give.
             switch (t.Kind)
@@ -286,6 +311,9 @@ namespace Gamesim.Simulation
                     return t.Standing != null && StandingOpen(s, npc.id) && (contact == null || contact.standingWeek != s.week);
                 case TalkKind.Layer:
                     return !t.Reveals || when.First || NextFact(s, npc.id, RevealDepth(s, npc.id, t)) != null;
+                case TalkKind.Event:
+                    // An event talk is about its event: one without an event gate is never said.
+                    return when.Event != null;
                 default:
                     return true;
             }
@@ -557,6 +585,7 @@ namespace Gamesim.Simulation
         public static int PriorityOf(TalkRow talk) =>
             talk == null ? 0 : talk.Priority > 0 ? talk.Priority
                 : TalkRomance.IsRomanceKind(talk.Kind) ? TalkRomance.PriorityOfKind(talk.Kind)
+                : talk.Kind == TalkKind.Event ? EventPriority
                 : talk.Kind != TalkKind.Rhythm ? LayerPriority : talk.When?.Window != null ? WindowPriority : RhythmPriority;
     }
 }

@@ -249,6 +249,7 @@ namespace Gamesim.Episode
                     if (lobbyDeciderId == npc.id && lobbyAsk != null
                         && StrategyRules.CanLobby(state, npc.id, lobbyAsk, lobbySubjectId, out _)) break;
                     VetoQuestionRow(state, npc); // Dialogue rules 4: ask a veto player if they'd use it on you (EpisodeDirector.VetoQuestion.cs).
+                    HoHConsultRow(state, npc); // Dialogue rules 5: as Head of Household, ask for their case (EpisodeDirector.Grants.cs).
                     ConversationAction(state, npc, EpisodeHud.StrategicDiscussionCaption, EpisodeCommandKind.StrategicDiscussion);
                     ConversationAction(state, npc, EpisodeHud.DiscussGameCaption, EpisodeCommandKind.DiscussGame);
                     break;

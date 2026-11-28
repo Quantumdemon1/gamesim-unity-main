@@ -19,7 +19,7 @@ namespace Gamesim.Simulation
     /// </summary>
     public static partial class DialogueRules
     {
-        /// <summary>The one role that grants a conversation at rules 4: the nominee (§4's table). The consultations' are rules 5's.</summary>
+        /// <summary>The one role that grants a conversation at rules 4: the nominee (§4's table). The consultations' are rules 5's (<see cref="HoHRole"/>).</summary>
         public const string NomineeRole = "nominee";
 
         /// <summary>What wrote a nominee grant: the week's original nominations, or a replacement nomination after the veto.</summary>
@@ -47,13 +47,16 @@ namespace Gamesim.Simulation
 
         /// <summary>
         /// The grant that pays for a conversation of this kind started now, or null: rules 4 and later, never the veto
-        /// question, this week's open grant of the player, and fewer than two free conversations had this week. Reads only.
+        /// question, this week's open grant of the player, and fewer than two free conversations had this week. From rules 5
+        /// a grant pays only for its own role's conversations (<see cref="GrantRoleFor"/>): the HoH's for the HoH consultation,
+        /// the nominee's for the others; below rules 5 the nominee's is the only grant there is. Reads only.
         /// </summary>
         internal static DialogueRoleGrantState GrantFor(EpisodeState s, string kind)
         {
             if (!GrantsOn(s) || kind == DialogueVetoQuestion.Kind || s.dialogue?.grants == null
                 || FreeConversationsUsed(s, s.week) >= FreeConversationsAWeek) return null;
-            return s.dialogue.grants.FirstOrDefault(g => g != null && g.week == s.week && g.ownerId == s.playerId && g.status == GrantOpen);
+            return s.dialogue.grants.FirstOrDefault(g => g != null && g.week == s.week && g.ownerId == s.playerId && g.status == GrantOpen
+                && (s.dialogueRulesVersion < Rules5 || g.role == GrantRoleFor(kind)));
         }
 
         /// <summary>Whether a conversation of the kind the phase holds, started now, would be paid by a grant. Reads only.</summary>
@@ -80,16 +83,27 @@ namespace Gamesim.Simulation
             int lastWeek = 0;
             foreach (var g in rows)
             {
-                bool source = g.sourceKind == FromNominations ? g.sourcePhase == EpisodePhase.Nomination
-                    : g.sourceKind == FromReplacement && g.sourcePhase == EpisodePhase.VetoMeeting;
-                if (g.role != NomineeRole || g.id != GrantId(g.week, g.role) || g.ownerId != s.playerId
-                    || g.week < 1 || g.week > s.week || g.week < lastWeek || !source
-                    || g.sourceRevision < 0 || g.sourceRevision > s.revision || g.sourceSequence < 1 || g.sourceSequence >= s.nextSequence
-                    || g.sourceNominees == null || !g.sourceNominees.Contains(s.playerId)
-                    || g.sourceNominees.Any(id => string.IsNullOrEmpty(id) || s.Find(id) == null)
-                    || g.sourceNominees.Distinct().Count() != g.sourceNominees.Count
-                    || g.expiryReason != null || g.expiredRevision != 0)
-                    return Fail(out error, "A role grant must keep the nomination that wrote it.");
+                // From rules 5 the Head of Household's grant (DialogueRules.Rules5.cs), checked on its own terms; the nominee's below.
+                if (HoHGrantSource(s, g))
+                {
+                    if (g.id != GrantId(g.week, g.role) || g.ownerId != s.playerId || g.week < 1 || g.week > s.week || g.week < lastWeek
+                        || g.sourceRevision < 0 || g.sourceRevision > s.revision || g.sourceSequence < 1 || g.sourceSequence >= s.nextSequence
+                        || g.expiryReason != null || g.expiredRevision != 0)
+                        return Fail(out error, "A role grant must keep the crowning that wrote it.");
+                }
+                else
+                {
+                    bool source = g.sourceKind == FromNominations ? g.sourcePhase == EpisodePhase.Nomination
+                        : g.sourceKind == FromReplacement && g.sourcePhase == EpisodePhase.VetoMeeting;
+                    if (g.role != NomineeRole || g.id != GrantId(g.week, g.role) || g.ownerId != s.playerId
+                        || g.week < 1 || g.week > s.week || g.week < lastWeek || !source
+                        || g.sourceRevision < 0 || g.sourceRevision > s.revision || g.sourceSequence < 1 || g.sourceSequence >= s.nextSequence
+                        || g.sourceNominees == null || !g.sourceNominees.Contains(s.playerId)
+                        || g.sourceNominees.Any(id => string.IsNullOrEmpty(id) || s.Find(id) == null)
+                        || g.sourceNominees.Distinct().Count() != g.sourceNominees.Count
+                        || g.expiryReason != null || g.expiredRevision != 0)
+                        return Fail(out error, "A role grant must keep the nomination that wrote it.");
+                }
                 lastWeek = g.week;
                 var users = s.dialogue.episodes.Where(e => e?.entry?.kind == GrantEntry && e.entry.grantId == g.id).Take(2).ToArray();
                 if (g.status == GrantOpen ? users.Length != 0 || g.consumedEpisodeId != null || g.consumedRevision != 0
@@ -111,6 +125,8 @@ namespace Gamesim.Simulation
             string identity = EntryGrant(e.entry);
             var grant = identity == null ? null : s.dialogue.grants.FirstOrDefault(g => g != null && g.id == e.entry.grantId);
             if (!GrantsOn(s) || grant == null || grant.week != e.week || grant.sourceSequence >= e.startedSequence
+                // From rules 5 a grant pays only for its own role's conversations; below it the nominee's is the only grant.
+                || s.dialogueRulesVersion >= Rules5 && grant.role != GrantRoleFor(e.occasionKind)
                 || e.entry.revision != e.startedRevision || !Revision(s, e.entry.revision, e.entry, DialogueRevisionField.Entry, pending)
                 || e.entry.windowActionBefore < 0 || e.entry.windowActionAfter > MaximumAction
                 || e.entry.windowActionAfter != e.entry.windowActionBefore

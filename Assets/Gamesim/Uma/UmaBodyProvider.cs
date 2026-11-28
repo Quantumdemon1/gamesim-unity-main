@@ -77,7 +77,8 @@ namespace Gamesim.Uma
             var appearance = request.Appearance;
             if (appearance != null && appearance.provider != "auto" && appearance.provider != "uma") return false;
             string appearanceId = appearance?.presetId ?? request.ContestantId;
-            if (!UmaCastLibrary.Resolve(appearanceId, request.FallbackId, out var preset)) return false;
+            string lookId = UmaCastLibrary.ResolveId(appearanceId, request.FallbackId);
+            if (!UmaCastLibrary.TryGet(lookId, out var preset)) return false;
             var look = new UmaCastLook
             {
                 Race = string.IsNullOrEmpty(appearance?.bodyId) ? preset.Race : appearance.bodyId,
@@ -94,7 +95,22 @@ namespace Gamesim.Uma
                 look.Brows = AppearanceEditing.ColorValue(appearance, BrowsColor, look.Brows);
                 look.Eyes = AppearanceEditing.ColorValue(appearance, EyesColor, look.Eyes);
                 var outfit = appearance.outfits.FirstOrDefault(item => item.id == appearance.activeOutfit);
-                if (outfit != null) look.Wardrobe = outfit.wardrobe.Select(item => item.itemId).ToArray();
+                if (outfit != null)
+                {
+                    var worn = outfit.wardrobe.AsEnumerable();
+                    if (preset.PreviousClothing != null)
+                    {
+                        var catalog = (UmaAppearanceCatalog)Catalog;
+                        var clothing = outfit.wardrobe.Where(item => AppearanceEditing.IsClothingResetSlot(item.slot)).ToArray();
+                        if (clothing.Length == preset.PreviousClothing.Count && clothing.All(item =>
+                            preset.PreviousClothing.TryGetValue(item.slot, out var recipe) && catalog.ResolveRecipeName(item.itemId) == recipe))
+                        {
+                            // The saved outfit is kept as it is; only the body leaves the tights off.
+                            worn = worn.Where(item => item.slot != preset.RetiredClothingSlot);
+                        }
+                    }
+                    look.Wardrobe = worn.Select(item => item.itemId).ToArray();
+                }
             }
 
             var indexer = UMAAssetIndexer.Instance;
@@ -106,7 +122,7 @@ namespace Gamesim.Uma
             }
             // The library look, not a saved outfit: it wears the pieces a catalog tag names it for.
             if (look.Wardrobe == preset.Wardrobe)
-                look.Wardrobe = ((UmaAppearanceCatalog)Catalog).LookWardrobe(UmaCastLibrary.ResolveId(appearanceId, request.FallbackId), look.Race, preset.Wardrobe);
+                look.Wardrobe = ((UmaAppearanceCatalog)Catalog).LookWardrobe(lookId, look.Race, preset.Wardrobe);
 
             var root = new GameObject("UMA Body");
             root.transform.SetParent(parent, false);
@@ -207,7 +223,6 @@ namespace Gamesim.Uma
             // a catalog tag names the look for (UmaAppearanceCatalog.IsLookPiece): that is painted in its own.
             if (wornSet == null && preset.Fabric != null)
             {
-                string lookId = UmaCastLibrary.ResolveId(appearanceId, request.FallbackId);
                 foreach (var tint in preset.Fabric)
                     if (!(dressedFrom.TryGetValue(tint.Key, out var line) && ((UmaAppearanceCatalog)Catalog).IsLookPiece(lookId, line)))
                         Dye(tint.Key, tint.Value);

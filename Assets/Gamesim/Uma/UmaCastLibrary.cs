@@ -18,6 +18,10 @@ namespace Gamesim.Uma
         /// <summary>Wardrobe recipe asset names, applied in order. UMA derives each slot from the recipe.</summary>
         public string[] Wardrobe = System.Array.Empty<string>();
 
+        // The clothes a previous version put on this look and the slot it has since retired.
+        internal Dictionary<string, string> PreviousClothing;
+        internal string RetiredClothingSlot;
+
         public Color Skin = new Color(0.91f, 0.77f, 0.63f);
         public Color Hair = new Color(0.13f, 0.10f, 0.09f);
         public Color Brows = new Color(0.13f, 0.10f, 0.09f);
@@ -692,10 +696,19 @@ namespace Gamesim.Uma
                     "underwear_bra_white_Recipe",
                     "underwear_white_granit_bottom_Recipe",
                     "dress_tennis_granit_Recipe",
-                    "tights_gray_Recipe",
                     "shoes_tall_turquoise.001_Recipe",
                     "gs-acc-collar",
                 },
+                // 2026-11-27: old saves keep the grey tights. Only the original dress set leaves them off the body.
+                PreviousClothing = new Dictionary<string, string>
+                {
+                    ["TopUnderlayer"] = "underwear_bra_white_Recipe",
+                    ["BottomUnderlayer"] = "underwear_white_granit_bottom_Recipe",
+                    ["Chest"] = "dress_tennis_granit_Recipe",
+                    ["Legs"] = "tights_gray_Recipe",
+                    ["Feet"] = "shoes_tall_turquoise.001_Recipe",
+                },
+                RetiredClothingSlot = "Legs",
                 Skin = Skin("Ivory"),
                 Hair = Hair("Auburn"),
                 Brows = Hair("Auburn"),

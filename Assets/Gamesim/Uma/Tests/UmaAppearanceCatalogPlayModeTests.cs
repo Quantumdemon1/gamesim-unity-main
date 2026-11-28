@@ -14,6 +14,86 @@ namespace Gamesim.Uma.Tests
     public sealed class UmaAppearanceCatalogPlayModeTests
     {
         [UnityTest]
+        public IEnumerator RachelsEverydayDressIsWornWithoutTheGreyTights()
+        {
+            var cast = new GameObject("Rachel wardrobe provider", typeof(GamesimUmaCast));
+            var parent = new GameObject("Rachel wardrobe checks");
+            try
+            {
+                yield return null;
+                var provider = (IModularCharacterBodyProvider)CharacterBodySource.Provider;
+                var catalog = (UmaAppearanceCatalog)provider.Catalog;
+                // This stock look assumes no catalog piece tagged worn-by:rachel-reilly overrides Chest or Legs.
+                var fresh = catalog.Materialize(CharacterAppearance.Preset("rachel-reilly"));
+                Assert.That(AppearanceEditing.Outfit(fresh).wardrobe.Any(item => item.slot == "Legs"), Is.False);
+                var greyTights = AppearanceEditing.Find(catalog, "tights_gray_Recipe").Id;
+                var purpleTights = AppearanceEditing.Find(catalog, "tights_purple_Recipe").Id;
+                var legacy = fresh.Clone();
+                AppearanceEditing.Outfit(legacy).wardrobe.Add(new AppearanceWardrobe { slot = "Legs", itemId = greyTights });
+                var custom = legacy.Clone();
+                AppearanceEditing.Outfit(custom).wardrobe.First(item => item.slot == "Legs").itemId = purpleTights;
+                var alternate = legacy.Clone();
+                var formal = AppearanceEditing.Outfit(alternate).Clone();
+                formal.id = CharacterOutfits.Formal;
+                alternate.outfits.Add(formal);
+                alternate = CharacterOutfits.Resolve(alternate, CharacterOutfits.Formal);
+                var competition = legacy.Clone();
+                var compSet = AppearanceEditing.Outfit(competition).Clone();
+                compSet.id = CharacterOutfits.Competition;
+                competition.outfits.Add(compSet);
+                competition = CharacterOutfits.Resolve(competition, CharacterOutfits.Competition);
+                var renamed = legacy.Clone();
+                foreach (var worn in AppearanceEditing.Outfit(renamed).wardrobe)
+                    worn.itemId = catalog.ResolveRecipeName(worn.itemId);
+                var changedShoes = legacy.Clone();
+                AppearanceEditing.Outfit(changedShoes).wardrobe.First(item => item.slot == "Feet").itemId =
+                    AppearanceEditing.Find(catalog, "shoes_tall_white_Recipe").Id;
+                var fallback = legacy.Clone();
+                fallback.presetId = "imported-look";
+                fallback.fallbackId = "rachel-reilly";
+                var other = legacy.Clone();
+                other.presetId = "chelsie-baham";
+                var changedTop = legacy.Clone();
+                var shirt = catalog.Items.First(item => item.Slot == "Chest" && item.StyleGroup == "top.tshirt" && item.Fits(fresh.bodyId));
+                AppearanceEditing.Outfit(changedTop).wardrobe.First(item => item.slot == "Chest").itemId = shirt.Id;
+                yield return CheckDressBuild(provider, parent, fresh, "dress_tennis_granit_Recipe", null);
+                yield return CheckDressBuild(provider, parent, legacy, "dress_tennis_granit_Recipe", null);
+                yield return CheckDressBuild(provider, parent, custom, "dress_tennis_granit_Recipe", "tights_purple_Recipe");
+                yield return CheckDressBuild(provider, parent, alternate, "dress_tennis_granit_Recipe", null);
+                yield return CheckDressBuild(provider, parent, competition, "dress_tennis_granit_Recipe", null);
+                yield return CheckDressBuild(provider, parent, renamed, "dress_tennis_granit_Recipe", null);
+                yield return CheckDressBuild(provider, parent, changedShoes, "dress_tennis_granit_Recipe", "tights_gray_Recipe", "shoes_tall_white_Recipe");
+                yield return CheckDressBuild(provider, parent, fallback, "dress_tennis_granit_Recipe", null);
+                yield return CheckDressBuild(provider, parent, other, "dress_tennis_granit_Recipe", "tights_gray_Recipe");
+                yield return CheckDressBuild(provider, parent, changedTop, catalog.ResolveRecipeName(shirt.Id), "tights_gray_Recipe");
+            }
+            finally
+            {
+                Object.Destroy(parent);
+                Object.Destroy(cast);
+            }
+        }
+
+        private static IEnumerator CheckDressBuild(IModularCharacterBodyProvider provider, GameObject parent,
+            CharacterAppearance appearance, string chest, string legs, string shoes = null)
+        {
+            string original = JsonUtility.ToJson(appearance);
+            Assert.That(provider.TryCreate(new CharacterBodyRequest(appearance.presetId, appearance.fallbackId, appearance),
+                parent.transform, Color.white, out var body), Is.True);
+            var state = body.Root.GetComponent<CharacterBodyBuildState>();
+            for (int frame = 0; frame < 900 && !state.Ready; frame++) yield return null;
+            Assert.That(state.Ready, Is.True);
+            Assert.That(state.Substitution, Is.Null.Or.Empty);
+            var avatar = body.Root.GetComponent<DynamicCharacterAvatar>();
+            Assert.That(avatar.GetWardrobeItem("Chest")?.name, Is.EqualTo(chest));
+            Assert.That(avatar.GetWardrobeItem("Legs")?.name, Is.EqualTo(legs));
+            if (shoes != null) Assert.That(avatar.GetWardrobeItem("Feet")?.name, Is.EqualTo(shoes));
+            Assert.That(JsonUtility.ToJson(appearance), Is.EqualTo(original));
+            Object.Destroy(body.Root);
+            yield return null;
+        }
+
+        [UnityTest]
         public IEnumerator MaterializedPresetsAreValidIndependentSnapshotsOfInstalledContent()
         {
             yield return null;

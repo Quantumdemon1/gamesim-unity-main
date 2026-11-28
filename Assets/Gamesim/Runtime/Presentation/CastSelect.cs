@@ -35,7 +35,7 @@ namespace Gamesim.Presentation
     /// is not a state a screen reader can report.</para>
     /// </summary>
     [DisallowMultipleComponent]
-    public sealed partial class CastSelect : MonoBehaviour
+    public sealed partial class CastSelect : MonoBehaviour, IWayOutHost, ISoundedScreen
     {
         /// <summary>
         /// The widest the screen draws, and how it decides to draw narrower.
@@ -278,6 +278,13 @@ namespace Gamesim.Presentation
         }
 
         public bool IsShowing => group != null && group.alpha > 0f;
+
+        /// <summary>The house's control sounds, handed over by the director (AU-10): a hover tick, and a click for a press that asked no sound of its own.</summary>
+        public ControlSounds Sounds { get; set; }
+
+        // The screen's way back is a plain button, sounded as its cards and chips are (AU-10).
+        Button IWayOutHost.AddControl(GameObject box) => box.AddComponent<Button>();
+        Action IWayOutHost.Dress(Button control, Action action) => ControlSounds.Dress(control, action);
 
         /// <summary>
         /// Its own canvas above the ceremony cards and below nothing. Unlike the ceremony overlays
@@ -820,19 +827,20 @@ namespace Gamesim.Presentation
             image.raycastTarget = true;
             var button = card.gameObject.AddComponent<Button>();
             button.targetGraphic = image;
+            ControlSounds.Tick(button);
             var pick = template.Id;
             var cardName = template.Name;
             // Clicked, or confirmed with Enter or the pad's A: the card is picked, and the one start
             // names them. A second press on the picked card puts it down again - unless the start
             // names a houseguest built from somebody else, when the press picks this card back.
-            button.onClick.AddListener(() =>
+            button.onClick.AddListener(() => ControlSounds.Press(button, () =>
             {
                 bool again = string.Equals(selectedId, pick, StringComparison.Ordinal) && !DraftOfSomeoneElse;
                 retainedDraft = null;
                 selectedId = again ? null : pick;
                 Rebuild();
                 FocusAfterPick(cardName);
-            });
+            }));
             AddFocusRing(card);
 
             // The portrait: a glow behind a picked one, the gold ring, the photo inside it.
@@ -1831,7 +1839,8 @@ namespace Gamesim.Presentation
 
             var button = pill.gameObject.AddComponent<Button>();
             button.targetGraphic = image;
-            button.onClick.AddListener(() => action());
+            ControlSounds.Tick(button);
+            button.onClick.AddListener(() => ControlSounds.Press(button, action));
             return button;
         }
 

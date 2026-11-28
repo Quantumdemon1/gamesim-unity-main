@@ -41,7 +41,7 @@ namespace Gamesim.Tests.PlayMode
             AssertRowReads(SettingRowWords.AllSoundRow, SettingsWords.SwitchValue(!audio.Muted));
             AssertRowReads(SettingRowWords.MasterVolumeRow, Mathf.RoundToInt(audio.Volume * 100f) + "%");
             Assert.That(SettingRowValue(SettingRowWords.MusicRow), Is.EqualTo("On").Or.EqualTo("Off"), "Music reads On or Off.");
-            foreach (var channel in new[] { SoundChannel.Music, SoundChannel.Effects, SoundChannel.Interface })
+            foreach (var channel in new[] { SoundChannel.Music, SoundChannel.Effects, SoundChannel.Interface, SoundChannel.Voice })
                 AssertRowReads(SoundPictures.MeterCaption(channel), director.ChannelVolumePercent(channel) + "%");
             AssertNoOldButtons("Sound");
 

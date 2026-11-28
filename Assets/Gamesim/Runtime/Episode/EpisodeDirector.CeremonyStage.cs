@@ -619,6 +619,8 @@ namespace Gamesim.Episode
                 else Move(Wide(1.2f));
                 holdsCamera = true;
                 if (director.sting != null) director.sting.Play(Kind, SummonsLine(Kind), director.reducedMotion);
+                // The chime that calls the house (AU-07), in the frame the strip says so: its picture.
+                if (director.audioBed != null && SummonsLine(Kind) != null) director.audioBed.PlayCue(HouseAudio.Cue.Summons);
 
                 var ids = new List<string>(); var anchors = new List<HouseInteractionAnchor>();
                 foreach (var pair in places)

@@ -311,7 +311,7 @@ namespace Gamesim.Episode
                     if (!npcMeetings.CanWalk(walkingOutId)) return;
                     if (!npcMeetings.BeginDeparture(walkingOutId, out var departureReason)) { AbortWalkOut(departureReason); return; }
                     if (!TryWalkOutTo(WalkOutInside)) { FinishWalkOut(); return; }
-                    walkOutDoor = OpeningDoorSet.Build(gameObject.scene, DoorLayout.Yard, DoorLighting.Exit);
+                    walkOutDoor = HearTheDoor(OpeningDoorSet.Build(gameObject.scene, DoorLayout.Yard, DoorLighting.Exit));
                     var body = BodyFor(walkingOutId);
                     if (body != null && cameraRig != null) cameraRig.FocusSubject(body, false);
                     walkOutLeg = 1;
@@ -462,7 +462,8 @@ namespace Gamesim.Episode
                     stagedLeg = StagedLeg.Closing;
                     return;
                 case StagedLeg.Closing:
-                    if (walkOutDoor != null && walkOutDoor.Openness > 0.01f) return;
+                    // Shut as the door's thud hears it (DoorLeafSounds): the hold starts with the sound.
+                    if (walkOutDoor != null && !DoorLeafSounds.IsShut(walkOutDoor.Openness)) return;
                     stagedShutUntil = now + DoorHoldSeconds;
                     stagedLeg = StagedLeg.Holding;
                     return;
@@ -482,7 +483,7 @@ namespace Gamesim.Episode
         {
             stagedDoorCut = true;
             BeginTravelDip();
-            if (walkOutDoor == null) walkOutDoor = OpeningDoorSet.Build(gameObject.scene, ExitLayout, DoorLighting.Exit);
+            if (walkOutDoor == null) walkOutDoor = HearTheDoor(OpeningDoorSet.Build(gameObject.scene, ExitLayout, DoorLighting.Exit));
             if (ceremonyStage != null) ceremonyStage.StopTheWatch();
             if (cameraRig != null)
             {
@@ -519,7 +520,7 @@ namespace Gamesim.Episode
         {
             var visual = body != null ? body.GetComponent<CharacterPresentation>() : null;
             if (visual != null) visual.SetFacing(float.NaN);
-            if (walkOutDoor == null) walkOutDoor = OpeningDoorSet.Build(gameObject.scene, ExitLayout, DoorLighting.Exit);
+            if (walkOutDoor == null) walkOutDoor = HearTheDoor(OpeningDoorSet.Build(gameObject.scene, ExitLayout, DoorLighting.Exit));
             walkOutDoor.Open(reducedMotion, false);
             if (cameraRig == null) return;
             if (!ExitIsTheLivingRoom) { cameraRig.MoveTo(YardPushInShot); return; }
@@ -740,6 +741,20 @@ namespace Gamesim.Episode
         private static float FloorDistance(Vector3 a, Vector3 b) => new Vector2(a.x - b.x, a.z - b.z).magnitude;
 
         /// <summary>
+        /// The front door heard (AU-06), for every set the director puts up - the opening's and the
+        /// walk out's: the clunk as its leaves give after the rattle, and the thud as they land shut,
+        /// each in the frame the set says its leaves moved. The house's effects play them, under the
+        /// effects' volume and reduced sound as every cue is. Returns the set.
+        /// </summary>
+        private OpeningDoorSet HearTheDoor(OpeningDoorSet door)
+        {
+            if (door == null) return null;
+            door.LeavesSwinging += () => { if (audioBed != null) audioBed.PlayCue(HouseAudio.Cue.DoorOpen); };
+            door.LeavesShut += () => { if (audioBed != null) audioBed.PlayCue(HouseAudio.Cue.DoorShut); };
+            return door;
+        }
+
+        /// <summary>
         /// The door and the walker's look mark come down, and whatever the door hid is back: the
         /// walk out is over, or never started. The next exit chooses its door again.
         /// </summary>
@@ -779,7 +794,7 @@ namespace Gamesim.Episode
                 return;
             }
             walkOutDoorUsed = WalkOutDoor.Living;
-            walkOutDoor = OpeningDoorSet.Build(gameObject.scene, DoorLayout.Living, DoorLighting.Exit);
+            walkOutDoor = HearTheDoor(OpeningDoorSet.Build(gameObject.scene, DoorLayout.Living, DoorLighting.Exit));
             HidePropsInTheDoorway(DoorLayout.Living);
         }
 

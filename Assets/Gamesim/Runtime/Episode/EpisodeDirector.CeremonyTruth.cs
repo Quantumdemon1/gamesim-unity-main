@@ -62,6 +62,16 @@ namespace Gamesim.Episode
             (HouseAudio.Cue)Enum.Parse(typeof(HouseAudio.Cue), CommitSound.CueName(appendedKinds));
 
         /// <summary>
+        /// The sound of a commit made in a conversation (AU-09): <paramref name="trustDelta"/> is the
+        /// committed change in the player's trust toward the houseguest they are talking to. With no
+        /// bigger beat in the commit, trust gained is <see cref="HouseAudio.Cue.RelationshipUp"/> and
+        /// trust lost <see cref="HouseAudio.Cue.RelationshipDown"/>, as the trust chip counts it; no
+        /// change keeps the button's click (<see cref="CommitSound.CueName(IEnumerable{string}, double)"/>).
+        /// </summary>
+        public static HouseAudio.Cue CommitCue(IEnumerable<string> appendedKinds, double trustDelta) =>
+            (HouseAudio.Cue)Enum.Parse(typeof(HouseAudio.Cue), CommitSound.CueName(appendedKinds, trustDelta));
+
+        /// <summary>
         /// The order the safe keys are dealt in: shuffled, the same way every time for the same week of
         /// the same season, so a reload shows the same ceremony. Presentation only - it reads the seed
         /// and never draws from the season's generator. The reference build shuffles its keys; cast

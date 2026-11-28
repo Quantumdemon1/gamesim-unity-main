@@ -18,6 +18,11 @@ namespace Gamesim.Tests.EditMode
     /// Close a SeasonReportControl. The built Close's tick is checked in PlayMode
     /// (EpisodePlayModeTests.Audio_PanelsAndHoversHaveTheirFoley).
     ///
+    /// <para>Every press answers (AU-10): a HUD press that asked for no sound of its own clicks, a
+    /// greyed-out control is silent under the pointer, and the main menu, the cast screen, the creator
+    /// and the season report tick and answer as the HUD does, with the sounds the director hands them.
+    /// Built, in PlayMode: EpisodePlayModeTests.Audio_EveryPressAnswersOnceAndAGreyedControlIsSilent.</para>
+    ///
     /// <para>Unity-free: the editor finds the scripts through <c>Application.dataPath</c>, an offline run
     /// by walking up from its own binary.</para>
     /// </summary>
@@ -91,8 +96,121 @@ namespace Gamesim.Tests.EditMode
                 "The season report is no IWayOutHost: its Close would be a plain Button.");
             Assert.That(Regex.IsMatch(report, @"Button\s+IWayOutHost\.AddControl\(\s*GameObject\s+box\s*\)\s*=>\s*box\.AddComponent<SeasonReportControl>\(\)\s*;"), Is.True,
                 "The report's Close is a SeasonReportControl, as its footer way was: a right-stick scroll takes no step off it.");
-            Assert.That(Regex.IsMatch(report, @"Action\s+IWayOutHost\.Dress\(\s*Button\s+control\s*,\s*Action\s+action\s*\)\s*=>\s*action\s*;"), Is.True,
-                "and nothing else is added to it: the report's buttons have no hover tick, dip or guard.");
+            Assert.That(Regex.IsMatch(report, @"Action\s+IWayOutHost\.Dress\(\s*Button\s+control\s*,\s*Action\s+action\s*\)\s*=>\s*ControlSounds\.Dress\(\s*control\s*,\s*action\s*\)\s*;"), Is.True,
+                "and it sounds as the report's other controls do (AU-10): their tick and their answered press, and no dip.");
+        }
+
+        [Test]
+        public void TheHud_AnswersAPressThatAskedNoSound_AndIsSilentOverAGreyedControl()
+        {
+            string all = string.Join("\n", Directory.GetFiles(Path.Combine(RuntimeRoot(), "Episode"), "EpisodeHud*.cs")
+                .Select(file => Code(File.ReadAllText(file))));
+            var problems = new List<string>();
+            const string answer = @"PressAnswer\.Run\(\s*action\s*,\s*CuesAskedSoFar\s*,\s*\(\)\s*=>\s*Foley\(\s*HouseAudio\.Cue\.Button\s*\)\s*\)\s*;";
+            const string guard = @"!\s*button\.IsActive\(\)\s*\|\|\s*!\s*button\.IsInteractable\(\)\s*\)\s*return\s*;";
+            foreach (string signature in new[] { "private Action PressLike(", "private T PressableAs<T>(" })
+            {
+                string body = Method(all, signature);
+                var guarded = body == null ? null : Regex.Match(body, guard);
+                var answered = body == null ? null : Regex.Match(body, answer);
+                if (answered == null || !answered.Success)
+                    problems.Add(signature + " does not answer a press that asked no sound with the click (PressAnswer.Run over CuesAskedSoFar).");
+                else if (guarded == null || !guarded.Success || guarded.Index > answered.Index)
+                    problems.Add(signature + " answers before its guard: a greyed-out or retained control would click.");
+            }
+            string asked = Method(all, "private int CuesAskedSoFar(");
+            if (asked == null || !Regex.IsMatch(asked, @"\bfoley\.CuesAsked\b"))
+                problems.Add("CuesAskedSoFar does not read the house's count of cues asked for (HouseAudio.CuesAsked).");
+            string motion = Code(Read("Presentation/HudMotion.cs"));
+            string hudPress = Method(motion, "public sealed class HudPress");
+            string enter = hudPress == null ? null : Method(hudPress, "public void OnPointerEnter(");
+            if (enter == null || !Regex.IsMatch(enter, @"if\s*\(\s*ControlSounds\.CanPress\(\s*gameObject\s*\)\s*\)\s*Hovered\?\.Invoke\(\)"))
+                problems.Add("HudPress ticks over a control that cannot be pressed (ControlSounds.CanPress before Hovered).");
+            string sounds = Code(Read("Presentation/ControlSounds.cs"));
+            string canPress = Method(sounds, "public static bool CanPress(");
+            if (canPress == null || !Regex.IsMatch(canPress, @"selectable\.IsActive\(\)\s*&&\s*selectable\.IsInteractable\(\)"))
+                problems.Add("CanPress does not ask the control whether it is shown and not greyed out.");
+            Assert.That(problems, Is.Empty, string.Join("\n", problems));
+        }
+
+        [Test]
+        public void TheFrontDoorAndTheReport_TickAndAnswerEveryControl_WithTheHousesSounds()
+        {
+            var screens = new[]
+            {
+                ("MainMenu", new[] { "MainMenu.cs" }, false),
+                ("CastSelect", new[] { "CastSelect.cs" }, true),
+                ("CharacterCreator", Directory.GetFiles(Path.Combine(RuntimeRoot(), "Presentation"), "CharacterCreator*.cs").Select(file => Path.GetFileName(file)).ToArray(), true),
+                ("SeasonReport", Directory.GetFiles(Path.Combine(RuntimeRoot(), "Presentation"), "SeasonReport*.cs")
+                    .Select(file => Path.GetFileName(file)).Where(name => name != "SeasonReportControl.cs").ToArray(), true),
+            };
+            var problems = new List<string>();
+            var counts = new List<string>();
+            foreach (var (screen, files, wayOut) in screens)
+            {
+                string code = string.Join("\n", files.Select(file => Code(Read("Presentation/" + file))));
+                if (!Regex.IsMatch(code, @"class\s+" + screen + @"\s*:[^{]*\bISoundedScreen\b"))
+                    problems.Add(screen + " is no ISoundedScreen: the director has nowhere to hand it the house's sounds.");
+                if (!Regex.IsMatch(code, @"public\s+ControlSounds\s+Sounds\s*\{\s*get\s*;\s*set\s*;\s*\}"))
+                    problems.Add(screen + " keeps no Sounds the director can set.");
+                if (wayOut && !Regex.IsMatch(code, @"Action\s+IWayOutHost\.Dress\(\s*Button\s+control\s*,\s*Action\s+action\s*\)\s*=>\s*ControlSounds\.Dress\(\s*control\s*,\s*action\s*\)\s*;"))
+                    problems.Add(screen + "'s way out is not dressed with its sounds (IWayOutHost.Dress => ControlSounds.Dress).");
+                // Every control the screen makes ticks: by ControlSounds.Tick, or by the creator's Seen, which ticks.
+                var made = Regex.Matches(code, @"var\s+button\s*=\s*\w+\.gameObject\.AddComponent<(Button|SeasonReportControl)>\(\)\s*;").Cast<Match>().ToList();
+                foreach (var site in made)
+                {
+                    string rest = BlockFrom(code, site.Index);
+                    if (!Regex.IsMatch(rest, @"ControlSounds\.Tick\(\s*button\s*\)\s*;|\bSeen\(\s*button\s*,"))
+                        problems.Add(screen + ": a control made at line " + LineOf(code, site.Index) + " has no hover tick.");
+                }
+                // Every press it runs is answered.
+                var presses = Regex.Matches(code, @"onClick\.AddListener\(").Cast<Match>().ToList();
+                foreach (var press in presses)
+                    if (!Regex.IsMatch(code.Substring(press.Index + press.Length), @"^\s*\(\)\s*=>\s*ControlSounds\.Press\(\s*button\s*,"))
+                        problems.Add(screen + ": a press at line " + LineOf(code, press.Index) + " is not answered (ControlSounds.Press(button, ...)).");
+                if (made.Count == 0 || presses.Count == 0) problems.Add(screen + ": no control found to scan; the scan has lost its sites.");
+                counts.Add(screen + " " + made.Count + "/" + presses.Count);
+            }
+            string seen = Method(string.Join("\n", Directory.GetFiles(Path.Combine(RuntimeRoot(), "Presentation"), "CharacterCreator*.cs")
+                .Select(file => Code(File.ReadAllText(file)))), "private static void Seen(");
+            if (seen == null || !Regex.IsMatch(seen, @"ControlSounds\.Tick\(\s*button\s*\)\s*;"))
+                problems.Add("The creator's Seen does not tick: its controls are silent under the pointer.");
+            string director = Code(Read("Episode/EpisodeDirector.cs"));
+            if (!Regex.IsMatch(director, @"var\s+controlSounds\s*=\s*new\s+ControlSounds\(\s*cue\s*=>\s*\{\s*if\s*\(\s*audioBed\s*!=\s*null\s*\)\s*audioBed\.PlayCue\(\s*cue\s*\)\s*;\s*\}\s*,\s*\(\)\s*=>\s*audioBed\s*!=\s*null\s*\?\s*audioBed\.CuesAsked\s*:\s*0\s*\)\s*;"))
+                problems.Add("The director makes no control sounds over the house's audio (PlayCue, CuesAsked).");
+            foreach (string field in new[] { "mainMenu", "castSelect", "characterCreator", "seasonReport" })
+                if (!Regex.IsMatch(director, @"\b" + field + @"\.Sounds\s*=\s*controlSounds\s*;"))
+                    problems.Add("The director does not hand " + field + " the house's sounds.");
+            Assert.That(problems, Is.Empty, string.Join("\n", problems) + "\n(controls/presses: " + string.Join(", ", counts) + ")");
+        }
+
+        /// <summary>
+        /// The phone layout's pages (AU-10): the main menu, the cast screen and the creator draw their
+        /// rows on a PhoneMenuPage, which ran every press silent and gave no row a tick. Each row and
+        /// status line now ticks and answers its press with the sounds of the screen it is drawn on
+        /// (ControlSounds.Of finds the screen above the page), after the page's own guard.
+        /// </summary>
+        [Test]
+        public void ThePhonePages_TickAndAnswerEveryRow_WithTheirScreensSounds()
+        {
+            string page = Code(Read("Presentation/PhoneMenuPage.cs"));
+            var problems = new List<string>();
+            var made = Regex.Matches(page, @"var\s+button\s*=\s*\w+\.gameObject\.AddComponent<Button>\(\)\s*;").Cast<Match>().ToList();
+            foreach (var site in made)
+                if (!Regex.IsMatch(BlockFrom(page, site.Index), @"ControlSounds\.Tick\(\s*button\s*\)\s*;"))
+                    problems.Add("PhoneMenuPage: a control made at line " + LineOf(page, site.Index) + " has no hover tick.");
+            var presses = Regex.Matches(page, @"onClick\.AddListener\(").Cast<Match>().ToList();
+            foreach (var press in presses)
+                if (!Regex.IsMatch(page.Substring(press.Index + press.Length),
+                    @"^\s*\(\)\s*=>\s*\{\s*if\s*\(\s*CanAct\(\s*button\s*\)\s*\)\s*ControlSounds\.Press\(\s*button\s*,\s*\w+\s*\)\s*;\s*\}\s*\)"))
+                    problems.Add("PhoneMenuPage: a press at line " + LineOf(page, press.Index) + " is not answered after its guard (if (CanAct(button)) ControlSounds.Press(button, ...)).");
+            if (made.Count < 2 || presses.Count < 2)
+                problems.Add("PhoneMenuPage: the rows and the status line were not found (" + made.Count + "/" + presses.Count + "); the scan has lost its sites.");
+            // The pages hang under their screens, so a row finds the screen's sounds.
+            foreach (var (file, screen) in new[] { ("MainMenu.cs", "MainMenu"), ("CastSelect.Phone.cs", "CastSelect"), ("CharacterCreator.Identity.cs", "CharacterCreator") })
+                if (!Regex.IsMatch(Code(Read("Presentation/" + file)), @"PhoneMenuPage\.Create\(\s*transform\s*,"))
+                    problems.Add(file + " does not draw its phone page under the " + screen + " itself: its rows would not find the screen's sounds.");
+            Assert.That(problems, Is.Empty, string.Join("\n", problems));
         }
 
         // ---------------------------------------------------------------- reading
@@ -112,6 +230,20 @@ namespace Gamesim.Tests.EditMode
             }
             return null;
         }
+
+        /// <summary>The rest of the block <paramref name="at"/> stands in, braces matched: up to the brace that closes it.</summary>
+        private static string BlockFrom(string code, int at)
+        {
+            int depth = 0;
+            for (int index = at; index < code.Length; index++)
+            {
+                if (code[index] == '{') depth++;
+                else if (code[index] == '}' && --depth < 0) return code.Substring(at, index - at);
+            }
+            return code.Substring(at);
+        }
+
+        private static int LineOf(string code, int at) => code.Take(at).Count(c => c == '\n') + 1;
 
         private static string Read(string relative) => File.ReadAllText(Path.Combine(RuntimeRoot(), relative));
 

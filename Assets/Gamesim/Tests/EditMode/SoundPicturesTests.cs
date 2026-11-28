@@ -28,10 +28,11 @@ namespace Gamesim.Tests.EditMode
         [Test]
         public void TheGamesNewsPlaysAsEffects_AndTheInterfacesAnswersAsTheInterface()
         {
+            // The house's own sounds - the news and a motion the player sees - play as effects.
             foreach (var row in SoundPictures.Rows)
-                Assert.That(row.Channel, Is.EqualTo(row.Kind == SoundKind.Information ? SoundChannel.Effects : SoundChannel.Interface), row.ToString());
+                Assert.That(row.Channel, Is.EqualTo(row.Kind == SoundKind.Interface ? SoundChannel.Interface : SoundChannel.Effects), row.ToString());
             // The news the plan names, each information.
-            foreach (var cue in new[] { "SocialUp", "SocialDown", "Nomination", "Veto", "Vote", "Eviction", "CompetitionWin", "Finale", "Save" })
+            foreach (var cue in new[] { "SocialUp", "SocialDown", "Nomination", "Veto", "Vote", "Eviction", "CompetitionWin", "Finale", "Save", "Summons" })
                 Assert.That(SoundPictures.IsInformation(cue), Is.True, cue + " carries news.");
             foreach (var cue in new[] { "Button", "PanelOpen", "PanelClose", "Hover", "TutorialStep" })
                 Assert.That(SoundPictures.IsInformation(cue), Is.False, cue + " answers a hand.");
@@ -51,12 +52,76 @@ namespace Gamesim.Tests.EditMode
                 }
                 else
                 {
-                    Assert.That(row.GainDb, Is.LessThan(0f), row.Cue + " answers a hand and sits under the news.");
+                    Assert.That(row.GainDb, Is.LessThan(0f), row.Cue + " answers a hand, or is a motion on screen, and sits under the news.");
                     Assert.That(SoundPictures.GainOf(row.Cue), Is.EqualTo((float)Math.Pow(10.0, row.GainDb / 20.0)).Within(1e-6f), row.Cue);
                 }
             }
             Assert.That(SoundPictures.Find("Hover").GainDb, Is.LessThan(SoundPictures.Find("Button").GainDb), "The hover's tick sits under the press's click.");
             Assert.That(SoundPictures.GainOf("SomeCueNotYetInTheTable"), Is.EqualTo(1f), "A cue with no row plays as recorded.");
+        }
+
+        /// <summary>
+        /// The front door (AU-06): its clunk and its thud are the sound of a motion the player sees -
+        /// played under the effects' volume, as the house's air is, never counted as news (so no
+        /// picture of text is owed for them), and under the news in the mix.
+        /// </summary>
+        [Test]
+        public void TheFrontDoorIsAMotionOnScreen_PlayedAsEffects_UnderTheNews()
+        {
+            foreach (var cue in new[] { "DoorOpen", "DoorShut" })
+            {
+                var row = SoundPictures.Find(cue);
+                Assert.That(row, Is.Not.Null, cue + " has its row.");
+                Assert.That(row.Kind, Is.EqualTo(SoundKind.World), cue + " is a motion on screen.");
+                Assert.That(SoundPictures.ChannelOf(cue), Is.EqualTo(SoundChannel.Effects), cue + " follows the Effects volume.");
+                Assert.That(SoundPictures.IsInformation(cue), Is.False, cue + " carries no news of its own.");
+                Assert.That(row.GainDb, Is.EqualTo(SoundPictures.DoorGainDb), cue);
+            }
+            Assert.That(SoundPictures.DoorGainDb, Is.InRange(-8f, -2f), "Under the news, and over the interface's quietest answers.");
+        }
+
+        /// <summary>
+        /// A competition's count - the 3-2-1 before GO and its last five seconds - and an early press
+        /// on the reaction board (AU-08) are the game's news, played as effects: they borrowed the
+        /// pointer's tick, whose row is the interface's, so turning the interface down silenced a
+        /// competition's count. Every beat of a competition the screen sounds now plays as effects.
+        /// </summary>
+        [Test]
+        public void ACompetitionsCountAndAnEarlyPressAreNews_SoEveryBeatOfACompetitionPlaysAsEffects()
+        {
+            foreach (var cue in new[] { "CountTick", "FalseStart" })
+            {
+                var row = SoundPictures.Find(cue);
+                Assert.That(row, Is.Not.Null, cue + " has its row.");
+                Assert.That(row.Kind, Is.EqualTo(SoundKind.Information), cue + " carries news, so its picture is owed.");
+                Assert.That(row.Channel, Is.EqualTo(SoundChannel.Effects), cue + " follows the Effects volume.");
+                Assert.That(row.GainDb, Is.EqualTo(0f), cue + " is news and plays as recorded.");
+            }
+            foreach (var cue in new[] { "CompetitionStart", "CountTick", "FalseStart", "SocialUp", "SocialDown", "CompetitionWin" })
+                Assert.That(SoundPictures.Find(cue).Channel, Is.Not.EqualTo(SoundChannel.Interface), cue + " is still heard with the interface at nothing.");
+        }
+
+        /// <summary>
+        /// A conversation's trust sounds (AU-09) are the game's news - where the player stands with
+        /// somebody - so each has its row, owes its picture (the trust chip), plays as effects and as
+        /// recorded; and every name a conversation's commit can give is a row of this table. Before,
+        /// such a commit clicked as the interface, and turning the interface down silenced it.
+        /// </summary>
+        [Test]
+        public void AConversationsTrustSoundsAreNews_PlayedAsEffects_WithTheTrustChipForTheirPicture()
+        {
+            foreach (var cue in new[] { CommitSound.RelationshipUp, CommitSound.RelationshipDown })
+            {
+                var row = SoundPictures.Find(cue);
+                Assert.That(row, Is.Not.Null, cue + " has its row.");
+                Assert.That(row.Kind, Is.EqualTo(SoundKind.Information), cue + " carries news, so its picture is owed.");
+                Assert.That(row.Channel, Is.EqualTo(SoundChannel.Effects), cue + " follows the Effects volume.");
+                Assert.That(row.GainDb, Is.EqualTo(0f), cue + " is news and plays as recorded.");
+                Assert.That(row.Picture, Does.Contain("trust chip"), cue + "'s picture is the chip that says what moved.");
+            }
+            foreach (var delta in new[] { 5.0, -5.0, 0.0 })
+                Assert.That(SoundPictures.Find(CommitSound.CueName(new[] { "conversation" }, delta)), Is.Not.Null,
+                    "A conversation's commit, at a change of " + delta + ", names a cue the table has.");
         }
 
         [Test]
@@ -99,14 +164,38 @@ namespace Gamesim.Tests.EditMode
         [Test]
         public void TheVolumeSliders_AreNamedForTheirChannel_BesideTheSoundRows()
         {
-            var names = new[] { SoundChannel.Music, SoundChannel.Effects, SoundChannel.Interface }.Select(SoundPictures.MeterCaption).ToList();
-            Assert.That(names, Is.EqualTo(new[] { "Music volume", "Effects volume", "Interface volume" }));
+            var names = new[] { SoundChannel.Music, SoundChannel.Effects, SoundChannel.Interface, SoundChannel.Voice }.Select(SoundPictures.MeterCaption).ToList();
+            Assert.That(names, Is.EqualTo(new[] { "Music volume", "Effects volume", "Interface volume", "Voice volume" }));
             // Menu slice 4: each a slider row of its own, its value its percentage; no step buttons beside it,
             // and no name shared with the master's slider or the sound switches.
             foreach (var other in new[] { SettingRowWords.MasterVolumeRow, SettingRowWords.AllSoundRow, SettingRowWords.MusicRow, SettingRowWords.ReducedSoundRow })
                 Assert.That(names, Has.No.Member(other));
-            Assert.That(new[] { SoundPictures.MusicVolumeKey, SoundPictures.EffectsVolumeKey, SoundPictures.InterfaceVolumeKey },
-                Is.EqualTo(new[] { "Gamesim.MusicVolume", "Gamesim.EffectsVolume", "Gamesim.InterfaceVolume" }));
+            Assert.That(new[] { SoundPictures.MusicVolumeKey, SoundPictures.EffectsVolumeKey, SoundPictures.InterfaceVolumeKey, SoundPictures.VoiceVolumeKey },
+                Is.EqualTo(new[] { "Gamesim.MusicVolume", "Gamesim.EffectsVolume", "Gamesim.InterfaceVolume", "Gamesim.VoiceVolume" }));
+        }
+
+        /// <summary>
+        /// The houseguests' murmurs (AU-16) have a volume of their own, the fourth slider under the
+        /// master's: "Voice volume", kept under its own key, starting at 70 percent where the other
+        /// three start at the whole. The channel is appended, so the three before it keep their
+        /// numbers; and no cue of the table plays under it - a murmur's picture is its line.
+        /// </summary>
+        [Test]
+        public void TheVoiceVolume_StartsAt70_UnderItsOwnKey_AfterTheOtherThree()
+        {
+            Assert.That(SoundPictures.Channels, Is.EqualTo(new[] { SoundChannel.Music, SoundChannel.Effects, SoundChannel.Interface, SoundChannel.Voice }),
+                "Settings shows the four sliders in this order, under the master's.");
+            Assert.That(new[] { (int)SoundChannel.Music, (int)SoundChannel.Effects, (int)SoundChannel.Interface, (int)SoundChannel.Voice },
+                Is.EqualTo(new[] { 0, 1, 2, 3 }), "Appended: no channel's number moves.");
+            Assert.That(SoundPictures.DefaultVolumeOf(SoundChannel.Voice), Is.EqualTo(70), "The voices start at 70 percent.");
+            Assert.That(SoundPictures.DefaultVoiceVolume, Is.EqualTo(70));
+            foreach (var channel in new[] { SoundChannel.Music, SoundChannel.Effects, SoundChannel.Interface })
+                Assert.That(SoundPictures.DefaultVolumeOf(channel), Is.EqualTo(SoundPictures.DefaultVolume), channel + " still starts at the whole.");
+            Assert.That(SoundPictures.Channels.Select(SoundPictures.VolumeKeyOf),
+                Is.EqualTo(new[] { "Gamesim.MusicVolume", "Gamesim.EffectsVolume", "Gamesim.InterfaceVolume", "Gamesim.VoiceVolume" }));
+            Assert.That(SoundPictures.Channels.Select(SoundPictures.LogKey),
+                Is.EqualTo(new[] { "music-volume", "effects-volume", "interface-volume", "voice-volume" }), "Each its own word in the player log.");
+            Assert.That(SoundPictures.Rows.Where(row => row.Channel == SoundChannel.Voice), Is.Empty, "No cue plays under the voices' volume.");
         }
     }
 }

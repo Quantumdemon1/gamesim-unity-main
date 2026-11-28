@@ -3,13 +3,19 @@ using System.Collections.Generic;
 
 namespace Gamesim.Presentation
 {
-    /// <summary>What a sound is for: news the player is told, or the interface answering a hand.</summary>
+    /// <summary>What a sound is for: news the player is told, the interface answering a hand, or a motion the player sees.</summary>
     public enum SoundKind
     {
         /// <summary>Something happened in the game - a nomination, a ballot, a hit. It must never be the only way the player learns it.</summary>
         Information,
         /// <summary>The interface answering a press, a hover, a panel, a step of the tour: it repeats what the screen already shows.</summary>
         Interface,
+        /// <summary>
+        /// A motion the player sees in the house - the front door's leaves giving and landing shut. It
+        /// is the sound of what is on screen, so it carries no news of its own, and it plays under the
+        /// effects' volume as the house's air does.
+        /// </summary>
+        World,
     }
 
     /// <summary>The volume a sound is played under, beside the master (PLAN A, A11).</summary>
@@ -18,6 +24,8 @@ namespace Gamesim.Presentation
         Music,
         Effects,
         Interface,
+        /// <summary>The houseguests' murmurs under their lines (AU-16, <see cref="Murmur"/>). Appended.</summary>
+        Voice,
     }
 
     /// <summary>
@@ -30,6 +38,10 @@ namespace Gamesim.Presentation
     ///
     /// <para>The music and the house's air have no row: they are beds, not news. The music plays
     /// under <see cref="SoundChannel.Music"/>; the room tone under <see cref="SoundChannel.Effects"/>.</para>
+    ///
+    /// <para>Nor do the houseguests' murmurs (AU-16): a murmur is made for its line rather than
+    /// recorded, and its picture is the line itself, on screen as it sounds. They play under
+    /// <see cref="SoundChannel.Voice"/>.</para>
     /// </summary>
     public static class SoundPictures
     {
@@ -44,7 +56,8 @@ namespace Gamesim.Presentation
             /// <summary>
             /// The cue's place in the mix, in decibels against its recording: 0 for the game's news,
             /// which plays as recorded, and below it for the interface's answers, so a menu never
-            /// sounds as big as a nomination. Every recording peaks at the same level, which put the
+            /// sounds as big as a nomination; a motion the player sees (<see cref="SoundKind.World"/>)
+            /// sits below the news too. Every recording peaks at the same level, which put the
             /// panels' swish level with the eviction and the hover's tick over the ballot's.
             /// </summary>
             public float GainDb { get; }
@@ -87,7 +100,55 @@ namespace Gamesim.Presentation
             new Row("PanelClose", SoundKind.Interface, SoundChannel.Interface, "The panel leaving.", gainDb: -11f),
             new Row("Hover", SoundKind.Interface, SoundChannel.Interface, "The control under the pointer lights.", gainDb: -12f, spacing: HoverSpacing),
             new Row("TutorialStep", SoundKind.Interface, SoundChannel.Interface, "The tour's next step: its title and its words.", gainDb: -9f),
+            // The front door (AU-06): the opening's entrances and the evicted's walk out. Sounds of a
+            // motion on screen, under the news; appended, as the cues are.
+            new Row("DoorOpen", SoundKind.World, SoundChannel.Effects,
+                "The front door's leaves give after their rattle and swing open, and the light beyond comes up.", gainDb: DoorGainDb),
+            new Row("DoorShut", SoundKind.World, SoundChannel.Effects,
+                "The front door's leaves land shut, and the light beyond dies away.", gainDb: DoorGainDb),
+            // The house called to a staged ceremony (AU-07).
+            new Row("Summons", SoundKind.Information, SoundChannel.Effects,
+                "The strip comes up with the ceremony's headline and the summons line: the house gathers at the table, or takes its seats."),
+            // A competition's count and an early press (AU-08): the game's news, so a player who turns
+            // the interface down still hears every beat of a competition.
+            new Row("CountTick", SoundKind.Information, SoundChannel.Effects,
+                "Before GO, the count's big digit steps down and the clock's line counts with it (STARTS IN, or MEMORIZE while the cards are shown); in the last five seconds, the clock's digits reach the next whole second."),
+            new Row("FalseStart", SoundKind.Information, SoundChannel.Effects,
+                "A press before the target is up: the reaction board's line counts one more early and says to wait for a target."),
+            // A staged competition in the yard (AU-13): the apparatus the field works, heard as it is
+            // seen; the standings card that follows carries the news, with its own fanfare.
+            new Row("ShowHorn", SoundKind.World, SoundChannel.Effects,
+                "The course's pads light as the field slaps them to start, the table's trays and consoles start working, or the last place's keys go out as time is called.", gainDb: ShowGainDb),
+            new Row("ShowLockIn", SoundKind.World, SoundChannel.Effects,
+                "A podium console's keys light pale as its competitor presses to lock in, or a finisher's tray, console or pad shows them done.", gainDb: ShowClickGainDb),
+            new Row("ShowRight", SoundKind.World, SoundChannel.Effects,
+                "A podium reveal the player comes through, or the last, which leaves the winner alone: the consoles still in light mint, and those out light red and walk aside.", gainDb: ShowGainDb),
+            new Row("ShowWrong", SoundKind.World, SoundChannel.Effects,
+                "A podium reveal that puts the player out - or, once they are out or watching, any but the last: the consoles of those out light red and they walk aside.", gainDb: ShowGainDb),
+            // A conversation that moved trust (AU-09): the game's news - where the player stands with
+            // somebody - so a picture is owed, and it is the trust chip. Its place in the mix is set in
+            // the recording, as the count's is: a conversation comes six times a week.
+            new Row("RelationshipUp", SoundKind.Information, SoundChannel.Effects,
+                "A conversation raised trust: the page comes back with the trust chip reading what was gained, under the houseguest's standing."),
+            new Row("RelationshipDown", SoundKind.Information, SoundChannel.Effects,
+                "A conversation cost trust: the page comes back with the trust chip reading what was lost, under the houseguest's standing."),
         };
+
+        /// <summary>
+        /// A staged competition's horn and its reveal's right and wrong in the mix (AU-13), in
+        /// decibels: under the news and the front door, as the apparatus of a show the card's
+        /// fanfare will crown.
+        /// </summary>
+        public const float ShowGainDb = -6f;
+
+        /// <summary>A console's click in the mix (AU-13): set down less than the horn, as a click has little body; as played it still sits under the horn.</summary>
+        public const float ShowClickGainDb = -2f;
+
+        /// <summary>
+        /// The front door's place in the mix, in decibels: under the news, so a door is never as big
+        /// as the eviction it follows, and over the interface's answers, because it is the house.
+        /// </summary>
+        public const float DoorGainDb = -5f;
 
         /// <summary>
         /// The least time between two hover ticks, in seconds: a pointer swept down a list enters a
@@ -132,8 +193,25 @@ namespace Gamesim.Presentation
         /// <summary>The preferences the three volumes are kept under, as percentages of the master.</summary>
         public const string MusicVolumeKey = "Gamesim.MusicVolume", EffectsVolumeKey = "Gamesim.EffectsVolume", InterfaceVolumeKey = "Gamesim.InterfaceVolume";
 
+        /// <summary>The preference the voices' volume is kept under (AU-16), as a percentage of the master.</summary>
+        public const string VoiceVolumeKey = "Gamesim.VoiceVolume";
+
         /// <summary>Each volume starts at the whole of the master, so a player who never touches them hears what they always heard.</summary>
         public const int DefaultVolume = 100;
+
+        /// <summary>The voices start at 70 percent (AU-16, the owner's ruling): a murmur sits under the line, never over the game.</summary>
+        public const int DefaultVoiceVolume = 70;
+
+        /// <summary>The channels' sliders in Settings, in their order under the master's: music, effects, interface, voice.</summary>
+        public static IReadOnlyList<SoundChannel> Channels { get; } = new[] { SoundChannel.Music, SoundChannel.Effects, SoundChannel.Interface, SoundChannel.Voice };
+
+        /// <summary>A channel's volume before the player has chosen one: the whole for the first three, <see cref="DefaultVoiceVolume"/> for the voices.</summary>
+        public static int DefaultVolumeOf(SoundChannel channel) => channel == SoundChannel.Voice ? DefaultVoiceVolume : DefaultVolume;
+
+        /// <summary>The preference a channel's volume is kept under.</summary>
+        public static string VolumeKeyOf(SoundChannel channel) =>
+            channel == SoundChannel.Music ? MusicVolumeKey : channel == SoundChannel.Effects ? EffectsVolumeKey
+            : channel == SoundChannel.Voice ? VoiceVolumeKey : InterfaceVolumeKey;
 
         /// <summary>A step of the volume controls, as the master's.</summary>
         public const int Step = 10;
@@ -141,10 +219,12 @@ namespace Gamesim.Presentation
         /// <summary>The name of a channel's slider in Settings: "Music volume" (its value reads "70%").</summary>
         public static string MeterCaption(SoundChannel channel) => ChannelName(channel) + " volume";
 
-        /// <summary>The channel's word in the log: "music", "effects", "interface".</summary>
-        public static string LogKey(SoundChannel channel) => channel == SoundChannel.Music ? "music-volume" : channel == SoundChannel.Effects ? "effects-volume" : "interface-volume";
+        /// <summary>The channel's word in the log: "music", "effects", "interface", "voice".</summary>
+        public static string LogKey(SoundChannel channel) => channel == SoundChannel.Music ? "music-volume" : channel == SoundChannel.Effects ? "effects-volume"
+            : channel == SoundChannel.Voice ? "voice-volume" : "interface-volume";
 
-        public static string ChannelName(SoundChannel channel) => channel == SoundChannel.Music ? "Music" : channel == SoundChannel.Effects ? "Effects" : "Interface";
+        public static string ChannelName(SoundChannel channel) => channel == SoundChannel.Music ? "Music" : channel == SoundChannel.Effects ? "Effects"
+            : channel == SoundChannel.Voice ? "Voice" : "Interface";
 
         /// <summary>A volume a step down or up, inside 0 to 100.</summary>
         public static int Stepped(int percent, bool up) => Math.Max(0, Math.Min(100, percent + (up ? Step : -Step)));

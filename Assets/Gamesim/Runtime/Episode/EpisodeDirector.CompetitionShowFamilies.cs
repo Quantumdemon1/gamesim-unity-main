@@ -103,6 +103,8 @@ namespace Gamesim.Episode
             public CompetitionShowFamilyRecord FamilyRecord;
             public readonly Dictionary<string, CompetitionShowActor> Actors = new Dictionary<string, CompetitionShowActor>();
             public readonly Dictionary<string, HouseInteractionAnchor> CourseMarks = new Dictionary<string, HouseInteractionAnchor>();
+            /// <summary>The show's sounds still to come, soonest first: a lock-in's later clicks, staggered with the presses (AU-13).</summary>
+            public readonly List<KeyValuePair<float, HouseAudio.Cue>> PendingSounds = new List<KeyValuePair<float, HouseAudio.Cue>>();
         }
 
         /// <summary>Whether this competitor is out on a course leg now, away from their post.</summary>
@@ -122,9 +124,12 @@ namespace Gamesim.Episode
             while (run.NextBeat < beats.Count && t >= beats[run.NextBeat].At)
             {
                 var beat = beats[run.NextBeat++];
+                // An earlier beat's staggered clicks are never heard after a later beat's sound (AU-13).
+                SoundCompetitionShowPending(run, now, all: true);
                 PlayCompetitionShowBeat(run, beat, now);
                 if (competitionShow != run) return;
             }
+            SoundCompetitionShowPending(run, now, all: false);
             foreach (var id in run.SideAt.Where(pair => now >= pair.Value).Select(pair => pair.Key).ToArray())
             {
                 run.SideAt.Remove(id);
@@ -165,6 +170,7 @@ namespace Gamesim.Episode
         private void PlayCompetitionShowBeat(CompetitionShowRun run, CompetitionShowBeat beat, float now)
         {
             var record = run.FamilyRecord;
+            SoundCompetitionShowBeat(run, beat, now);
             switch (beat.Kind)
             {
                 case CompetitionShowBeatKind.Question:
@@ -175,8 +181,9 @@ namespace Gamesim.Episode
                     foreach (var id in beat.Ids)
                     {
                         SetCompetitionShowFace(run, id, CompetitionApparatus.ShowFace.LockedIn, now);
-                        // Not all in the same instant: each locks in a moment after the one above them.
-                        PressCompetitionShowInstrument(run, id, now + CompetitionShowActorFor(id).Rank % 4 * .08f, .45f);
+                        // Not all in the same instant: each locks in a moment after the one above them,
+                        // and the console's click comes with the press (CompetitionShowSounds).
+                        PressCompetitionShowInstrument(run, id, now + CompetitionShowSounds.LockInDelay(CompetitionShowActorFor(id).Rank), .45f);
                     }
                     break;
                 case CompetitionShowBeatKind.Reveal:
@@ -257,8 +264,9 @@ namespace Gamesim.Episode
             bool course = run.Plan.Family == CompetitionShowFamily.Course;
             SetCompetitionShowFace(run, id, course ? CompetitionApparatus.ShowFace.Finished : CompetitionApparatus.ShowFace.Done, now);
             SetCompetitionShowPose(run, id, CharacterPresentation.Pose.HandOnHip);
-            // The last slap of the pad, or the last tile or die set down.
+            // The last slap of the pad, or the last tile or die set down, and its click (AU-13).
             PressCompetitionShowInstrument(run, id, now, .4f);
+            AskCompetitionShowSound(CompetitionShowSounds.Finished);
             run.FamilyRecord.Finished.Add(id); run.FamilyRecord.Order.Add(id);
             if (id == run.Plan.WinnerId && !run.Cheered)
             {
@@ -497,6 +505,43 @@ namespace Gamesim.Episode
         private void EndCompetitionShowFamily(CompetitionShowRun run)
         {
             foreach (var pair in run.Actors) StopCompetitionShowRunner(pair.Key, pair.Value);
+            // A skip, or any other end, stops the show's sounds still to come (AU-13).
+            run.PendingSounds.Clear();
+        }
+
+        // ------------------------------------------------------------ the sounds (AU-13)
+
+        /// <summary>A beat's sounds (CompetitionShowSounds): those due now asked at once, the rest kept for their moment.</summary>
+        private void SoundCompetitionShowBeat(CompetitionShowRun run, CompetitionShowBeat beat, float now)
+        {
+            foreach (var ask in CompetitionShowSounds.For(run.Timeline, beat, run.Plan.PlayerId))
+            {
+                if (!System.Enum.TryParse(ask.Cue, out HouseAudio.Cue cue)) continue;
+                if (ask.After <= 0f) AskCompetitionShowSound(cue);
+                else run.PendingSounds.Add(new KeyValuePair<float, HouseAudio.Cue>(now + ask.After, cue));
+            }
+        }
+
+        /// <summary>The kept sounds whose moment has come, in order; every one kept when <paramref name="all"/> (a later beat is about to sound).</summary>
+        private void SoundCompetitionShowPending(CompetitionShowRun run, float now, bool all)
+        {
+            int due = 0;
+            while (due < run.PendingSounds.Count && (all || run.PendingSounds[due].Key <= now)) due++;
+            if (due == 0) return;
+            var sounds = run.PendingSounds.GetRange(0, due);
+            run.PendingSounds.RemoveRange(0, due);
+            foreach (var sound in sounds) AskCompetitionShowSound(sound.Value);
+        }
+
+        private void AskCompetitionShowSound(string cue)
+        {
+            if (System.Enum.TryParse(cue, out HouseAudio.Cue value)) AskCompetitionShowSound(value);
+        }
+
+        /// <summary>One of the show's sounds, on the effects' volume as the apparatus it is the sound of (SoundPictures).</summary>
+        private void AskCompetitionShowSound(HouseAudio.Cue cue)
+        {
+            if (audioBed != null) audioBed.PlayCue(cue);
         }
 
         // ------------------------------------------------------------ the arena's places

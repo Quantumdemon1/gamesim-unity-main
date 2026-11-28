@@ -250,7 +250,8 @@ namespace Gamesim.Episode
             button.onClick.AddListener(() =>
             {
                 if (button == null || !button.IsActive() || !button.IsInteractable()) return;
-                action?.Invoke();
+                // A tab, a switch or a choice answers as every HUD press does (AU-10, PressLike).
+                PressAnswer.Run(action, CuesAskedSoFar, () => Foley(HouseAudio.Cue.Button));
             });
             return button;
         }

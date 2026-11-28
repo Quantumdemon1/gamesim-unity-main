@@ -93,6 +93,9 @@ namespace Gamesim.Episode
                 () => AdvanceConversationExchange(session, revision, step),
                 () => SkipConversationExchange(session, revision, step));
             ShowExchangeLineOnTheClock(session, revision, step, self ? conversationExchange.PlayerLine : conversationExchange.NpcLine);
+            // A line new to the screen murmurs in its speaker's voice; a redraw of it does not (AU-16).
+            MurmurExchangeLine(session, revision, step, self ? conversationExchange.PlayerId : conversationExchange.NpcId,
+                self ? conversationExchange.PlayerLine : conversationExchange.NpcLine);
             if (cameraRig != null) cameraRig.ConversationWindowOffset = hud.ConversationWindowOffset;
             return true;
         }
@@ -124,6 +127,8 @@ namespace Gamesim.Episode
 
         private void CancelConversationExchange(bool resumeConversation)
         {
+            // The line goes, and its murmur with it (AU-16).
+            if (conversationExchange != null) HushExchangeMurmur();
             if (exchangePlayerBody != null) { exchangePlayerBody.SetSpeaking(false); exchangePlayerBody.SetTalking(false); }
             if (exchangeNpcBody != null)
             {
